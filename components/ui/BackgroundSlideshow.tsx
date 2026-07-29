@@ -1,33 +1,73 @@
 "use client";
 
-import { motion } from "framer-motion";
-import Image from "next/image";
-import { useEffect, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
 
 type BackgroundSlideshowProps = {
-  images: readonly string[];
+  videos: readonly string[];
   intervalMs?: number;
 };
 
 export function BackgroundSlideshow({
-  images,
-  intervalMs = 5000,
+  videos,
+  intervalMs = 8000,
 }: BackgroundSlideshowProps) {
+  const reducedMotion = useReducedMotion();
   const [currentIndex, setCurrentIndex] = useState(0);
+  const videoRefs = useRef<Array<HTMLVideoElement | null>>([]);
 
   useEffect(() => {
-    if (images.length <= 1) return;
+    if (reducedMotion || videos.length <= 1) return;
 
     const timer = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % images.length);
+      setCurrentIndex((prev) => (prev + 1) % videos.length);
     }, intervalMs);
 
     return () => clearInterval(timer);
-  }, [images.length, intervalMs]);
+  }, [videos.length, intervalMs, reducedMotion]);
+
+  useEffect(() => {
+    const active = videoRefs.current[currentIndex];
+    const listeners: Array<{
+      video: HTMLVideoElement;
+      handler: () => void;
+    }> = [];
+
+    videoRefs.current.forEach((video, index) => {
+      if (!video) return;
+
+      if (index === currentIndex && !reducedMotion) {
+        const playActive = () => {
+          video.currentTime = 0;
+          void video.play().catch(() => {});
+        };
+
+        if (video.readyState >= 2) {
+          playActive();
+        } else {
+          video.addEventListener("loadeddata", playActive);
+          listeners.push({ video, handler: playActive });
+        }
+        return;
+      }
+
+      video.pause();
+      if (video.readyState >= 1) {
+        video.currentTime = 0;
+      }
+    });
+
+    return () => {
+      listeners.forEach(({ video, handler }) => {
+        video.removeEventListener("loadeddata", handler);
+      });
+      active?.pause();
+    };
+  }, [currentIndex, reducedMotion]);
 
   return (
     <div className="absolute inset-0 overflow-hidden">
-      {images.map((src, index) => {
+      {videos.map((src, index) => {
         const isActive = index === currentIndex;
 
         return (
@@ -36,27 +76,23 @@ export function BackgroundSlideshow({
             className="absolute inset-0"
             initial={false}
             animate={{ opacity: isActive ? 1 : 0 }}
-            transition={{ duration: 1.2, ease: "easeInOut" }}
+            transition={{
+              duration: reducedMotion ? 0.3 : 1.2,
+              ease: "easeInOut",
+            }}
           >
-            <motion.div
-              key={isActive ? `active-${currentIndex}` : `idle-${index}`}
-              className="absolute inset-0"
-              initial={{ scale: 1 }}
-              animate={{ scale: isActive ? 1.08 : 1 }}
-              transition={{
-                duration: intervalMs / 1000,
-                ease: "linear",
+            <video
+              ref={(el) => {
+                videoRefs.current[index] = el;
               }}
-            >
-              <Image
-                src={src}
-                alt=""
-                fill
-                priority={index === 0}
-                className="object-cover"
-                sizes="100vw"
-              />
-            </motion.div>
+              className="absolute inset-0 h-full w-full object-cover"
+              src={src}
+              muted
+              playsInline
+              loop
+              preload={index === 0 || index === 1 ? "auto" : "metadata"}
+              aria-hidden="true"
+            />
           </motion.div>
         );
       })}

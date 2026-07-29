@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useReducedMotion } from "framer-motion";
 
 type TypewriterTextProps = {
   phrases: readonly string[];
@@ -15,20 +16,27 @@ export function TypewriterText({
   deletingSpeedMs = 45,
   pauseMs = 2000,
 }: TypewriterTextProps) {
+  const reducedMotion = useReducedMotion();
   const [phraseIndex, setPhraseIndex] = useState(0);
   const [displayText, setDisplayText] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
   const [showCursor, setShowCursor] = useState(true);
 
   useEffect(() => {
+    if (reducedMotion) return;
+
     const cursorTimer = setInterval(() => {
       setShowCursor((prev) => !prev);
     }, 530);
 
     return () => clearInterval(cursorTimer);
-  }, []);
+  }, [reducedMotion]);
 
+  // Users who prefer reduced motion see the first phrase statically —
+  // no blinking cursor, typing, or auto-rotation.
   useEffect(() => {
+    if (reducedMotion) return;
+
     const currentPhrase = phrases[phraseIndex];
     let timer: ReturnType<typeof setTimeout>;
 
@@ -52,6 +60,7 @@ export function TypewriterText({
 
     return () => clearTimeout(timer);
   }, [
+    reducedMotion,
     displayText,
     isDeleting,
     phraseIndex,
@@ -61,15 +70,19 @@ export function TypewriterText({
     pauseMs,
   ]);
 
+  const currentText = reducedMotion ? (phrases[0] ?? "") : displayText;
+
   return (
     <span className="text-brand-green">
-      {displayText}
-      <span
-        className={`ml-0.5 inline-block w-[3px] bg-brand-green ${showCursor ? "opacity-100" : "opacity-0"}`}
-        aria-hidden="true"
-      >
-        |
-      </span>
+      {currentText}
+      {!reducedMotion && (
+        <span
+          className={`ml-0.5 inline-block w-[3px] bg-brand-green ${showCursor ? "opacity-100" : "opacity-0"}`}
+          aria-hidden="true"
+        >
+          |
+        </span>
+      )}
     </span>
   );
 }

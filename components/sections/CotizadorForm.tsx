@@ -15,12 +15,13 @@ import {
 import { siteConfig } from "@/constants/site";
 
 const inputClassName =
-  "w-full rounded-lg border border-white/20 bg-white/90 px-4 py-2.5 text-sm text-zinc-800 placeholder:text-zinc-500 outline-none transition focus:border-brand-green focus:ring-2 focus:ring-brand-green/30";
+  "w-full rounded-lg border border-white/20 bg-white/90 px-4 py-2.5 text-base text-zinc-800 placeholder:text-zinc-500 outline-none transition focus:border-brand-green focus:ring-2 focus:ring-brand-green/30";
 
 const selectClassName =
-  "w-full rounded-lg border border-white/20 bg-white/90 px-4 py-2.5 text-sm text-zinc-800 outline-none transition focus:border-brand-green focus:ring-2 focus:ring-brand-green/30";
+  "w-full rounded-lg border border-white/20 bg-white/90 px-4 py-2.5 text-base text-zinc-800 outline-none transition focus:border-brand-green focus:ring-2 focus:ring-brand-green/30";
 
-const labelClassName = "mb-1.5 block text-sm font-medium text-white";
+const labelClassName =
+  "mb-1.5 block text-sm font-semibold tracking-wide text-white/95";
 
 function FieldError({ message }: { message?: string }) {
   if (!message) return null;
@@ -177,14 +178,14 @@ export function CotizadorForm() {
   };
 
   return (
-    <div className="w-full rounded-2xl bg-brand-teal/90 p-5 shadow-2xl backdrop-blur-sm sm:p-6 lg:p-8">
-      <h2 className="mb-5 text-center text-xl font-semibold text-white sm:text-2xl">
+    <div className="flex h-full w-full flex-col rounded-2xl bg-brand-teal/75 p-5 shadow-2xl backdrop-blur-md sm:p-6 lg:rounded-none lg:bg-brand-teal/40 lg:p-8 lg:shadow-none lg:backdrop-blur-sm xl:px-10 xl:py-10">
+      <h2 className="mb-5 text-center font-heading text-2xl font-bold tracking-tight text-white sm:text-[1.75rem]">
         Cotizador digital
       </h2>
 
       <CotizadorStepper currentStep={currentStep} />
 
-      <div className="min-h-[320px]">
+      <div className="flex min-h-[320px] flex-1 flex-col lg:justify-between">
         {currentStep === 1 && (
           <div className="space-y-4">
             <div>
@@ -265,7 +266,7 @@ export function CotizadorForm() {
               <button
                 type="button"
                 onClick={handleNext}
-                className="rounded-lg bg-brand-teal-dark px-8 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-teal-dark/90"
+                className="min-h-11 rounded-lg bg-brand-teal-dark px-8 py-3 text-sm font-semibold text-white transition hover:bg-brand-teal-dark/90"
               >
                 Siguiente
               </button>
@@ -378,14 +379,14 @@ export function CotizadorForm() {
               <button
                 type="button"
                 onClick={handleBack}
-                className="rounded-lg bg-brand-green px-8 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-green/90"
+                className="min-h-11 rounded-lg bg-brand-green px-8 py-3 text-sm font-semibold text-white transition hover:bg-brand-green/90"
               >
                 Volver
               </button>
               <button
                 type="button"
                 onClick={handleNext}
-                className="rounded-lg bg-brand-teal-dark px-8 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-teal-dark/90"
+                className="min-h-11 rounded-lg bg-brand-teal-dark px-8 py-3 text-sm font-semibold text-white transition hover:bg-brand-teal-dark/90"
               >
                 Siguiente
               </button>
@@ -440,11 +441,20 @@ export function CotizadorForm() {
                   type="checkbox"
                   checked={formData.autorizaDatos}
                   onChange={(e) => updateField("autorizaDatos", e.target.checked)}
-                  className="mt-1 h-4 w-4 rounded border-white/30 accent-brand-green"
+                  className="mt-0.5 h-5 w-5 shrink-0 rounded border-white/30 accent-brand-green"
                 />
                 <span>
                   Autorizo el tratamiento de mis datos personales conforme a la
-                  legislación vigente y la política de privacidad.
+                  legislación vigente y la{" "}
+                  <Link
+                    href="/politicas"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-semibold text-brand-green underline-offset-2 hover:underline"
+                  >
+                    política de privacidad
+                  </Link>
+                  .
                 </span>
               </label>
               <FieldError message={errors.autorizaDatos} />
@@ -454,14 +464,14 @@ export function CotizadorForm() {
               <button
                 type="button"
                 onClick={handleBack}
-                className="rounded-lg bg-brand-green px-8 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-green/90"
+                className="min-h-11 rounded-lg bg-brand-green px-8 py-3 text-sm font-semibold text-white transition hover:bg-brand-green/90"
               >
                 Volver
               </button>
               <button
                 type="button"
                 onClick={handleSubmit}
-                className="rounded-lg bg-brand-teal-dark px-8 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-teal-dark/90"
+                className="min-h-11 rounded-lg bg-brand-teal-dark px-8 py-3 text-sm font-semibold text-white transition hover:bg-brand-teal-dark/90"
               >
                 Enviar Cotización
               </button>
@@ -474,16 +484,16 @@ export function CotizadorForm() {
             <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-brand-green/20 text-3xl text-brand-green">
               ✓
             </div>
-            <h3 className="text-xl font-semibold text-white">
+            <h3 className="font-heading text-2xl font-bold tracking-tight text-white">
               ¡Cotización enviada!
             </h3>
-            <p className="mt-2 max-w-sm text-sm text-white/85">
+            <p className="mt-2 max-w-sm text-base text-white/85">
               Nos pondremos en contacto contigo pronto.
             </p>
             <button
               type="button"
               onClick={handleReset}
-              className="mt-6 rounded-lg bg-brand-teal-dark px-8 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-teal-dark/90"
+              className="mt-6 rounded-lg bg-brand-teal-dark px-8 py-3 text-sm font-semibold text-white transition hover:bg-brand-teal-dark/90"
             >
               Nueva cotización
             </button>

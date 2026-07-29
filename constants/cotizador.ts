@@ -1,3 +1,5 @@
+import { heroVideosStartingAt } from "@/constants/hero";
+
 export const COTIZADOR_STEPS = [
   { id: 1, label: "Datos personales", shortLabel: "Datos\npersonales" },
   { id: 2, label: "Datos para cotizar Isapres", shortLabel: "Datos para\ncotizar Isapres" },
@@ -84,12 +86,8 @@ export const TYPEWRITER_PHRASES = [
   "Santiago y regiones",
 ] as const;
 
-export const HERO_SLIDES = [
-  "/images/hero/slide-1.jpg",
-  "/images/hero/slide-2.jpg",
-  "/images/hero/slide-3.jpg",
-  "/images/hero/slide-4.jpg",
-] as const;
+/** Home opens on hero-01. */
+export const HERO_VIDEOS = heroVideosStartingAt(0);
 
 export type CotizadorFormData = {
   nombreApellido: string;

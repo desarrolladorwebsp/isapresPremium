@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { motion, useScroll, useTransform } from "framer-motion";
+import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
 import { useRef } from "react";
 import {
   LEGAL_BACKDROP_IMAGE,
@@ -30,22 +30,28 @@ const cardVariants = {
 function LegalFeatureCard({
   title,
   description,
+  reducedMotion,
 }: {
   title: string;
   description: string;
+  reducedMotion: boolean;
 }) {
   return (
     <motion.article
       variants={cardVariants}
-      whileHover={{
-        scale: 1.03,
-        y: -4,
-        boxShadow: "0 20px 40px rgba(0, 0, 0, 0.12)",
-      }}
+      whileHover={
+        reducedMotion
+          ? undefined
+          : {
+              scale: 1.03,
+              y: -4,
+              boxShadow: "0 20px 40px rgba(0, 0, 0, 0.12)",
+            }
+      }
       transition={{ duration: 0.2 }}
       className="rounded-2xl bg-emerald-50/95 p-6 text-center shadow-md sm:rounded-3xl sm:p-8"
     >
-      <h3 className="text-sm font-bold uppercase tracking-wider text-emerald-800 sm:text-base">
+      <h3 className="text-eyebrow font-bold uppercase tracking-wider text-emerald-800">
         {title}
       </h3>
       <p className="mt-3 text-sm leading-relaxed text-emerald-900/75 sm:text-[0.9375rem]">
@@ -56,6 +62,7 @@ function LegalFeatureCard({
 }
 
 export function LegalBackingSection() {
+  const reducedMotion = useReducedMotion();
   const sectionRef = useRef<HTMLElement>(null);
   const { scrollYProgress } = useScroll({
     target: sectionRef,
@@ -74,7 +81,7 @@ export function LegalBackingSection() {
 
       <motion.div
         className="absolute inset-0"
-        style={{ y: backgroundY, scale: backgroundScale }}
+        style={reducedMotion ? undefined : { y: backgroundY, scale: backgroundScale }}
       >
         <Image
           src={LEGAL_BACKDROP_IMAGE}
@@ -91,24 +98,24 @@ export function LegalBackingSection() {
       <div className="relative mx-auto max-w-7xl px-5 py-16 sm:px-8 sm:py-20 lg:px-10 lg:py-24">
         <div className="grid items-center gap-12 lg:grid-cols-[2fr_3fr] lg:gap-14 xl:gap-16">
           <motion.div
-            initial={{ opacity: 0, x: -30 }}
-            whileInView={{ opacity: 1, x: 0 }}
+            initial={reducedMotion ? false : { opacity: 0, x: -30 }}
+            whileInView={reducedMotion ? undefined : { opacity: 1, x: 0 }}
             viewport={{ once: true, margin: "-100px" }}
             transition={{ duration: 0.6, ease: "easeOut" }}
           >
             <h2
               id="legal-backing-heading"
-              className="text-3xl font-bold leading-tight sm:text-4xl lg:text-5xl"
+              className="text-display font-heading font-bold"
             >
               <span className="block tracking-[0.15em] text-white">
                 ISAPRES PREMIUM
               </span>
-              <span className="mt-2 block font-extrabold text-brand-green">
+              <span className="mt-2 block font-extrabold tracking-tight text-brand-green">
                 TU RESPALDO LEGAL SIN COSTO
               </span>
             </h2>
 
-            <p className="mt-6 max-w-xl text-base leading-relaxed text-white/90 sm:text-lg">
+            <p className="mt-6 max-w-xl text-body-lg leading-relaxed text-white/90">
               Con Isapres Premium no estás solo frente a tu Isapre. Te
               entregamos un equipo legal especializado que te acompaña desde el
               primer reclamo hasta acciones judiciales si es necesario —todo
@@ -117,9 +124,9 @@ export function LegalBackingSection() {
 
             <motion.a
               href={`mailto:${siteConfig.contact.email}`}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.98 }}
-              className="mt-8 inline-flex rounded-xl bg-brand-teal-dark px-8 py-3.5 text-sm font-semibold text-white shadow-lg transition-shadow hover:shadow-xl sm:text-base"
+              whileHover={reducedMotion ? undefined : { scale: 1.05 }}
+              whileTap={reducedMotion ? undefined : { scale: 0.98 }}
+              className="mt-8 inline-flex min-h-12 items-center rounded-xl bg-brand-teal-dark px-8 py-3.5 text-sm font-semibold text-white shadow-lg transition-shadow hover:shadow-xl sm:text-base"
             >
               Mándanos un correo
             </motion.a>
@@ -127,8 +134,8 @@ export function LegalBackingSection() {
 
           <motion.div
             variants={containerVariants}
-            initial="hidden"
-            whileInView="visible"
+            initial={reducedMotion ? false : "hidden"}
+            whileInView={reducedMotion ? undefined : "visible"}
             viewport={{ once: true, margin: "-100px" }}
             className="grid gap-4 sm:grid-cols-2 sm:gap-6"
           >
@@ -137,6 +144,7 @@ export function LegalBackingSection() {
                 key={feature.title}
                 title={feature.title}
                 description={feature.description}
+                reducedMotion={!!reducedMotion}
               />
             ))}
           </motion.div>
