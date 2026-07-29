@@ -1,4 +1,4 @@
-import { heroVideosStartingAt } from "@/constants/hero";
+import { HERO_MOBILE_PLAYLISTS, heroVideosStartingAt } from "@/constants/hero";
 
 export const COTIZADOR_STEPS = [
   { id: 1, label: "Datos personales", shortLabel: "Datos\npersonales" },
@@ -86,8 +86,9 @@ export const TYPEWRITER_PHRASES = [
   "Santiago y regiones",
 ] as const;
 
-/** Home opens on hero-01. */
+/** Home: desktop hero-01 · mobile curated vertical set starting on v03. */
 export const HERO_VIDEOS = heroVideosStartingAt(0);
+export const HERO_VIDEOS_MOBILE = [...HERO_MOBILE_PLAYLISTS.home];
 
 export type CotizadorFormData = {
   nombreApellido: string;

@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, useReducedMotion } from "framer-motion";
-import { HERO_VIDEOS, TYPEWRITER_PHRASES } from "@/constants/cotizador";
+import { HERO_VIDEOS, HERO_VIDEOS_MOBILE, TYPEWRITER_PHRASES } from "@/constants/cotizador";
 import { BackgroundSlideshow } from "@/components/ui/BackgroundSlideshow";
 import { TypewriterText } from "@/components/ui/TypewriterText";
 import { CotizadorForm } from "@/components/sections/CotizadorForm";
@@ -11,7 +11,10 @@ export function HeroSection() {
 
   return (
     <section className="relative flex min-h-[calc(100vh-4rem)] flex-col overflow-hidden">
-      <BackgroundSlideshow videos={HERO_VIDEOS} intervalMs={8000} />
+      <BackgroundSlideshow
+        videos={HERO_VIDEOS}
+        mobileVideos={HERO_VIDEOS_MOBILE}
+      />
 
       <div className="relative z-10 flex flex-1 flex-col pt-16 sm:pt-14 lg:pt-0">
         <div className="flex flex-1 items-start px-5 pb-10 pt-2 sm:items-center sm:px-8 sm:pt-0 lg:items-stretch lg:px-10 lg:pb-0 xl:px-16 2xl:px-24">

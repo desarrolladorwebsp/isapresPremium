@@ -3,6 +3,7 @@
 import { motion, useReducedMotion } from "framer-motion";
 import {
   EMPRESAS_HERO_VIDEOS,
+  EMPRESAS_HERO_VIDEOS_MOBILE,
   EMPRESAS_TYPEWRITER_PHRASES,
   EMPRESAS_WHATSAPP_MESSAGE,
 } from "@/constants/empresas";
@@ -16,7 +17,10 @@ export function EmpresasHeroSection() {
 
   return (
     <section className="relative flex min-h-[calc(100vh-4rem)] flex-col overflow-hidden">
-      <BackgroundSlideshow videos={EMPRESAS_HERO_VIDEOS} intervalMs={8000} />
+      <BackgroundSlideshow
+        videos={EMPRESAS_HERO_VIDEOS}
+        mobileVideos={EMPRESAS_HERO_VIDEOS_MOBILE}
+      />
 
       <div className="relative z-10 flex flex-1 items-center px-5 py-20 sm:px-8 sm:py-16 lg:px-10 xl:px-16">
         <motion.div

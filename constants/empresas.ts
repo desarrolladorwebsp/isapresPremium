@@ -1,7 +1,8 @@
-import { heroVideosStartingAt } from "@/constants/hero";
+import { HERO_MOBILE_PLAYLISTS, heroVideosStartingAt } from "@/constants/hero";
 
-/** Empresas opens on hero-02. */
+/** Empresas: desktop hero-02 · mobile curated set starting on v06. */
 export const EMPRESAS_HERO_VIDEOS = heroVideosStartingAt(1);
+export const EMPRESAS_HERO_VIDEOS_MOBILE = [...HERO_MOBILE_PLAYLISTS.empresas];
 
 export const EMPRESAS_TYPEWRITER_PHRASES = [
   "transparencia",

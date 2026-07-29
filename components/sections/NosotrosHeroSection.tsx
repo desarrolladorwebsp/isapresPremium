@@ -4,6 +4,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import {
   NOSOTROS_HERO,
   NOSOTROS_HERO_VIDEOS,
+  NOSOTROS_HERO_VIDEOS_MOBILE,
   NOSOTROS_TYPEWRITER_PHRASES,
 } from "@/constants/nosotros";
 import { BackgroundSlideshow } from "@/components/ui/BackgroundSlideshow";
@@ -14,7 +15,10 @@ export function NosotrosHeroSection() {
 
   return (
     <section className="relative flex min-h-[calc(100vh-4rem)] flex-col overflow-hidden">
-      <BackgroundSlideshow videos={NOSOTROS_HERO_VIDEOS} intervalMs={8000} />
+      <BackgroundSlideshow
+        videos={NOSOTROS_HERO_VIDEOS}
+        mobileVideos={NOSOTROS_HERO_VIDEOS_MOBILE}
+      />
 
       <div
         className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-r from-white/35 via-black/15 to-black/45"

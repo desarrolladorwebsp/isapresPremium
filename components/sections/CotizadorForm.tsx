@@ -178,7 +178,7 @@ export function CotizadorForm() {
   };
 
   return (
-    <div className="flex h-full w-full flex-col rounded-2xl bg-brand-teal/75 p-5 shadow-2xl backdrop-blur-md sm:p-6 lg:rounded-none lg:bg-brand-teal/40 lg:p-8 lg:shadow-none lg:backdrop-blur-sm xl:px-10 xl:py-10">
+    <div className="flex h-full w-full flex-col rounded-2xl bg-brand-teal/45 p-5 shadow-2xl backdrop-blur-lg sm:p-6 lg:rounded-none lg:bg-brand-teal/25 lg:p-8 lg:shadow-none lg:backdrop-blur-md xl:px-10 xl:py-10">
       <h2 className="mb-5 text-center font-heading text-2xl font-bold tracking-tight text-white sm:text-[1.75rem]">
         Cotizador digital
       </h2>
