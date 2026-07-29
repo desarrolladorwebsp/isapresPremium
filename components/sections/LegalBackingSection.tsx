@@ -1,6 +1,8 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
 import { useRef } from "react";
 import {
@@ -122,14 +124,24 @@ export function LegalBackingSection() {
               incluido en tu plan.
             </p>
 
-            <motion.a
-              href={`mailto:${siteConfig.contact.email}`}
-              whileHover={reducedMotion ? undefined : { scale: 1.05 }}
-              whileTap={reducedMotion ? undefined : { scale: 0.98 }}
-              className="mt-8 inline-flex min-h-12 items-center rounded-xl bg-brand-teal-dark px-8 py-3.5 text-sm font-semibold text-white shadow-lg transition-shadow hover:shadow-xl sm:text-base"
-            >
-              Mándanos un correo
-            </motion.a>
+            <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-start">
+              <motion.a
+                href={`mailto:${siteConfig.contact.email}`}
+                whileHover={reducedMotion ? undefined : { scale: 1.05 }}
+                whileTap={reducedMotion ? undefined : { scale: 0.98 }}
+                className="inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-brand-teal-dark px-8 py-3.5 text-sm font-semibold text-white shadow-lg transition-shadow hover:shadow-xl sm:w-auto sm:text-base"
+              >
+                Mándanos un correo
+              </motion.a>
+
+              <Link
+                href="/respaldo-legal"
+                className="inline-flex min-h-12 w-full items-center justify-center gap-1.5 rounded-xl border border-white/40 px-8 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-white/10 sm:w-auto sm:text-base"
+              >
+                Conoce más
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </Link>
+            </div>
           </motion.div>
 
           <motion.div

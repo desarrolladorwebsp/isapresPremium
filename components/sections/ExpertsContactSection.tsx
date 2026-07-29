@@ -1,44 +1,121 @@
 "use client";
 
 import Image from "next/image";
+import {
+  ChevronRight,
+  Headphones,
+  Mail,
+  MessageCircle,
+  ShieldCheck,
+  Users,
+  Video,
+  type LucideIcon,
+} from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
-import { siteConfig } from "@/constants/site";
+import {
+  EXPERTS_CONTACT,
+  EXPERTS_CONTACT_ACTIONS,
+  EXPERTS_IMAGE,
+  EXPERTS_TRUST_ITEMS,
+  type ExpertContactAction,
+} from "@/constants/experts";
 
-const EXPERTS_IMAGE = "/images/experts-team.png";
+const ACTION_ICONS: Record<ExpertContactAction["icon"], LucideIcon> = {
+  video: Video,
+  chat: MessageCircle,
+  mail: Mail,
+};
 
-const VIDEO_CALL_SUBJECT = "Agendar videollamada - Isapres Premium";
+const VARIANT_STYLES: Record<
+  ExpertContactAction["variant"],
+  {
+    card: string;
+    iconWrap: string;
+    title: string;
+    description: string;
+    chevron: string;
+  }
+> = {
+  primary: {
+    card: "bg-brand-teal text-white shadow-md shadow-brand-teal/20 hover:bg-brand-teal-dark hover:shadow-lg",
+    iconWrap: "bg-white/15 text-white",
+    title: "text-white",
+    description: "text-white/85",
+    chevron: "text-white/80",
+  },
+  mint: {
+    card: "bg-brand-green/15 text-brand-teal-dark hover:bg-brand-green/25",
+    iconWrap: "bg-brand-green/20 text-brand-teal",
+    title: "text-brand-teal-dark",
+    description: "text-zinc-600",
+    chevron: "text-brand-teal/70",
+  },
+  outline: {
+    card: "border border-zinc-200 bg-white text-zinc-800 shadow-sm hover:border-brand-green/30 hover:shadow-md",
+    iconWrap: "bg-zinc-100 text-brand-teal",
+    title: "text-zinc-800",
+    description: "text-zinc-500",
+    chevron: "text-zinc-400",
+  },
+};
 
-function getVideoCallMailto() {
-  const subject = encodeURIComponent(VIDEO_CALL_SUBJECT);
-  const body = encodeURIComponent(
-    "Hola, me gustaría agendar una videollamada con un agente experto.",
-  );
-  return `mailto:${siteConfig.contact.email}?subject=${subject}&body=${body}`;
-}
+const listVariants = {
+  hidden: {},
+  visible: {
+    transition: { staggerChildren: 0.1 },
+  },
+};
 
-function CtaButton({
-  href,
-  label,
-  delay,
+const itemVariants = {
+  hidden: { opacity: 0, y: 16 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.45, ease: "easeOut" as const },
+  },
+};
+
+function ContactAction({
+  action,
   reducedMotion,
 }: {
-  href: string;
-  label: string;
-  delay: number;
+  action: ExpertContactAction;
   reducedMotion: boolean;
 }) {
+  const Icon = ACTION_ICONS[action.icon];
+  const styles = VARIANT_STYLES[action.variant];
+
   return (
     <motion.a
-      href={href}
-      initial={reducedMotion ? false : { opacity: 0, y: 16 }}
-      whileInView={reducedMotion ? undefined : { opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-80px" }}
-      transition={{ duration: 0.45, ease: "easeOut", delay }}
-      whileHover={reducedMotion ? undefined : { scale: 1.05, y: -2 }}
-      whileTap={reducedMotion ? undefined : { scale: 0.97 }}
-      className="inline-flex w-full items-center justify-center rounded-lg bg-brand-teal px-8 py-3.5 text-sm font-semibold text-white shadow-md transition-colors hover:bg-brand-teal-dark hover:shadow-lg sm:w-auto sm:text-base"
+      href={action.href}
+      target={action.external ? "_blank" : undefined}
+      rel={action.external ? "noopener noreferrer" : undefined}
+      variants={itemVariants}
+      whileHover={reducedMotion ? undefined : { y: -2, scale: 1.01 }}
+      whileTap={reducedMotion ? undefined : { scale: 0.98 }}
+      className={`group flex min-h-[4.75rem] items-center gap-4 rounded-2xl px-4 py-3.5 transition-colors sm:px-5 ${styles.card}`}
     >
-      {label}
+      <span
+        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${styles.iconWrap}`}
+      >
+        <Icon className="h-5 w-5" aria-hidden="true" />
+      </span>
+
+      <span className="min-w-0 flex-1 text-left">
+        <span
+          className={`block text-sm font-bold tracking-tight sm:text-base ${styles.title}`}
+        >
+          {action.title}
+        </span>
+        <span className={`mt-0.5 block text-xs sm:text-sm ${styles.description}`}>
+          {action.description}
+        </span>
+      </span>
+
+      <ChevronRight
+        className={`h-5 w-5 shrink-0 transition-transform group-hover:translate-x-0.5 ${styles.chevron}`}
+        aria-hidden="true"
+      />
     </motion.a>
   );
 }
@@ -48,90 +125,144 @@ export function ExpertsContactSection() {
 
   return (
     <section
-      className="bg-brand-teal/10 px-5 py-16 sm:px-8 sm:py-20 lg:px-10 lg:py-24"
-      aria-label="Contacto directo con nuestros expertos"
+      className="bg-white px-5 py-16 sm:px-8 sm:py-20 lg:px-10 lg:py-24"
+      aria-labelledby="experts-contact-heading"
     >
-      <div className="mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-2 lg:gap-16">
-        <motion.div
-          initial={reducedMotion ? false : { opacity: 0, x: -30 }}
-          whileInView={reducedMotion ? undefined : { opacity: 1, x: 0 }}
-          viewport={{ once: true, margin: "-80px" }}
-          transition={{ duration: 0.6, ease: "easeOut" }}
-          className="relative mx-auto flex w-full max-w-md flex-col items-center lg:mx-0 lg:max-w-lg"
-        >
-          <motion.div
-            animate={
-              reducedMotion
-                ? undefined
-                : {
-                    y: [0, -8, 0],
-                  }
-            }
-            transition={
-              reducedMotion
-                ? undefined
-                : {
-                    duration: 4,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                  }
-            }
-            className="relative w-full"
-          >
-            <Image
-              src={EXPERTS_IMAGE}
-              alt="Equipo de expertos de Isapres Premium listos para asesorarte"
-              width={500}
-              height={500}
-              className="h-auto w-full max-h-[420px] object-contain object-bottom sm:max-h-[480px] lg:max-h-[500px]"
-              priority={false}
-            />
-          </motion.div>
+      <div className="mx-auto max-w-7xl">
+        <div className="overflow-hidden rounded-[1.75rem] bg-white shadow-[0_18px_50px_rgba(6,78,69,0.08)] ring-1 ring-zinc-100 sm:rounded-[2rem]">
+          <div className="grid lg:grid-cols-2">
+            {/* Team visual */}
+            <motion.div
+              initial={reducedMotion ? false : { opacity: 0, x: -24 }}
+              whileInView={reducedMotion ? undefined : { opacity: 1, x: 0 }}
+              viewport={{ once: true, margin: "-80px" }}
+              transition={{ duration: 0.55, ease: "easeOut" }}
+              className="relative min-h-[300px] overflow-hidden bg-gradient-to-br from-[#eef6f4] via-white to-brand-green/10 sm:min-h-[380px] lg:min-h-full"
+            >
+              <div className="absolute left-5 top-5 z-10 sm:left-7 sm:top-7">
+                <p className="font-heading text-sm font-extrabold tracking-tight text-brand-teal-dark sm:text-base">
+                  ISAPRES PREMIUM
+                </p>
+                <p className="mt-0.5 text-[0.7rem] font-medium tracking-wide text-zinc-400">
+                  cotizador
+                </p>
+                <span className="mt-1.5 block h-0.5 w-12 rounded-full bg-brand-green" />
+              </div>
 
-          <motion.div
-            initial={reducedMotion ? false : { opacity: 0, scale: 0.92 }}
-            whileInView={reducedMotion ? undefined : { opacity: 1, scale: 1 }}
-            viewport={{ once: true, margin: "-80px" }}
-            transition={{ duration: 0.5, ease: "easeOut", delay: 0.2 }}
-            className="relative -mt-10 w-[92%] rounded-2xl bg-brand-teal px-6 py-5 text-center shadow-lg sm:-mt-12 sm:px-8 sm:py-6"
-          >
-            <p className="text-sm italic leading-relaxed text-white sm:text-base">
-              Ellos son nuestros expertos que te darán las mejores opciones.
-            </p>
-          </motion.div>
-        </motion.div>
+              <div className="relative flex h-full min-h-[300px] items-end justify-center px-3 pt-16 sm:min-h-[380px] sm:px-5 sm:pt-20 lg:min-h-[520px]">
+                <Image
+                  src={EXPERTS_IMAGE}
+                  alt="Equipo de expertos de Isapres Premium listos para asesorarte"
+                  width={640}
+                  height={640}
+                  className="h-auto w-full max-w-[440px] object-contain object-bottom drop-shadow-2xl sm:max-w-[500px]"
+                  sizes="(max-width: 1024px) 90vw, 500px"
+                />
+              </div>
 
-        <motion.div
-          initial={reducedMotion ? false : { opacity: 0, x: 30 }}
-          whileInView={reducedMotion ? undefined : { opacity: 1, x: 0 }}
-          viewport={{ once: true, margin: "-80px" }}
-          transition={{ duration: 0.6, ease: "easeOut", delay: 0.15 }}
-          className="text-center lg:text-left"
-        >
-          <h2 className="text-h2 text-balance font-heading font-bold tracking-tight text-brand-teal-dark">
-            ¿Hablar con nosotros directamente?
-          </h2>
+              <motion.div
+                initial={reducedMotion ? false : { opacity: 0, y: 16 }}
+                whileInView={reducedMotion ? undefined : { opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-60px" }}
+                transition={{ duration: 0.45, ease: "easeOut", delay: 0.2 }}
+                className="absolute bottom-4 left-4 right-4 z-10 flex items-center gap-3 rounded-2xl bg-white p-3 shadow-lg sm:bottom-6 sm:left-6 sm:right-auto sm:max-w-[17.5rem] sm:p-3.5"
+              >
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-teal text-white">
+                  <Users className="h-5 w-5" aria-hidden="true" />
+                </span>
+                <div>
+                  <p className="text-sm font-bold text-brand-teal-dark">
+                    {EXPERTS_CONTACT.badgeTitle}
+                  </p>
+                  <p className="text-xs leading-snug text-zinc-500">
+                    {EXPERTS_CONTACT.badgeSubtitle}
+                  </p>
+                </div>
+              </motion.div>
+            </motion.div>
 
-          <p className="mt-5 text-body-lg leading-relaxed text-zinc-800">
-            Sabemos que hay veces quieres hablar directamente con nosotros,
-            contacta a uno de nuestros agentes expertos.
-          </p>
+            {/* Contact actions */}
+            <motion.div
+              initial={reducedMotion ? false : { opacity: 0, x: 24 }}
+              whileInView={reducedMotion ? undefined : { opacity: 1, x: 0 }}
+              viewport={{ once: true, margin: "-80px" }}
+              transition={{ duration: 0.55, ease: "easeOut", delay: 0.08 }}
+              className="flex flex-col justify-center px-5 py-10 sm:px-8 sm:py-12 lg:px-10 xl:px-12"
+            >
+              <Headphones
+                className="h-8 w-8 text-brand-teal"
+                strokeWidth={1.6}
+                aria-hidden="true"
+              />
 
-          <div className="mt-8 flex flex-col items-center gap-4 sm:flex-row sm:justify-center lg:justify-start">
-            <CtaButton
-              href={getVideoCallMailto()}
-              label="Video llamada"
-              delay={0.3}
-              reducedMotion={!!reducedMotion}
-            />
-            <CtaButton
-              href={`mailto:${siteConfig.contact.email}`}
-              label="Correo electrónico"
-              delay={0.4}
-              reducedMotion={!!reducedMotion}
-            />
+              <h2
+                id="experts-contact-heading"
+                className="mt-4 text-h2 text-balance font-heading font-bold tracking-tight text-zinc-900"
+              >
+                {EXPERTS_CONTACT.headingLead}{" "}
+                <span className="text-brand-teal-dark">
+                  {EXPERTS_CONTACT.headingAccent}
+                </span>
+              </h2>
+
+              <p className="mt-3 max-w-md text-body-lg leading-relaxed text-zinc-500">
+                {EXPERTS_CONTACT.description}
+              </p>
+
+              <motion.div
+                variants={listVariants}
+                initial={reducedMotion ? false : "hidden"}
+                whileInView={reducedMotion ? undefined : "visible"}
+                viewport={{ once: true, margin: "-60px" }}
+                className="mt-7 flex flex-col gap-3"
+              >
+                {EXPERTS_CONTACT_ACTIONS.map((action) => (
+                  <ContactAction
+                    key={action.title}
+                    action={action}
+                    reducedMotion={!!reducedMotion}
+                  />
+                ))}
+              </motion.div>
+
+              <p className="mt-6 flex items-center gap-2 text-sm text-zinc-500">
+                <ShieldCheck
+                  className="h-4 w-4 shrink-0 text-brand-green"
+                  aria-hidden="true"
+                />
+                {EXPERTS_CONTACT.trustNote}
+              </p>
+            </motion.div>
           </div>
-        </motion.div>
+        </div>
+
+        {/* Trust bar — separate rounded strip like the mockup */}
+        <motion.ul
+          initial={reducedMotion ? false : { opacity: 0, y: 18 }}
+          whileInView={reducedMotion ? undefined : { opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-60px" }}
+          transition={{ duration: 0.5, ease: "easeOut", delay: 0.1 }}
+          className="mt-5 grid gap-5 rounded-[1.5rem] bg-zinc-100/90 px-5 py-7 sm:mt-6 sm:grid-cols-2 sm:rounded-[1.75rem] sm:px-7 sm:py-8 lg:grid-cols-4 lg:gap-4 lg:px-8"
+        >
+          {EXPERTS_TRUST_ITEMS.map((item) => {
+            const Icon = item.icon;
+            return (
+              <li key={item.title} className="flex items-start gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-brand-teal/25 bg-white text-brand-teal">
+                  <Icon className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />
+                </span>
+                <div>
+                  <p className="text-sm font-bold text-brand-teal-dark">
+                    {item.title}
+                  </p>
+                  <p className="mt-0.5 text-xs leading-relaxed text-zinc-500 sm:text-[0.8125rem]">
+                    {item.description}
+                  </p>
+                </div>
+              </li>
+            );
+          })}
+        </motion.ul>
       </div>
     </section>
   );

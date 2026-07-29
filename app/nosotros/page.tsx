@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ExpertsContactSection } from "@/components/sections/ExpertsContactSection";
 import { NosotrosAboutSection } from "@/components/sections/NosotrosAboutSection";
 import { NosotrosAdvisorySection } from "@/components/sections/NosotrosAdvisorySection";
 import { NosotrosHeroSection } from "@/components/sections/NosotrosHeroSection";
@@ -13,6 +14,7 @@ export default function NosotrosPage() {
       <NosotrosHeroSection />
       <NosotrosValoresSection />
       <NosotrosAboutSection />
+      <ExpertsContactSection />
       <NosotrosAdvisorySection />
     </main>
   );

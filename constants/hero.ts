@@ -25,6 +25,7 @@ export const HERO_MOBILE_PLAYLISTS = {
   home: [V.v03, V.v05, V.v01, V.v07, V.v02, V.v06, V.v04],
   empresas: [V.v06, V.v01, V.v04, V.v02, V.v07, V.v03, V.v05],
   nosotros: [V.v07, V.v04, V.v02, V.v05, V.v01, V.v06, V.v03],
+  respaldoLegal: [V.v02, V.v07, V.v05, V.v03, V.v06, V.v01, V.v04],
 } as const;
 
 /** Rotate a playlist so each page opens on a different video. */

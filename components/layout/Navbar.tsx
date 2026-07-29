@@ -195,7 +195,7 @@ export function Navbar() {
     >
       <div className="relative mx-auto flex h-16 max-w-7xl items-center justify-between overflow-visible px-4 sm:px-6 lg:px-10">
         <nav
-          className="hidden flex-1 items-center gap-6 md:flex lg:gap-10"
+          className="hidden flex-1 items-center gap-3 md:flex lg:gap-5 xl:gap-8"
           aria-label="Navegación principal"
         >
           {NAV_LINKS.map((link) => (

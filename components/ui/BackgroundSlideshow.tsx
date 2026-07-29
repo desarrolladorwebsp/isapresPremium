@@ -16,6 +16,8 @@ type BackgroundSlideshowProps = {
   videos: readonly string[];
   /** Portrait videos for mobile. Falls back to `videos` if omitted. */
   mobileVideos?: readonly string[];
+  /** Overlay above the video. Defaults to a dark scrim. */
+  overlayClassName?: string;
 };
 
 function subscribeDesktop(onStoreChange: () => void) {
@@ -56,6 +58,7 @@ async function ensurePlaying(video: HTMLVideoElement) {
 export function BackgroundSlideshow({
   videos,
   mobileVideos,
+  overlayClassName = "bg-black/55",
 }: BackgroundSlideshowProps) {
   const reducedMotion = useReducedMotion();
   const isDesktop = useIsDesktop();
@@ -150,7 +153,7 @@ export function BackgroundSlideshow({
           </motion.div>
         );
       })}
-      <div className="absolute inset-0 bg-black/55" aria-hidden="true" />
+      <div className={`absolute inset-0 ${overlayClassName}`} aria-hidden="true" />
     </div>
   );
 }

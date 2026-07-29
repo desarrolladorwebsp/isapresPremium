@@ -48,6 +48,15 @@ export const SEO_KEYWORDS = {
     "tratamiento de datos personales",
     "Ley 19.628",
   ],
+  respaldoLegal: [
+    "respaldo legal isapre",
+    "reclamo isapre",
+    "defensa isapre chile",
+    "isapre no responde reclamo",
+    "abogado isapre",
+    "superintendencia de salud reclamo",
+    "rechazo de cobertura isapre",
+  ],
 } as const;
 
 export type SeoPageKey = keyof typeof SEO_PAGES;
@@ -98,6 +107,14 @@ export const SEO_PAGES = {
     description:
       "Política de privacidad y tratamiento de datos personales de Isapres Premium. Conoce cómo protegemos tu información conforme a la legislación chilena.",
     keywords: SEO_KEYWORDS.politicas,
+  },
+  respaldoLegal: {
+    path: "/respaldo-legal",
+    title: "Respaldo Legal Gratis frente a tu Isapre | Isapres Premium",
+    description:
+      "Respaldo legal sin costo para afiliados Premium: reclamo directo, intervención ante la Superintendencia de Salud y defensa judicial si tu Isapre no responde o incumple.",
+    keywords: SEO_KEYWORDS.respaldoLegal,
+    ogTitle: "Respaldo legal gratuito frente a tu Isapre | Isapres Premium",
   },
 } as const satisfies Record<string, SeoPageConfig>;
 
@@ -291,5 +308,10 @@ export const SITEMAP_ROUTES = [
     key: "politicas" as const,
     changeFrequency: "yearly" as const,
     priority: 0.3,
+  },
+  {
+    key: "respaldoLegal" as const,
+    changeFrequency: "monthly" as const,
+    priority: 0.8,
   },
 ];

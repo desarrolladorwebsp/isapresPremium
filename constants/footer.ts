@@ -3,6 +3,7 @@ import {
   Calculator,
   Home,
   MessageCircle,
+  Scale,
   ShieldCheck,
   type LucideIcon,
 } from "lucide-react";
@@ -18,6 +19,7 @@ export const FOOTER_SITEMAP_LINKS: FooterSitemapLink[] = [
   { label: "Inicio", href: "/", icon: Home },
   { label: "Empresas", href: "/empresas", icon: Building2 },
   { label: "Cotiza", href: siteConfig.cotizadorUrl, icon: Calculator },
+  { label: "Respaldo Legal", href: "/respaldo-legal", icon: Scale },
   { label: "Chatbot", href: "/#chatbot", icon: MessageCircle },
   { label: "Políticas", href: "/politicas", icon: ShieldCheck },
 ];
