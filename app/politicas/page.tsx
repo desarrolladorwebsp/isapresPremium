@@ -1,11 +1,8 @@
 import type { Metadata } from "next";
 import { siteConfig } from "@/constants/site";
+import { createPageMetadata } from "@/constants/seo";
 
-export const metadata: Metadata = {
-  title: "Políticas de Privacidad",
-  description:
-    "Política de privacidad y tratamiento de datos personales de Isapres Premium.",
-};
+export const metadata: Metadata = createPageMetadata("politicas");
 
 const SECTIONS = [
   {

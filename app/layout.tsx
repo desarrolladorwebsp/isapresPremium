@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import { Footer } from "@/components/layout/Footer";
 import { Navbar } from "@/components/layout/Navbar";
+import { JsonLd } from "@/components/seo/JsonLd";
 import { WhatsAppFloat } from "@/components/ui/WhatsAppFloat";
+import { createRootMetadata, getHomeJsonLd } from "@/constants/seo";
 import "./globals.css";
 
 const inter = Inter({
@@ -17,22 +19,7 @@ const plusJakartaSans = Plus_Jakarta_Sans({
   variable: "--font-heading-sans",
 });
 
-export const metadata: Metadata = {
-  title: {
-    default: "Isapres Premium",
-    template: "%s | Isapres Premium",
-  },
-  description: "Asesoría especializada en planes de salud Isapres en Chile.",
-  metadataBase: new URL("https://isaprespremium.cl"),
-  openGraph: {
-    title: "Isapres Premium",
-    description: "Asesoría especializada en planes de salud Isapres en Chile.",
-    url: "https://isaprespremium.cl",
-    siteName: "Isapres Premium",
-    locale: "es_CL",
-    type: "website",
-  },
-};
+export const metadata: Metadata = createRootMetadata();
 
 export default function RootLayout({
   children,
@@ -41,10 +28,11 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="es"
+      lang="es-CL"
       className={`${inter.variable} ${plusJakartaSans.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-sans">
+        <JsonLd data={getHomeJsonLd()} />
         <Navbar />
         {children}
         <Footer />
