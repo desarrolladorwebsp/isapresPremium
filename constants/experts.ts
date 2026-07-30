@@ -8,7 +8,7 @@ import {
 import { CHATBOT_WHATSAPP_MESSAGE } from "@/constants/chatbot";
 import { getWhatsAppUrl, siteConfig } from "@/constants/site";
 
-export const EXPERTS_IMAGE = "/images/experts-team.png";
+export const EXPERTS_IMAGE = "/images/nosotros/nosotros.png";
 
 export const EXPERTS_CONTACT = {
   badgeTitle: "Equipo Isapres Premium",

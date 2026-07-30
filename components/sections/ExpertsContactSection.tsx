@@ -137,28 +137,35 @@ export function ExpertsContactSection() {
               whileInView={reducedMotion ? undefined : { opacity: 1, x: 0 }}
               viewport={{ once: true, margin: "-80px" }}
               transition={{ duration: 0.55, ease: "easeOut" }}
-              className="relative min-h-[300px] overflow-hidden bg-gradient-to-br from-[#eef6f4] via-white to-brand-green/10 sm:min-h-[380px] lg:min-h-full"
+              className="relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-[#eef6f4] via-white to-brand-green/10 lg:aspect-auto lg:min-h-full"
             >
-              <div className="absolute left-5 top-5 z-10 sm:left-7 sm:top-7">
+              <div className="absolute inset-0">
+                <Image
+                  src={EXPERTS_IMAGE}
+                  alt="Equipo de expertos de Isapres Premium listos para asesorarte"
+                  fill
+                  className="object-contain object-center p-2 sm:p-3"
+                  sizes="(max-width: 1024px) 100vw, 50vw"
+                  priority={false}
+                />
+                {/* Soft brand wash over the panel only — photo stays fully visible */}
+                <div
+                  className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-brand-teal-dark/30 to-transparent"
+                  aria-hidden="true"
+                />
+              </div>
+
+              <div className="absolute left-5 top-5 z-10 rounded-xl bg-white/80 px-3 py-2 backdrop-blur-sm sm:left-7 sm:top-7">
                 <p className="font-heading text-sm font-extrabold tracking-tight text-brand-teal-dark sm:text-base">
                   ISAPRES PREMIUM
                 </p>
-                <p className="mt-0.5 text-[0.7rem] font-medium tracking-wide text-zinc-400">
+                <p className="mt-0.5 text-[0.7rem] font-medium tracking-wide text-zinc-500">
                   cotizador
                 </p>
                 <span className="mt-1.5 block h-0.5 w-12 rounded-full bg-brand-green" />
               </div>
 
-              <div className="relative flex h-full min-h-[300px] items-end justify-center px-3 pt-16 sm:min-h-[380px] sm:px-5 sm:pt-20 lg:min-h-[520px]">
-                <Image
-                  src={EXPERTS_IMAGE}
-                  alt="Equipo de expertos de Isapres Premium listos para asesorarte"
-                  width={640}
-                  height={640}
-                  className="h-auto w-full max-w-[440px] object-contain object-bottom drop-shadow-2xl sm:max-w-[500px]"
-                  sizes="(max-width: 1024px) 90vw, 500px"
-                />
-              </div>
+              <div className="relative hidden min-h-[520px] lg:block" aria-hidden="true" />
 
               <motion.div
                 initial={reducedMotion ? false : { opacity: 0, y: 16 }}

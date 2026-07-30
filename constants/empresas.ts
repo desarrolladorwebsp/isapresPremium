@@ -1,4 +1,14 @@
+import {
+  ClipboardList,
+  Clock,
+  Scale,
+  ShieldCheck,
+  Star,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import { HERO_MOBILE_PLAYLISTS, heroVideosStartingAt } from "@/constants/hero";
+import { getWhatsAppUrl } from "@/constants/site";
 
 /** Empresas: desktop hero-02 · mobile curated set starting on v06. */
 export const EMPRESAS_HERO_VIDEOS = heroVideosStartingAt(1);
@@ -12,19 +22,93 @@ export const EMPRESAS_TYPEWRITER_PHRASES = [
 export const EMPRESAS_WHATSAPP_MESSAGE =
   "Hola, me interesa la asesoría empresarial de Isapres Premium.";
 
+export const EMPRESAS_JORNADA_WHATSAPP_MESSAGE =
+  "Hola, quiero solicitar una jornada de asesoría de Isapres Premium en mi empresa.";
+
 export const EMPRESAS_SERVICE = {
-  eyebrow: "Nuestro Servicio",
-  heading:
-    "Ser pro-cliente significa mostrar todas las alternativas disponibles.",
-  description:
-    "A diferencia de los agentes de una sola isapre, en Isapres Premium:",
+  eyebrow: "Servicio Empresas",
+  headingBefore: "Llevamos",
+  headingBrand: "Isapres Premium",
+  headingAfter: "a tu empresa",
+  description: "Asesoramos a tus trabajadores directamente en tu empresa.",
+  highlightPrefix:
+    "Comparamos su plan actual con distintas Isapres, de forma independiente y",
+  highlightEmphasis: "sin costo para tu organización.",
 } as const;
 
-export const EMPRESAS_SERVICE_CARDS = [
-  { title: "Para tus trabajadores", highlighted: false },
-  { title: "Para tu empresa", highlighted: true },
-  { title: "Sin pérdida de tiempo", highlighted: false },
-] as const;
+export type EmpresasServiceCard = {
+  title: string;
+  description: string;
+  image: string;
+  imageAlt: string;
+  icon: LucideIcon;
+  highlighted: boolean;
+  badge?: string;
+};
+
+export const EMPRESAS_SERVICE_CARDS: EmpresasServiceCard[] = [
+  {
+    title: "Para tus trabajadores",
+    description:
+      "Asesoría personalizada y comparación de alternativas que realmente les convienen.",
+    image: "/images/empresas/service-trabajadores.jpg",
+    imageAlt:
+      "Asesora de Isapres Premium orientando a un trabajador sobre su plan de Isapre",
+    icon: Users,
+    highlighted: false,
+  },
+  {
+    title: "Para tu empresa",
+    description:
+      "Coordinamos una jornada de asesoría directamente en tus instalaciones, sin costo para tu organización.",
+    image: "/images/empresas/service-empresa.jpg",
+    imageAlt:
+      "Asesora de Isapres Premium presentando el cotizador en una jornada empresarial",
+    icon: ClipboardList,
+    highlighted: true,
+    badge: "Beneficio empresa",
+  },
+  {
+    title: "Sin pérdida de tiempo",
+    description:
+      "Nosotros organizamos y realizamos todo el proceso. Tú y tu equipo se enfocan en lo importante.",
+    image: "/images/empresas/service-tiempo.jpg",
+    imageAlt:
+      "Asesor de Isapres Premium gestionando el proceso de comparación de planes",
+    icon: Clock,
+    highlighted: false,
+  },
+];
+
+export const EMPRESAS_SERVICE_CTA = {
+  label: "Solicitar jornada en mi empresa",
+  note: "Sin costo para la empresa.",
+  href: getWhatsAppUrl(EMPRESAS_JORNADA_WHATSAPP_MESSAGE),
+} as const;
+
+export type EmpresasServiceTrustItem = {
+  title: string;
+  description: string;
+  icon: LucideIcon;
+};
+
+export const EMPRESAS_SERVICE_TRUST: EmpresasServiceTrustItem[] = [
+  {
+    title: "+7.000 familias",
+    description: "asesoradas y acompañadas",
+    icon: ShieldCheck,
+  },
+  {
+    title: "Área legal incluida",
+    description: "sin costo para tus trabajadores",
+    icon: Scale,
+  },
+  {
+    title: "Asesoría independiente",
+    description: "no estamos ligados a una Isapre",
+    icon: Star,
+  },
+];
 
 export type EmpresasNewsItem = {
   title: string;

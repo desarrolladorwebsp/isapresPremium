@@ -45,9 +45,8 @@ export const NOSOTROS_VALORES_ITEMS: NosotrosValor[] = [
 export const NOSOTROS_ABOUT = {
   eyebrow: "Lo que hay que saber de",
   heading: "Sobre Nosotros",
-  // TODO: reemplazar por fotografía real del evento/equipo.
-  image: "/images/empresas/slide-1.jpg",
-  imageAlt: "Equipo de Isapres Premium en un evento de asesoría",
+  image: "/images/nosotros/nosotros.png",
+  imageAlt: "Equipo de Isapres Premium listo para asesorarte",
   paragraphs: [
     {
       text: "En **Isapres Premium** creemos que el éxito se construye uniendo visión, estrategia y personas. Nuestro enfoque integra lo mejor de la planificación financiera con soluciones de gestión innovadoras que generan impacto real.",
@@ -65,15 +64,15 @@ export const NOSOTROS_ADVISORY = {
   description:
     "Nuestra asesoría está diseñada para apoyar a colaboradoras y colaboradores, potenciando sus beneficios con orientación estratégica.",
   ctaLabel: "Agendar Reunión",
-  backgroundImage: "/images/nosotros/handshake-bg.jpg",
+  backgroundImage: "/images/nosotros/nosotros.png",
   images: [
     {
-      src: "/images/nosotros/advisory-event.jpg",
-      alt: "Stand de Isapres Premium en un evento corporativo",
+      src: "/images/nosotros/nosotros.png",
+      alt: "Equipo de Isapres Premium en oficina",
     },
     {
-      src: "/images/nosotros/advisory-team.jpg",
-      alt: "Equipo de Isapres Premium en oficina",
+      src: "/images/nosotros/handshake-bg.jpg",
+      alt: "Asesores de Isapres Premium listos para atenderte",
     },
   ],
 } as const;
