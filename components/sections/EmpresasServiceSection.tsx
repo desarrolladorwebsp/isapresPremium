@@ -56,28 +56,40 @@ function ServiceCard({
           : "ring-1 ring-zinc-100"
       }`}
     >
-      <div className="relative aspect-[16/11] overflow-hidden bg-zinc-100">
-        <Image
-          src={card.image}
-          alt={card.imageAlt}
-          fill
-          className="object-cover"
-          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 33vw, 360px"
-        />
+      {/* Media + overlays: image fills the frame; badge/icon are layered on top */}
+      <div className="relative">
+        <div className="relative aspect-[16/11] overflow-hidden bg-zinc-100">
+          <Image
+            src={card.image}
+            alt={card.imageAlt}
+            fill
+            className="object-cover object-[center_30%]"
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 33vw, 380px"
+            quality={90}
+          />
 
-        {card.badge ? (
-          <span className="absolute right-0 top-3 inline-flex items-center gap-1.5 rounded-l-md bg-brand-teal px-2.5 py-1.5 text-[0.65rem] font-bold uppercase tracking-wide text-white shadow-sm sm:top-4 sm:px-3 sm:text-xs">
-            <Star className="h-3 w-3 fill-white" aria-hidden="true" />
-            {card.badge}
-          </span>
-        ) : null}
+          <div
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-black/15 to-transparent"
+            aria-hidden="true"
+          />
 
-        <span className="absolute -bottom-5 left-4 z-10 flex h-11 w-11 items-center justify-center rounded-full border border-zinc-100 bg-white text-brand-teal shadow-md sm:left-5 sm:h-12 sm:w-12">
-          <Icon className="h-5 w-5" strokeWidth={1.75} aria-hidden="true" />
+          {card.badge ? (
+            <span className="absolute right-0 top-3 z-20 inline-flex items-center gap-1.5 rounded-l-md bg-brand-teal px-2.5 py-1.5 text-[0.65rem] font-bold uppercase tracking-wide text-white shadow-md sm:top-4 sm:px-3 sm:text-xs">
+              <Star className="h-3 w-3 fill-white" aria-hidden="true" />
+              {card.badge}
+            </span>
+          ) : null}
+        </div>
+
+        <span
+          className="absolute bottom-0 left-4 z-20 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-zinc-100 bg-white text-brand-teal shadow-lg sm:left-5 sm:h-14 sm:w-14"
+          aria-hidden="true"
+        >
+          <Icon className="h-5 w-5 sm:h-6 sm:w-6" strokeWidth={1.75} />
         </span>
       </div>
 
-      <div className="flex flex-1 flex-col px-5 pb-6 pt-8 sm:px-6 sm:pb-7 sm:pt-9">
+      <div className="flex flex-1 flex-col px-5 pb-6 pt-9 sm:px-6 sm:pb-7 sm:pt-10">
         <h3 className="text-lg font-heading font-bold tracking-tight text-zinc-900 sm:text-xl">
           {card.title}
         </h3>

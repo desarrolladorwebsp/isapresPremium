@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import { Footer } from "@/components/layout/Footer";
 import { Navbar } from "@/components/layout/Navbar";
+import { IsapresMarquee } from "@/components/sections/IsapresMarquee";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { WhatsAppFloat } from "@/components/ui/WhatsAppFloat";
 import { createRootMetadata, getHomeJsonLd } from "@/constants/seo";
@@ -35,6 +36,7 @@ export default function RootLayout({
         <JsonLd data={getHomeJsonLd()} />
         <Navbar />
         {children}
+        <IsapresMarquee />
         <Footer />
         <WhatsAppFloat />
       </body>

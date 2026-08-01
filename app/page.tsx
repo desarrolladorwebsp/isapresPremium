@@ -4,7 +4,6 @@ import { ClinicsCarouselSection } from "@/components/sections/ClinicsCarouselSec
 import { ExpertsContactSection } from "@/components/sections/ExpertsContactSection";
 import { GoogleReviewsSection } from "@/components/sections/GoogleReviewsSection";
 import { HeroSection } from "@/components/sections/HeroSection";
-import { IsapresMarquee } from "@/components/sections/IsapresMarquee";
 import { LegalBackingSection } from "@/components/sections/LegalBackingSection";
 import { createPageMetadata } from "@/constants/seo";
 
@@ -14,7 +13,6 @@ export default function Home() {
   return (
     <main className="flex-1">
       <HeroSection />
-      <IsapresMarquee />
       <LegalBackingSection />
       <ChatbotSection />
       <ExpertsContactSection />

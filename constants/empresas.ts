@@ -51,9 +51,9 @@ export const EMPRESAS_SERVICE_CARDS: EmpresasServiceCard[] = [
     title: "Para tus trabajadores",
     description:
       "Asesoría personalizada y comparación de alternativas que realmente les convienen.",
-    image: "/images/empresas/service-trabajadores.jpg",
+    image: "/images/empresas/service-hd-trabajadores.jpg",
     imageAlt:
-      "Asesora de Isapres Premium orientando a un trabajador sobre su plan de Isapre",
+      "Familia beneficiada con la asesoría de Isapres Premium para trabajadores",
     icon: Users,
     highlighted: false,
   },
@@ -61,9 +61,9 @@ export const EMPRESAS_SERVICE_CARDS: EmpresasServiceCard[] = [
     title: "Para tu empresa",
     description:
       "Coordinamos una jornada de asesoría directamente en tus instalaciones, sin costo para tu organización.",
-    image: "/images/empresas/service-empresa.jpg",
+    image: "/images/empresas/service-hd-empresa.jpg",
     imageAlt:
-      "Asesora de Isapres Premium presentando el cotizador en una jornada empresarial",
+      "Equipo de Isapres Premium durante una jornada de asesoría empresarial",
     icon: ClipboardList,
     highlighted: true,
     badge: "Beneficio empresa",
@@ -72,9 +72,9 @@ export const EMPRESAS_SERVICE_CARDS: EmpresasServiceCard[] = [
     title: "Sin pérdida de tiempo",
     description:
       "Nosotros organizamos y realizamos todo el proceso. Tú y tu equipo se enfocan en lo importante.",
-    image: "/images/empresas/service-tiempo.jpg",
+    image: "/images/empresas/service-hd-tiempo.jpg",
     imageAlt:
-      "Asesor de Isapres Premium gestionando el proceso de comparación de planes",
+      "Asesores de Isapres Premium que gestionan el proceso por ti",
     icon: Clock,
     highlighted: false,
   },
