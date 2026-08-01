@@ -7,12 +7,15 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
-import { HERO_MOBILE_PLAYLISTS, heroVideosStartingAt } from "@/constants/hero";
 import { getWhatsAppUrl } from "@/constants/site";
 
-/** Empresas: desktop hero-02 · mobile curated set starting on v06. */
-export const EMPRESAS_HERO_VIDEOS = heroVideosStartingAt(1);
-export const EMPRESAS_HERO_VIDEOS_MOBILE = [...HERO_MOBILE_PLAYLISTS.empresas];
+/** Empresas: desktop landscape clip · mobile dedicated vertical clip. */
+export const EMPRESAS_HERO_VIDEOS = [
+  "/videos/hero/hero-empresas.mp4",
+] as const;
+export const EMPRESAS_HERO_VIDEOS_MOBILE = [
+  "/videos/hero/hero-vertical-empresa.mp4",
+] as const;
 
 export const EMPRESAS_TYPEWRITER_PHRASES = [
   "transparencia",

@@ -1,8 +1,10 @@
-import { HERO_MOBILE_PLAYLISTS, heroVideosStartingAt } from "@/constants/hero";
-
-/** Nosotros: desktop hero-04 · mobile curated set starting on v07. */
-export const NOSOTROS_HERO_VIDEOS = heroVideosStartingAt(2);
-export const NOSOTROS_HERO_VIDEOS_MOBILE = [...HERO_MOBILE_PLAYLISTS.nosotros];
+/** Nosotros: desktop landscape clip · mobile dedicated vertical clip. */
+export const NOSOTROS_HERO_VIDEOS = [
+  "/videos/hero/hero-nosotros.mp4",
+] as const;
+export const NOSOTROS_HERO_VIDEOS_MOBILE = [
+  "/videos/hero/hero-vertical-nosotros.mp4",
+] as const;
 
 export const NOSOTROS_TYPEWRITER_PHRASES = [
   "empresas",

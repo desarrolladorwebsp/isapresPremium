@@ -1,10 +1,10 @@
-/** Landscape hero videos for tablet/desktop. */
+/** Landscape hero videos for tablet/desktop (home slideshow). */
 export const HERO_VIDEOS = [
-  "/images/hero/hero-01.mp4",
-  "/images/hero/hero-02.mp4",
-  "/images/hero/hero-04.mp4",
-  "/images/hero/hero-05.mp4",
-  "/images/hero/hero-06.mp4",
+  "/videos/hero/hero-01.mp4",
+  "/videos/hero/hero-02.mp4",
+  "/videos/hero/hero-04.mp4",
+  "/videos/hero/hero-05.mp4",
+  "/videos/hero/hero-06.mp4",
 ] as const;
 
 const V = {
@@ -17,18 +17,12 @@ const V = {
   v07: "/videos/hero/hero-vertical-07.mp4",
 } as const;
 
-/**
- * Curated portrait playlists — each page opens on a different clip
- * and follows a distinct rotation through the same vertical library.
- */
+/** Portrait playlist for the home hero on mobile. */
 export const HERO_MOBILE_PLAYLISTS = {
   home: [V.v03, V.v05, V.v01, V.v07, V.v02, V.v06, V.v04],
-  empresas: [V.v06, V.v01, V.v04, V.v02, V.v07, V.v03, V.v05],
-  nosotros: [V.v07, V.v04, V.v02, V.v05, V.v01, V.v06, V.v03],
-  respaldoLegal: [V.v02, V.v07, V.v05, V.v03, V.v06, V.v01, V.v04],
 } as const;
 
-/** Rotate a playlist so each page opens on a different video. */
+/** Rotate a playlist so each page can open on a different clip. */
 export function rotateVideosStartingAt(
   videos: readonly string[],
   startIndex: number,

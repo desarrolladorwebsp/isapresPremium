@@ -12,9 +12,9 @@ import {
 export const runtime = "nodejs";
 
 const PUBLIC_ERROR =
-  "No pudimos enviar tu cotización. Intenta nuevamente o contáctanos por WhatsApp.";
+  "No pudimos enviar tu solicitud. Intenta nuevamente o contáctanos por WhatsApp.";
 const CONFIG_ERROR =
-  "El servicio de cotización no está disponible temporalmente. Contáctanos por WhatsApp.";
+  "El servicio de solicitudes no está disponible temporalmente. Contáctanos por WhatsApp.";
 
 function getResendClient() {
   const apiKey = process.env.RESEND_API_KEY;

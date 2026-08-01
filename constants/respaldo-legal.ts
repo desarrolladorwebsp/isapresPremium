@@ -5,13 +5,14 @@ import {
   MessageSquareWarning,
   type LucideIcon,
 } from "lucide-react";
-import { HERO_MOBILE_PLAYLISTS, heroVideosStartingAt } from "@/constants/hero";
 
-/** Respaldo Legal: desktop hero-05 · mobile curated set starting on v02. */
-export const RESPALDO_LEGAL_HERO_VIDEOS = heroVideosStartingAt(3);
+/** Respaldo Legal: desktop landscape clip · mobile dedicated vertical clip. */
+export const RESPALDO_LEGAL_HERO_VIDEOS = [
+  "/videos/hero/hero-respaldo-legal.mp4",
+] as const;
 export const RESPALDO_LEGAL_HERO_VIDEOS_MOBILE = [
-  ...HERO_MOBILE_PLAYLISTS.respaldoLegal,
-];
+  "/videos/hero/hero-vertical-respaldo-legal.mp4",
+] as const;
 
 export const RESPALDO_LEGAL_HERO = {
   badge: "Exclusivo Isapres Premium",

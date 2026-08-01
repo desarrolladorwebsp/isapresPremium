@@ -1,13 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import {
-  useEffect,
-  useId,
-  useRef,
-  useState,
-  type FormEvent,
-} from "react";
+import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import {
   CARGAS_MEDICAS_OPTIONS,
   CONTACTO_PREFERENCIA_OPTIONS,
@@ -30,8 +24,7 @@ const baseInputClassName =
 
 const okBorder =
   "border-white/20 focus:border-brand-green focus:ring-brand-green/30";
-const errorBorder =
-  "border-red-400 focus:border-red-400 focus:ring-red-400/30";
+const errorBorder = "border-red-400 focus:border-red-400 focus:ring-red-400/30";
 
 const labelClassName =
   "mb-1.5 block text-sm font-semibold tracking-wide text-white/95";
@@ -118,7 +111,8 @@ export function CotizadorForm() {
   const formId = useId();
   const formTopRef = useRef<HTMLDivElement>(null);
   const [currentStep, setCurrentStep] = useState(1);
-  const [formData, setFormData] = useState<CotizadorFormData>(INITIAL_FORM_DATA);
+  const [formData, setFormData] =
+    useState<CotizadorFormData>(INITIAL_FORM_DATA);
   const [errors, setErrors] = useState<LeadFieldErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -127,7 +121,10 @@ export function CotizadorForm() {
   );
 
   useEffect(() => {
-    formTopRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    formTopRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+    });
   }, [currentStep]);
 
   const errorId = (field: keyof CotizadorFormData) =>
@@ -203,8 +200,7 @@ export function CotizadorForm() {
       if (response.status === 400 && result?.fieldErrors) {
         setErrors(result.fieldErrors);
         setSubmitError(
-          result.error ||
-            "Revisa los campos marcados e intenta nuevamente.",
+          result.error || "Revisa los campos marcados e intenta nuevamente.",
         );
         // If server rejected fields from earlier steps, send user back.
         const step1Keys: (keyof CotizadorFormData)[] = [
@@ -222,7 +218,9 @@ export function CotizadorForm() {
           "edadCargas",
           "rentaImponible",
         ];
-        const errorKeys = Object.keys(result.fieldErrors) as (keyof CotizadorFormData)[];
+        const errorKeys = Object.keys(
+          result.fieldErrors,
+        ) as (keyof CotizadorFormData)[];
         if (errorKeys.some((key) => step1Keys.includes(key))) {
           setCurrentStep(1);
         } else if (errorKeys.some((key) => step2Keys.includes(key))) {
@@ -235,13 +233,13 @@ export function CotizadorForm() {
       if (!response.ok || !result?.ok) {
         throw new Error(
           result?.error ||
-            "No pudimos enviar tu cotización. Intenta nuevamente.",
+            "No pudimos enviar tu solicitud. Intenta nuevamente.",
         );
       }
 
       if (result.clientEmailSent === false) {
         setSubmitSuccessHint(
-          "Recibimos tu cotización. Si no llega el correo de confirmación, revisa spam o escríbenos por WhatsApp.",
+          "Recibimos tu solicitud. Si no llega el correo de confirmación, revisa spam o escríbenos por WhatsApp.",
         );
       }
 
@@ -250,7 +248,7 @@ export function CotizadorForm() {
       setSubmitError(
         error instanceof Error
           ? error.message
-          : "No pudimos enviar tu cotización. Intenta nuevamente.",
+          : "No pudimos enviar tu solicitud. Intenta nuevamente.",
       );
     } finally {
       setIsSubmitting(false);
@@ -287,11 +285,7 @@ export function CotizadorForm() {
 
       <div className="flex min-h-[320px] flex-1 flex-col lg:justify-between">
         {currentStep < 4 ? (
-          <form
-            className="space-y-4"
-            onSubmit={handleFormSubmit}
-            noValidate
-          >
+          <form className="space-y-4" onSubmit={handleFormSubmit} noValidate>
             {currentStep === 1 && (
               <>
                 <div>
@@ -340,9 +334,7 @@ export function CotizadorForm() {
                       placeholder="12.345.678-9"
                       className={fieldClassName(!!errors.rut)}
                       aria-invalid={!!errors.rut}
-                      aria-describedby={
-                        errors.rut ? errorId("rut") : undefined
-                      }
+                      aria-describedby={errors.rut ? errorId("rut") : undefined}
                     />
                     <FieldError id={errorId("rut")} message={errors.rut} />
                   </div>
@@ -689,8 +681,8 @@ export function CotizadorForm() {
               >
                 {currentStep === 3
                   ? isSubmitting
-                    ? "Enviando..."
-                    : "Enviar Cotización"
+                    ? "Enviando solicitud..."
+                    : "Solicitar cotización"
                   : "Siguiente"}
               </button>
             </div>
@@ -710,14 +702,17 @@ export function CotizadorForm() {
               ✓
             </div>
             <h3 className="font-heading text-2xl font-bold tracking-tight text-white">
-              ¡Cotización enviada!
+              ¡Solicitud enviada!
             </h3>
             <p className="mt-2 max-w-sm text-base text-white/85">
-              Recibimos tus datos. Un asesor te contactará pronto según tu
-              preferencia.
+              Recibimos tu solicitud de cotización. Un asesor te contactará
+              pronto según tu preferencia.
             </p>
             {submitSuccessHint ? (
-              <p className="mt-3 max-w-sm text-sm text-amber-100/95" role="status">
+              <p
+                className="mt-3 max-w-sm text-sm text-amber-100/95"
+                role="status"
+              >
                 {submitSuccessHint}
               </p>
             ) : (
@@ -730,7 +725,7 @@ export function CotizadorForm() {
               onClick={handleReset}
               className="mt-6 rounded-lg bg-brand-teal-dark px-8 py-3 text-sm font-semibold text-white transition hover:bg-brand-teal-dark/90"
             >
-              Nueva cotización
+              Nueva solicitud
             </button>
           </div>
         )}

@@ -2,9 +2,13 @@ import { HERO_MOBILE_PLAYLISTS, heroVideosStartingAt } from "@/constants/hero";
 
 export const COTIZADOR_STEPS = [
   { id: 1, label: "Datos personales", shortLabel: "Datos\npersonales" },
-  { id: 2, label: "Datos para cotizar Isapres", shortLabel: "Datos para\ncotizar Isapres" },
-  { id: 3, label: "Enviar Formulario", shortLabel: "Enviar\nFormulario" },
-  { id: 4, label: "Enviado", shortLabel: "Enviado" },
+  {
+    id: 2,
+    label: "Datos para cotizar Isapres",
+    shortLabel: "Datos para\ncotizar Isapres",
+  },
+  { id: 3, label: "Solicitar cotización", shortLabel: "Solicitar\ncotización" },
+  { id: 4, label: "Listo", shortLabel: "Listo" },
 ] as const;
 
 export const PREVISION_OPTIONS = [

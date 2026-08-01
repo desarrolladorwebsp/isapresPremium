@@ -44,6 +44,9 @@ function useIsDesktop() {
 
 async function ensurePlaying(video: HTMLVideoElement) {
   try {
+    if (video.ended) {
+      video.currentTime = 0;
+    }
     if (video.paused) {
       await video.play();
     }
@@ -65,9 +68,11 @@ export function BackgroundSlideshow({
   const [currentIndex, setCurrentIndex] = useState(0);
   const videoRefs = useRef<Array<HTMLVideoElement | null>>([]);
   const playlistKeyRef = useRef(isDesktop ? "desktop" : "mobile");
+  const advancingRef = useRef(false);
 
   const activeVideos = isDesktop ? videos : (mobileVideos ?? videos);
   const playlistKey = isDesktop ? "desktop" : "mobile";
+  const isSingleClip = activeVideos.length <= 1;
 
   // Reset index only when switching mobile ↔ desktop playlist.
   useEffect(() => {
@@ -75,15 +80,22 @@ export function BackgroundSlideshow({
       playlistKeyRef.current = playlistKey;
       setCurrentIndex(0);
       videoRefs.current = [];
+      advancingRef.current = false;
     }
   }, [playlistKey]);
 
+  /** Infinite playlist: after the last clip, wrap to the first. */
   const goNext = useCallback(() => {
-    if (activeVideos.length <= 1) return;
+    if (isSingleClip) return;
+    if (advancingRef.current) return;
+    advancingRef.current = true;
     setCurrentIndex((prev) => (prev + 1) % activeVideos.length);
-  }, [activeVideos.length]);
+    window.setTimeout(() => {
+      advancingRef.current = false;
+    }, 400);
+  }, [activeVideos.length, isSingleClip]);
 
-  // Keep the active clip playing; advance when it ends.
+  // Keep the active clip playing; advance (or native-loop) forever.
   useEffect(() => {
     const video = videoRefs.current[currentIndex];
     if (!video) return;
@@ -100,24 +112,52 @@ export function BackgroundSlideshow({
       return;
     }
 
-    const onEnded = () => goNext();
+    // One clip → HTML loop. Several clips → cycle the playlist forever.
+    video.loop = isSingleClip;
+
+    const onEnded = () => {
+      if (isSingleClip) {
+        video.currentTime = 0;
+        void ensurePlaying(video);
+        return;
+      }
+      goNext();
+    };
+
     const onVisibility = () => {
       if (document.visibilityState === "visible") {
         void ensurePlaying(video);
       }
     };
 
-    video.loop = activeVideos.length <= 1;
+    // Some mobile browsers skip `ended`; advance near the end as fallback.
+    const onTimeUpdate = () => {
+      if (isSingleClip || advancingRef.current) return;
+      if (!Number.isFinite(video.duration) || video.duration <= 0) return;
+      if (video.currentTime >= video.duration - 0.35) {
+        goNext();
+      }
+    };
+
     void ensurePlaying(video);
 
     video.addEventListener("ended", onEnded);
+    video.addEventListener("timeupdate", onTimeUpdate);
     document.addEventListener("visibilitychange", onVisibility);
 
     return () => {
       video.removeEventListener("ended", onEnded);
+      video.removeEventListener("timeupdate", onTimeUpdate);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [currentIndex, reducedMotion, activeVideos, goNext, playlistKey]);
+  }, [
+    currentIndex,
+    reducedMotion,
+    activeVideos,
+    goNext,
+    playlistKey,
+    isSingleClip,
+  ]);
 
   return (
     <div className="absolute inset-0 overflow-hidden bg-zinc-900">
@@ -139,6 +179,7 @@ export function BackgroundSlideshow({
               ref={(el) => {
                 videoRefs.current[index] = el;
                 if (el && index === currentIndex && !reducedMotion) {
+                  el.loop = isSingleClip;
                   void ensurePlaying(el);
                 }
               }}
@@ -146,14 +187,23 @@ export function BackgroundSlideshow({
               src={src}
               muted
               playsInline
+              loop={isSingleClip}
               autoPlay={isActive && !reducedMotion}
-              preload={index === currentIndex || index === (currentIndex + 1) % activeVideos.length ? "auto" : "metadata"}
+              preload={
+                index === currentIndex ||
+                index === (currentIndex + 1) % activeVideos.length
+                  ? "auto"
+                  : "metadata"
+              }
               aria-hidden="true"
             />
           </motion.div>
         );
       })}
-      <div className={`absolute inset-0 ${overlayClassName}`} aria-hidden="true" />
+      <div
+        className={`absolute inset-0 ${overlayClassName}`}
+        aria-hidden="true"
+      />
     </div>
   );
 }
