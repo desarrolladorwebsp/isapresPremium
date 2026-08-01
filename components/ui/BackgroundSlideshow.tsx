@@ -42,19 +42,22 @@ function useIsDesktop() {
   );
 }
 
-async function ensurePlaying(video: HTMLVideoElement) {
+/** Force play from t=0. Needed because Safari/iOS often ignore native `loop`. */
+async function replayFromStart(video: HTMLVideoElement) {
   try {
-    if (video.ended) {
+    if (video.currentTime !== 0) {
       video.currentTime = 0;
     }
-    if (video.paused) {
-      await video.play();
-    }
+    await video.play();
   } catch {
-    // Autoplay can be blocked until muted + playsInline; retry shortly.
     window.setTimeout(() => {
+      try {
+        video.currentTime = 0;
+      } catch {
+        // ignore seek errors
+      }
       void video.play().catch(() => {});
-    }, 120);
+    }, 150);
   }
 }
 
@@ -84,7 +87,7 @@ export function BackgroundSlideshow({
     }
   }, [playlistKey]);
 
-  /** Infinite playlist: after the last clip, wrap to the first. */
+  /** Infinite playlist: after the last clip, wrap back to the first. */
   const goNext = useCallback(() => {
     if (isSingleClip) return;
     if (advancingRef.current) return;
@@ -92,10 +95,9 @@ export function BackgroundSlideshow({
     setCurrentIndex((prev) => (prev + 1) % activeVideos.length);
     window.setTimeout(() => {
       advancingRef.current = false;
-    }, 400);
+    }, 500);
   }, [activeVideos.length, isSingleClip]);
 
-  // Keep the active clip playing; advance (or native-loop) forever.
   useEffect(() => {
     const video = videoRefs.current[currentIndex];
     if (!video) return;
@@ -103,51 +105,93 @@ export function BackgroundSlideshow({
     videoRefs.current.forEach((other, index) => {
       if (!other || index === currentIndex) return;
       other.pause();
-      other.currentTime = 0;
+      try {
+        other.currentTime = 0;
+      } catch {
+        // ignore
+      }
     });
 
     if (reducedMotion) {
       video.pause();
-      video.currentTime = 0;
+      try {
+        video.currentTime = 0;
+      } catch {
+        // ignore
+      }
       return;
     }
 
-    // One clip → HTML loop. Several clips → cycle the playlist forever.
+    // Single clip: native loop + manual restart (Safari).
+    // Multi clip: no native loop — advance on end and wrap forever.
     video.loop = isSingleClip;
 
-    const onEnded = () => {
+    const handleClipFinished = () => {
+      if (advancingRef.current) return;
+
       if (isSingleClip) {
-        video.currentTime = 0;
-        void ensurePlaying(video);
+        void replayFromStart(video);
         return;
       }
+
       goNext();
+    };
+
+    const onEnded = () => {
+      handleClipFinished();
+    };
+
+    // Fallback when `ended` is skipped (some iOS/WebViews).
+    let endFallbackId = 0;
+    const armEndFallback = () => {
+      window.clearTimeout(endFallbackId);
+      if (!Number.isFinite(video.duration) || video.duration <= 0) return;
+
+      const remainingMs = Math.max(0, (video.duration - video.currentTime) * 1000);
+      endFallbackId = window.setTimeout(() => {
+        if (advancingRef.current) return;
+        if (video !== videoRefs.current[currentIndex]) return;
+        // If still near the end or already ended/paused, finish the clip.
+        if (
+          video.ended ||
+          video.paused ||
+          video.currentTime >= video.duration - 0.2
+        ) {
+          handleClipFinished();
+        }
+      }, remainingMs + 250);
+    };
+
+    const onLoadedMetadata = () => {
+      armEndFallback();
+    };
+
+    const onPlay = () => {
+      armEndFallback();
     };
 
     const onVisibility = () => {
       if (document.visibilityState === "visible") {
-        void ensurePlaying(video);
+        void replayFromStart(video);
+        armEndFallback();
       }
     };
 
-    // Some mobile browsers skip `ended`; advance near the end as fallback.
-    const onTimeUpdate = () => {
-      if (isSingleClip || advancingRef.current) return;
-      if (!Number.isFinite(video.duration) || video.duration <= 0) return;
-      if (video.currentTime >= video.duration - 0.35) {
-        goNext();
-      }
-    };
-
-    void ensurePlaying(video);
+    void replayFromStart(video);
+    if (video.readyState >= 1) {
+      armEndFallback();
+    }
 
     video.addEventListener("ended", onEnded);
-    video.addEventListener("timeupdate", onTimeUpdate);
+    video.addEventListener("loadedmetadata", onLoadedMetadata);
+    video.addEventListener("play", onPlay);
     document.addEventListener("visibilitychange", onVisibility);
 
     return () => {
+      window.clearTimeout(endFallbackId);
       video.removeEventListener("ended", onEnded);
-      video.removeEventListener("timeupdate", onTimeUpdate);
+      video.removeEventListener("loadedmetadata", onLoadedMetadata);
+      video.removeEventListener("play", onPlay);
       document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [
@@ -178,20 +222,17 @@ export function BackgroundSlideshow({
             <video
               ref={(el) => {
                 videoRefs.current[index] = el;
-                if (el && index === currentIndex && !reducedMotion) {
-                  el.loop = isSingleClip;
-                  void ensurePlaying(el);
-                }
               }}
               className="absolute inset-0 h-full w-full object-cover"
               src={src}
               muted
               playsInline
+              // Single-clip pages rely on this; multi-clip overrides via JS (`video.loop = false`).
               loop={isSingleClip}
               autoPlay={isActive && !reducedMotion}
               preload={
                 index === currentIndex ||
-                index === (currentIndex + 1) % activeVideos.length
+                index === (currentIndex + 1) % Math.max(activeVideos.length, 1)
                   ? "auto"
                   : "metadata"
               }
