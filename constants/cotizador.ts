@@ -4,7 +4,7 @@ export const COTIZADOR_STEPS = [
   { id: 1, label: "Datos personales", shortLabel: "Datos\npersonales" },
   { id: 2, label: "Datos para cotizar Isapres", shortLabel: "Datos para\ncotizar Isapres" },
   { id: 3, label: "Enviar Formulario", shortLabel: "Enviar\nFormulario" },
-  { id: 4, label: "Last Page", shortLabel: "Last Page" },
+  { id: 4, label: "Enviado", shortLabel: "Enviado" },
 ] as const;
 
 export const PREVISION_OPTIONS = [
@@ -76,6 +76,7 @@ export const MOTIVO_COTIZACION_OPTIONS = [
 
 export const CONTACTO_PREFERENCIA_OPTIONS = [
   { value: "", label: "-- Seleccione --" },
+  { value: "whatsapp", label: "WhatsApp" },
   { value: "telefono", label: "Teléfono" },
   { value: "email", label: "Email" },
   { value: "video-llamada", label: "Video Llamada" },
