@@ -4,15 +4,18 @@ import { siteConfig } from "@/constants/site";
 /** Absolute site origin without trailing slash. */
 export const SITE_URL = siteConfig.url;
 
-/** Default Open Graph / Twitter share image (landscape photo). */
-export const OG_IMAGE_PATH =
-  "/images/hero/young-family-with-children-autumn-park.jpg";
+/**
+ * Open Graph / WhatsApp / Twitter share image.
+ * Spec: 1200×630 (≈1.91:1), JPEG <300KB for reliable WhatsApp previews.
+ */
+export const OG_IMAGE_PATH = "/og/og-default.jpg";
 
 export const OG_IMAGE = {
   url: OG_IMAGE_PATH,
   width: 1200,
-  height: 800,
-  alt: "Familia en un parque — Isapres Premium, asesoría en planes de salud Isapre en Chile",
+  height: 630,
+  alt: "Isapres Premium — Cotiza y compara tu plan de Isapre en Chile",
+  type: "image/jpeg",
 } as const;
 
 export const SEO_KEYWORDS = {
@@ -145,13 +148,28 @@ export function createPageMetadata(page: SeoPageKey): Metadata {
       siteName: siteConfig.name,
       locale: siteConfig.locale,
       type: "website",
-      images: [OG_IMAGE],
+      images: [
+        {
+          url: OG_IMAGE.url,
+          width: OG_IMAGE.width,
+          height: OG_IMAGE.height,
+          alt: OG_IMAGE.alt,
+          type: OG_IMAGE.type,
+        },
+      ],
     },
     twitter: {
       card: "summary_large_image",
       title: ogTitle,
       description: config.description,
-      images: [OG_IMAGE.url],
+      images: [
+        {
+          url: OG_IMAGE.url,
+          width: OG_IMAGE.width,
+          height: OG_IMAGE.height,
+          alt: OG_IMAGE.alt,
+        },
+      ],
     },
   };
 }
@@ -173,6 +191,10 @@ export function createRootMetadata(): Metadata {
     creator: siteConfig.name,
     publisher: siteConfig.name,
     category: "health",
+    manifest: "/site.webmanifest",
+    other: {
+      "msapplication-TileColor": "#0a6b5e",
+    },
     formatDetection: {
       email: false,
       address: false,
@@ -192,14 +214,29 @@ export function createRootMetadata(): Metadata {
       siteName: siteConfig.name,
       locale: siteConfig.locale,
       type: "website",
-      images: [OG_IMAGE],
+      images: [
+        {
+          url: OG_IMAGE.url,
+          width: OG_IMAGE.width,
+          height: OG_IMAGE.height,
+          alt: OG_IMAGE.alt,
+          type: OG_IMAGE.type,
+        },
+      ],
     },
     twitter: {
       card: "summary_large_image",
       title:
         "ogTitle" in home && home.ogTitle ? home.ogTitle : home.title,
       description: home.description,
-      images: [OG_IMAGE.url],
+      images: [
+        {
+          url: OG_IMAGE.url,
+          width: OG_IMAGE.width,
+          height: OG_IMAGE.height,
+          alt: OG_IMAGE.alt,
+        },
+      ],
     },
     robots: {
       index: true,
@@ -213,8 +250,37 @@ export function createRootMetadata(): Metadata {
       },
     },
     icons: {
-      icon: [{ url: "/logo-isapres-premium.png", type: "image/png" }],
-      apple: [{ url: "/logo-isapres-premium.png", type: "image/png" }],
+      icon: [
+        { url: "/favicon.ico", sizes: "any" },
+        {
+          url: "/icons/favicon-16x16.png",
+          sizes: "16x16",
+          type: "image/png",
+        },
+        {
+          url: "/icons/favicon-32x32.png",
+          sizes: "32x32",
+          type: "image/png",
+        },
+        {
+          url: "/icons/icon-192x192.png",
+          sizes: "192x192",
+          type: "image/png",
+        },
+        {
+          url: "/icons/icon-512x512.png",
+          sizes: "512x512",
+          type: "image/png",
+        },
+      ],
+      apple: [
+        {
+          url: "/icons/apple-touch-icon.png",
+          sizes: "180x180",
+          type: "image/png",
+        },
+      ],
+      shortcut: [{ url: "/favicon.ico" }],
     },
   };
 }
