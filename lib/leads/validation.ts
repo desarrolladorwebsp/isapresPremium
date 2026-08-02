@@ -39,21 +39,30 @@ export function isValidRut(rut: string) {
   return dv === expectedDv;
 }
 
-/** Digits only; normalizes +56 / 56 prefix. */
+/** Digits only from a phone string. */
 export function phoneDigits(value: string) {
   return value.replace(/\D/g, "");
 }
 
+/**
+ * Accepts international numbers (E.164-ish): optional +, spaces/dashes/parens,
+ * and 8–15 digits total. Chilean and foreign numbers are valid.
+ */
+export function isValidPhone(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+
+  // Allow digits and common phone punctuation; optional leading +.
+  if (!/^\+?[\d\s()./-]+$/.test(trimmed)) return false;
+
+  const digits = phoneDigits(trimmed);
+  // E.164 max length is 15 digits; require a usable minimum.
+  return digits.length >= 8 && digits.length <= 15;
+}
+
+/** @deprecated Use `isValidPhone` — kept for callers that still import the old name. */
 export function isValidChileanPhone(value: string) {
-  const digits = phoneDigits(value);
-  if (!digits) return false;
-
-  if (digits.startsWith("56")) {
-    const local = digits.slice(2);
-    return local.length >= 8 && local.length <= 9;
-  }
-
-  return digits.length >= 8 && digits.length <= 9;
+  return isValidPhone(value);
 }
 
 const optionalRut = z
@@ -98,8 +107,8 @@ export const leadPayloadSchema = z.object({
     .string()
     .trim()
     .min(1, "Este campo es obligatorio")
-    .refine(isValidChileanPhone, {
-      message: "Ingresa un teléfono válido (ej: +56 9 1234 5678)",
+    .refine(isValidPhone, {
+      message: "Ingresa un teléfono válido con código de país (ej: +56 9 1234 5678)",
     }),
   previsionActual: z.string().trim().min(1, "Selecciona tu previsión actual"),
   ufActuales: z.string().trim().optional().default(""),
