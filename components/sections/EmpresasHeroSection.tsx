@@ -2,6 +2,8 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import {
+  EMPRESAS_HERO_POSTER,
+  EMPRESAS_HERO_POSTER_MOBILE,
   EMPRESAS_HERO_VIDEOS,
   EMPRESAS_HERO_VIDEOS_MOBILE,
   EMPRESAS_TYPEWRITER_PHRASES,
@@ -20,6 +22,8 @@ export function EmpresasHeroSection() {
       <BackgroundSlideshow
         videos={EMPRESAS_HERO_VIDEOS}
         mobileVideos={EMPRESAS_HERO_VIDEOS_MOBILE}
+        poster={EMPRESAS_HERO_POSTER}
+        mobilePoster={EMPRESAS_HERO_POSTER_MOBILE}
       />
 
       <div className="relative z-10 flex flex-1 items-center px-5 py-20 sm:px-8 sm:py-16 lg:px-10 xl:px-16">

@@ -7,6 +7,10 @@ export const HERO_VIDEOS = [
   "/videos/hero/hero-06.mp4",
 ] as const;
 
+/** First-frame posters shown while hero videos buffer (avoids black flash). */
+export const HERO_POSTER = "/images/hero/posters/hero-01.jpg";
+export const HERO_POSTER_MOBILE = "/images/hero/posters/hero-vertical-03.jpg";
+
 const V = {
   v01: "/videos/hero/hero-vertical-01.mp4",
   v02: "/videos/hero/hero-vertical-02.mp4",

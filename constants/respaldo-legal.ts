@@ -13,6 +13,10 @@ export const RESPALDO_LEGAL_HERO_VIDEOS = [
 export const RESPALDO_LEGAL_HERO_VIDEOS_MOBILE = [
   "/videos/hero/hero-vertical-respaldo-legal.mp4",
 ] as const;
+export const RESPALDO_LEGAL_HERO_POSTER =
+  "/images/hero/posters/hero-respaldo-legal.jpg";
+export const RESPALDO_LEGAL_HERO_POSTER_MOBILE =
+  "/images/hero/posters/hero-vertical-respaldo-legal.jpg";
 
 export const RESPALDO_LEGAL_HERO = {
   badge: "Exclusivo Isapres Premium",

@@ -16,6 +16,9 @@ export const EMPRESAS_HERO_VIDEOS = [
 export const EMPRESAS_HERO_VIDEOS_MOBILE = [
   "/videos/hero/hero-vertical-empresa.mp4",
 ] as const;
+export const EMPRESAS_HERO_POSTER = "/images/hero/posters/hero-empresas.jpg";
+export const EMPRESAS_HERO_POSTER_MOBILE =
+  "/images/hero/posters/hero-vertical-empresa.jpg";
 
 export const EMPRESAS_TYPEWRITER_PHRASES = [
   "transparencia",

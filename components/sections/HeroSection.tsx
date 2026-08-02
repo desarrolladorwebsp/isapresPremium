@@ -2,6 +2,7 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import { HERO_VIDEOS, HERO_VIDEOS_MOBILE, TYPEWRITER_PHRASES } from "@/constants/cotizador";
+import { HERO_POSTER, HERO_POSTER_MOBILE } from "@/constants/hero";
 import { BackgroundSlideshow } from "@/components/ui/BackgroundSlideshow";
 import { TypewriterText } from "@/components/ui/TypewriterText";
 import { CotizadorForm } from "@/components/sections/CotizadorForm";
@@ -14,6 +15,8 @@ export function HeroSection() {
       <BackgroundSlideshow
         videos={HERO_VIDEOS}
         mobileVideos={HERO_VIDEOS_MOBILE}
+        poster={HERO_POSTER}
+        mobilePoster={HERO_POSTER_MOBILE}
       />
 
       <div className="relative z-10 flex flex-1 flex-col pt-16 sm:pt-14 lg:pt-0">

@@ -7,6 +7,8 @@ import { WhatsAppIcon } from "@/components/ui/WhatsAppIcon";
 import {
   RESPALDO_LEGAL_CTA,
   RESPALDO_LEGAL_HERO,
+  RESPALDO_LEGAL_HERO_POSTER,
+  RESPALDO_LEGAL_HERO_POSTER_MOBILE,
   RESPALDO_LEGAL_HERO_VIDEOS,
   RESPALDO_LEGAL_HERO_VIDEOS_MOBILE,
 } from "@/constants/respaldo-legal";
@@ -24,6 +26,8 @@ export function RespaldoLegalHeroSection() {
       <BackgroundSlideshow
         videos={RESPALDO_LEGAL_HERO_VIDEOS}
         mobileVideos={RESPALDO_LEGAL_HERO_VIDEOS_MOBILE}
+        poster={RESPALDO_LEGAL_HERO_POSTER}
+        mobilePoster={RESPALDO_LEGAL_HERO_POSTER_MOBILE}
         overlayClassName="bg-transparent"
       />
 
