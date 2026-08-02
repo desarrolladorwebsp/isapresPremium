@@ -7,7 +7,7 @@ export const CLIENT_ORIGIN_LABELS: Record<ClientOrigin, string> = {
   COTIZADOR: "Lead cotizador",
   MANUAL: "Registro propio",
   CAMPANA_LEAD_WHATSAPP: "Campaña lead WhatsApp",
-  FORMULARIO_WEB: "Formulario web",
+  FORMULARIO_WEB: "Formulario web - Isapres Premium",
 };
 
 export interface ClientOriginBadgeProps {
@@ -52,7 +52,7 @@ export function ClientOriginBadge({
     return (
       <AdminBadge
         className="border border-[#0e7490]/25 bg-[#ecfeff] text-[#0e7490]"
-        title="Lead captado desde un formulario web"
+        title="Lead captado desde el formulario web de Isapres Premium"
       >
         {CLIENT_ORIGIN_LABELS.FORMULARIO_WEB}
       </AdminBadge>

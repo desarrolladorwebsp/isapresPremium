@@ -55,7 +55,7 @@ async function registerLeadFromMarketingForm(data: LeadPayload) {
       email: data.email,
       phone: data.telefono,
       rut: data.rut || null,
-      source: "isapres-premium",
+      source: "Formulario web - Isapres Premium",
       preferenciaContacto: data.preferenciaContacto,
       notes: data.motivoCotizacion
         ? `Motivo: ${data.motivoCotizacion}`
@@ -70,7 +70,8 @@ async function registerLeadFromMarketingForm(data: LeadPayload) {
         "renta imponible": data.rentaImponible,
       },
       executiveKind: "ISAPRES_PREMIUM",
-      autoAssign: true,
+      // Por ahora los leads del formulario quedan sin ejecutivo; se asignan a mano.
+      autoAssign: false,
       clientOrigin: "FORMULARIO_WEB",
     });
   } catch (error) {
