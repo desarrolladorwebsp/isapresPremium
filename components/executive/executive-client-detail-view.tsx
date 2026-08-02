@@ -231,6 +231,7 @@ export function ExecutiveClientDetailView({
           <ClientOriginBadge
             origin={client.clientOrigin}
             cotizadorSource={client.cotizadorSource}
+            webFormSource={client.webFormSource}
           />
           <span className="text-xs text-muted">
             Registro: {formatDate(client.createdAt)}

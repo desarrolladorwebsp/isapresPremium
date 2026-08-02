@@ -65,6 +65,8 @@ export interface UserRecord {
   requestedPlan?: ClientPlanSnapshot | null;
   advisedPlan?: ClientPlanSnapshot | null;
   clientOrigin?: ClientOrigin;
+  /** Etiqueta del formulario web (p. ej. "Formulario web - Desde Tu 7%"). */
+  webFormSource?: string | null;
   cotizadorSource?: CotizadorSourceInfo | null;
   createdAt: string;
   updatedAt: string;

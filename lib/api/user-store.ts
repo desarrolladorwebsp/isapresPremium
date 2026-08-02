@@ -7,6 +7,7 @@ import {
 } from "@/lib/client-pipeline/constants";
 import { resolveClientProfile, normalizeClientProfileInput } from "@/lib/client-profile/constants";
 import { resolveCotizadorSourceFromQuote } from "@/lib/partner-entity/source-label";
+import { extractWebFormSource } from "@/lib/clients/web-form-source";
 import type { ClientPipelineStatus } from "@/types/client-pipeline";
 import type { ClientPlanSnapshot } from "@/types/client-plan";
 import type {
@@ -124,6 +125,7 @@ export function mapDbUser(user: UserWithExecutive): UserRecord {
       fullName: user.fullName,
     }),
     clientOrigin: user.clientOrigin as ClientOrigin,
+    webFormSource: extractWebFormSource(user.pipelineNotes),
     createdAt: user.createdAt.toISOString(),
     updatedAt: user.updatedAt.toISOString(),
   };

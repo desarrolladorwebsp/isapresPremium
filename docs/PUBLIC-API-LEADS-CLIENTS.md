@@ -155,7 +155,7 @@ Ruta marketing: `POST /api/leads` (mismo app).
 4. Elegir `executiveKind` correcto (`ISAPRES_PREMIUM` para leads de Isapres Premium).
 5. No exponer la secret en frontend, repos públicos ni widgets.
 6. Manejar 429 con reintento / mensaje al usuario.
-7. Tras deploy, verificar en panel ejecutivos que el cliente aparece con badge **Formulario web - Isapres Premium**.
+7. Tras deploy, verificar en panel ejecutivos que el cliente aparece con badge del `source` enviado (ej. **Formulario web - Isapres Premium**).
 
 ## Seguridad (no romper)
 

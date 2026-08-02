@@ -158,6 +158,7 @@ export function ExecutiveClientsPanel({
         client.cotizadorSource?.label,
         client.cotizadorSource?.slug,
         client.cotizadorSource?.description,
+        client.webFormSource,
       ]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(query)),
@@ -394,6 +395,7 @@ export function ExecutiveClientsPanel({
                     <ClientOriginBadge
                       origin={client.clientOrigin}
                       cotizadorSource={client.cotizadorSource}
+                      webFormSource={client.webFormSource}
                     />
                   </TableCellStack>
                 </AdminTableCell>

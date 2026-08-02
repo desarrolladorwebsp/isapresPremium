@@ -378,6 +378,7 @@ export function AssignPlanToClientModal({
                           <ClientOriginBadge
                             origin={client.clientOrigin}
                             cotizadorSource={client.cotizadorSource}
+                            webFormSource={client.webFormSource}
                           />
                         </div>
                         <span className="mt-0.5 block text-xs text-muted">
