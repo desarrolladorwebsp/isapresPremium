@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "ClientOrigin" ADD VALUE 'CAMPANA_LEAD_WHATSAPP';

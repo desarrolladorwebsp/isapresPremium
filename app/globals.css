@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@config "../tailwind.config.mjs";
+
 
 :root {
   --background: #ffffff;

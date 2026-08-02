@@ -1,7 +1,10 @@
 export const siteConfig = {
   name: "Isapres Premium",
   url: "https://isaprespremium.cl",
-  cotizadorUrl: "https://cotizadorpremium.cl/cotizador?agent=isaprespremium",
+  /** Motor del cotizador en este mismo dominio (multitenant vía ?agent=). */
+  cotizadorUrl: "/cotizador?agent=isaprespremium",
+  /** Panel y cotizador de ejecutivos. */
+  cotizadorEjecutivosUrl: "/cotizador/ejecutivos",
   locale: "es_CL",
   contact: {
     email: "contacto@isaprespremium.cl",

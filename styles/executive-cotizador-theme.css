@@ -1,0 +1,192 @@
+/*
+ * Tema visual — solo cotizador ejecutivo:
+ * [data-premium-surface] [data-executive-cotizador]
+ *
+ * Paleta definitiva (misma del dashboard):
+ *   #092558 navy · #1AC9EA cyan · #1289F8 mid · #0D6DEE royal
+ *
+ * No afecta la barra de navegación superior ni el cotizador público / widget.
+ */
+
+[data-premium-surface] [data-executive-cotizador] {
+  --dash-navy: #092558;
+  --dash-cyan: #1ac9ea;
+  --dash-blue: #1289f8;
+  --dash-royal: #0d6dee;
+
+  --primary: #0d6dee;
+  --primary-hover: #0b5fd4;
+  --primary-dark: #092558;
+  --primary-foreground: #ffffff;
+
+  --secondary: #1289f8;
+  --secondary-muted: #e4f1ff;
+
+  --accent-cyan: #1ac9ea;
+  --text-secondary: #3d5678;
+
+  --bg-layout: #f0f4f8;
+  --background: #ffffff;
+  --foreground: #092558;
+  --muted: #6b7c93;
+  --border: #d0dce9;
+  --surface-hover: #e8f4ff;
+
+  --accent-warning: #f0a018;
+  --accent-warning-foreground: #3a2800;
+  --accent-danger: #e11d48;
+  --accent-success: #159a4a;
+  --warning-muted: #fff6db;
+  --danger-muted: #ffe8ee;
+  --success-muted: #e6f8ee;
+
+  --gradient-coverage: linear-gradient(
+    90deg,
+    #0d6dee 0%,
+    #1ac9ea 100%
+  );
+
+  --shadow-card: 0 6px 28px -10px rgb(9 37 88 / 0.12);
+  --shadow-card-hover: 0 14px 36px -12px rgb(13 109 238 / 0.22);
+  --shadow-cta: 0 10px 30px -8px rgb(21 154 74 / 0.42);
+
+  --plan-card-surface: #ffffff;
+  --plan-card-header-bg: color-mix(in srgb, var(--secondary-muted) 72%, white);
+  --plan-card-coverage-bg: color-mix(in srgb, var(--bg-layout) 55%, white);
+  --plan-card-border: color-mix(in srgb, var(--border) 70%, var(--foreground) 30%);
+  --plan-card-ring: rgb(9 37 88 / 0.06);
+  --shadow-plan-card:
+    0 1px 3px rgb(9 37 88 / 0.06),
+    0 4px 14px -4px rgb(13 109 238 / 0.12),
+    0 14px 32px -10px rgb(13 109 238 / 0.14);
+  --shadow-plan-card-hover:
+    0 0 0 1.5px var(--primary),
+    0 6px 18px -4px rgb(13 109 238 / 0.18),
+    0 20px 44px -12px rgb(13 109 238 / 0.22);
+
+  --criteria-surface: #e8f4ff;
+  --criteria-ring: #c5d8ee;
+
+  background-color: var(--bg-layout);
+  background-image:
+    radial-gradient(ellipse 70% 45% at 8% 0%, rgb(13 109 238 / 0.09), transparent 55%),
+    radial-gradient(ellipse 55% 40% at 96% 8%, rgb(26 201 234 / 0.1), transparent 50%),
+    linear-gradient(180deg, #f5f8fc 0%, var(--bg-layout) 38%, #eaf0f6 100%);
+}
+
+/* Panel de filtros */
+[data-premium-surface] [data-executive-cotizador] [data-executive-filters="true"] {
+  background: #ffffff;
+  border-color: color-mix(in srgb, var(--border) 70%, var(--dash-navy) 30%);
+  box-shadow:
+    1px 0 0 color-mix(in srgb, var(--border) 80%, transparent),
+    8px 0 28px -16px rgb(9 37 88 / 0.14);
+}
+
+[data-premium-surface] [data-executive-cotizador] [data-executive-filters="true"] > div > div:first-child {
+  background: color-mix(in srgb, var(--dash-navy) 92%, var(--dash-royal));
+  border-bottom: 1px solid color-mix(in srgb, var(--dash-cyan) 35%, transparent);
+  color: #ffffff;
+}
+
+[data-premium-surface] [data-executive-cotizador] [data-executive-filters="true"] > div > div:first-child .text-primary-dark {
+  color: #ffffff;
+}
+
+[data-premium-surface] [data-executive-cotizador] [data-executive-filters="true"] > div > div:first-child button {
+  color: color-mix(in srgb, white 80%, transparent);
+}
+
+[data-premium-surface] [data-executive-cotizador] [data-executive-filters="true"] > div > div:first-child button:hover {
+  background: color-mix(in srgb, white 12%, transparent);
+  color: #ffffff;
+}
+
+/* Cabeceras de sección de filtro */
+[data-premium-surface] [data-executive-cotizador] [data-executive-filters="true"] .border-l-primary {
+  border-left-color: var(--dash-royal);
+}
+
+[data-premium-surface] [data-executive-cotizador] [data-executive-filters="true"] .bg-primary\/12 {
+  background: color-mix(in srgb, var(--dash-royal) 10%, white);
+}
+
+[data-premium-surface] [data-executive-cotizador] [data-executive-filters="true"] .border-l-secondary {
+  border-left-color: var(--dash-cyan);
+}
+
+[data-premium-surface] [data-executive-cotizador] [data-executive-filters="true"] .bg-secondary-muted {
+  background: color-mix(in srgb, var(--dash-cyan) 12%, white);
+  color: var(--dash-navy);
+}
+
+[data-premium-surface] [data-executive-cotizador] [data-executive-filters="true"] .ring-primary\/15 {
+  --tw-ring-color: color-mix(in srgb, var(--dash-royal) 18%, transparent);
+}
+
+[data-premium-surface] [data-executive-cotizador] [data-executive-filters="true"] .ring-secondary\/20 {
+  --tw-ring-color: color-mix(in srgb, var(--dash-cyan) 22%, transparent);
+}
+
+[data-premium-surface] [data-executive-cotizador] [data-executive-filters="true"] input[type="checkbox"] {
+  accent-color: var(--dash-royal);
+}
+
+[data-premium-surface] [data-executive-cotizador] [data-executive-filters="true"] input[type="range"] {
+  accent-color: var(--dash-cyan);
+}
+
+/* Barras de cobertura */
+[data-premium-surface] [data-executive-cotizador] .bg-slate-200\/90 {
+  background-color: color-mix(in srgb, var(--border) 65%, #94a3b8 35%);
+}
+
+/* Iconos de acción rápida — colores distintos de la paleta premium */
+[data-premium-surface] [data-executive-cotizador] [data-executive-quick-action="chat"] {
+  border-color: color-mix(in srgb, var(--dash-royal) 55%, transparent);
+  background: color-mix(in srgb, var(--dash-royal) 14%, white);
+  color: var(--dash-royal);
+  box-shadow: 0 3px 10px -3px rgb(13 109 238 / 0.45);
+}
+
+/* PDF — cyan */
+[data-premium-surface] [data-executive-cotizador] [data-executive-quick-action="download"] {
+  border-color: color-mix(in srgb, var(--dash-cyan) 60%, transparent);
+  background: color-mix(in srgb, var(--dash-cyan) 16%, white);
+  color: #0a8fad;
+  box-shadow: 0 3px 12px -3px rgb(26 201 234 / 0.5);
+}
+
+/* Seguros — ámbar */
+[data-premium-surface] [data-executive-cotizador] [data-executive-quick-action="shield"] {
+  border-color: color-mix(in srgb, var(--accent-warning) 65%, transparent);
+  background: color-mix(in srgb, var(--warning-muted) 92%, white);
+  color: #b45309;
+  box-shadow: 0 3px 12px -3px rgb(245 158 11 / 0.5);
+}
+
+/* WhatsApp — verde marca */
+[data-premium-surface] [data-executive-cotizador] [data-executive-quick-action="whatsapp"] {
+  border-color: color-mix(in srgb, #25d366 60%, transparent);
+  background: color-mix(in srgb, #25d366 16%, white);
+  color: #128c7e;
+  box-shadow: 0 3px 12px -3px rgb(37 211 102 / 0.5);
+}
+
+[data-premium-surface] [data-executive-cotizador] [data-executive-quick-action]:hover {
+  filter: brightness(0.97);
+  transform: translateY(-1px);
+}
+
+/* Asignar — azul royal */
+[data-premium-surface] [data-executive-cotizador] [data-executive-assign-cta] {
+  border-color: color-mix(in srgb, var(--dash-royal) 55%, transparent);
+  background: color-mix(in srgb, var(--dash-royal) 12%, white);
+  color: var(--dash-royal);
+  box-shadow: 0 3px 12px -3px rgb(13 109 238 / 0.5);
+}
+
+[data-premium-surface] [data-executive-cotizador] [data-executive-assign-cta]:hover {
+  filter: brightness(0.97);
+  transform: translateY(-1px);
+}

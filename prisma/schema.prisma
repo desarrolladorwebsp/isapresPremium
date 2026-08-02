@@ -1,0 +1,458 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  CLIENT
+  EXECUTIVE
+  ADMIN
+}
+
+enum QuoteStatus {
+  PENDING
+  CONTACTED
+  CONVERTED
+  CANCELLED
+}
+
+enum QuoteActivityType {
+  CREATED
+  STATUS_CHANGED
+  EXECUTIVE_ASSIGNED
+  EXECUTIVE_UNASSIGNED
+  DISTRIBUTED
+}
+
+enum ClientActivityType {
+  PLAN_CHANGED
+  ADVISED_PLAN_CLEARED
+}
+
+enum StaffRole {
+  ADMIN
+  EXECUTIVE
+}
+
+/// Discriminador de ejecutivo (null en ADMIN).
+enum ExecutiveKind {
+  ISAPRES_PREMIUM
+  ZOOM
+  ISAPRES
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  EXPIRED
+}
+
+enum ClientPipelineStatus {
+  NUEVO
+  CONTACTADO
+  NO_CONTESTA
+  EN_SEGUIMIENTO
+  PROPUESTA_ENVIADA
+  DOCUMENTACION
+  ENVIADO_ISAPRE
+  CERRADO
+  PERDIDO
+}
+
+enum PlanType {
+  preferred
+  free_choice
+  closed
+}
+
+enum ClientOrigin {
+  COTIZADOR
+  MANUAL
+  CAMPANA_LEAD_WHATSAPP
+}
+
+enum ClientContactMethod {
+  ZOOM
+  WHATSAPP
+}
+
+enum CalendlyTeam {
+  EQUIPO_1
+  EQUIPO_2
+  EQUIPO_3
+}
+
+enum CalendlyBookingStatus {
+  SCHEDULED
+  CANCELED
+  NO_SHOW
+}
+
+model Isapre {
+  id                 String   @id
+  name               String
+  active             Boolean  @default(true)
+  gesPremiumUf       Float    @default(0.731) @map("ges_premium_uf")
+  gesPremiumUfLegacy Float?   @map("ges_premium_uf_legacy")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+  plans              Plan[]
+  companyAgreements  CompanyAgreement[]
+
+  @@map("isapres")
+}
+
+model CompanyAgreement {
+  id              String   @id @default(cuid())
+  companyRut      String   @unique @map("company_rut")
+  companyRutRaw   String?  @map("company_rut_raw")
+  companyName     String   @map("company_name")
+  normalizedName  String   @map("normalized_name")
+  discountPercent Float?   @map("discount_percent")
+  isapreId        String?  @map("isapre_id")
+  sourceFile      String?  @map("source_file")
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  isapre          Isapre?  @relation(fields: [isapreId], references: [id], onDelete: SetNull)
+
+  @@index([normalizedName])
+  @@index([active])
+  @@index([isapreId])
+  @@map("company_agreements")
+}
+
+model Clinic {
+  id                String          @id
+  name              String
+  zones             String[]        @default([])
+  address           String?
+  lat               Float?
+  lng               Float?
+  locationSource    String?         @map("location_source")
+  locationUpdatedAt DateTime?       @map("location_updated_at")
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @updatedAt @map("updated_at")
+  coverages         CoverageEntry[]
+
+  @@map("clinics")
+}
+
+model Plan {
+  uniqueCode      String          @id @map("unique_code")
+  isapreId        String          @map("isapre_id")
+  planName        String          @map("plan_name")
+  basePriceUf     Float           @map("base_price_uf")
+  planType        PlanType        @default(free_choice) @map("plan_type")
+  hasTop          Boolean         @default(false) @map("has_top")
+  additionalNotes String?         @map("additional_notes")
+  pdfUrl          String?         @map("pdf_url")
+  pdfPublicId     String?         @map("pdf_public_id")
+  zones           String[]        @default([])
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+  isapreRef       Isapre          @relation(fields: [isapreId], references: [id])
+  coverages       CoverageEntry[]
+  quotes          Quote[]
+  advisedClients  User[]          @relation("AdvisedPlans")
+  reviews         PlanReview[]
+
+  @@index([isapreId])
+  @@index([planType])
+  @@map("plans")
+}
+
+model CoverageEntry {
+  id         String @id @default(cuid())
+  clinicId   String @map("clinic_id")
+  clinicName String @map("clinic_name")
+  percentage Int
+  type       String
+  planCode   String @map("plan_code")
+  plan       Plan   @relation(fields: [planCode], references: [uniqueCode], onDelete: Cascade)
+  clinic     Clinic @relation(fields: [clinicId], references: [id], onUpdate: Cascade)
+
+  @@index([planCode])
+  @@index([clinicId])
+  @@map("coverage_entries")
+}
+
+/// Clientes del cotizador público (sin credenciales de acceso).
+model User {
+  id                   String            @id @default(cuid())
+  email                String            @unique
+  phone                String?
+  fullName             String            @map("full_name")
+  rut                  String?
+  role                 UserRole              @default(CLIENT)
+  active               Boolean               @default(true)
+  assignedExecutiveId  String?               @map("assigned_executive_id")
+  pipelineStatus       ClientPipelineStatus  @default(NUEVO) @map("pipeline_status")
+  pipelineChecklist    Json?                 @map("pipeline_checklist")
+  pipelineClosedRecord Json?                 @map("pipeline_closed_record")
+  pipelineNotes        String?               @map("pipeline_notes")
+  /// Próximo llamado agendado (p. ej. Ejecutivo Zoom).
+  nextCallAt           DateTime?             @map("next_call_at")
+  /// Último resultado / nota corta del llamado.
+  lastCallOutcome      String?               @map("last_call_outcome")
+  /// Cómo debe contactar el ejecutivo Premium (tras redirección Zoom).
+  preferredContactMethod ClientContactMethod? @map("preferred_contact_method")
+  /// Equipo Calendly asignado (reuniones Zoom).
+  calendlyTeam           CalendlyTeam?          @map("calendly_team")
+  /// Link de Zoom de la última reunión Calendly activa.
+  zoomJoinUrl            String?                @map("zoom_join_url")
+  advisedPlanCode        String?                @map("advised_plan_code")
+  clientOrigin           ClientOrigin           @default(COTIZADOR) @map("client_origin")
+  clientProfile          Json?                  @map("client_profile")
+  createdAt              DateTime               @default(now()) @map("created_at")
+  updatedAt              DateTime               @updatedAt @map("updated_at")
+  quotes                 Quote[]
+  activities             ClientActivity[]
+  reviews                PlanReview[]
+  calendlyBookings       CalendlyBooking[]
+  assignedExecutive      StaffAccount? @relation("AssignedClients", fields: [assignedExecutiveId], references: [id], onDelete: SetNull)
+  advisedPlan            Plan?         @relation("AdvisedPlans", fields: [advisedPlanCode], references: [uniqueCode], onDelete: SetNull)
+
+  @@index([role])
+  @@index([assignedExecutiveId])
+  @@index([advisedPlanCode])
+  @@index([nextCallAt])
+  @@map("users")
+}
+
+/// Key-value para contadores (p. ej. round-robin Calendly).
+model AppMeta {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("app_meta")
+}
+
+/// Reunión agendada vía Calendly (equipos Zoom).
+model CalendlyBooking {
+  id            String                @id @default(cuid())
+  userId        String?               @map("user_id")
+  calendlyTeam  CalendlyTeam          @map("calendly_team")
+  eventUuid     String                @unique @map("event_uuid")
+  inviteeUuid   String                @map("invitee_uuid")
+  inviteeEmail  String?               @map("invitee_email")
+  startAt       DateTime              @map("start_at")
+  endAt         DateTime?             @map("end_at")
+  status        CalendlyBookingStatus @default(SCHEDULED)
+  zoomJoinUrl   String?               @map("zoom_join_url")
+  zoomMeetingId String?               @map("zoom_meeting_id")
+  cancelUrl     String?               @map("cancel_url")
+  rescheduleUrl String?               @map("reschedule_url")
+  createdAt     DateTime              @default(now()) @map("created_at")
+  updatedAt     DateTime              @updatedAt @map("updated_at")
+  user          User?                 @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([inviteeUuid])
+  @@index([startAt])
+  @@index([calendlyTeam])
+  @@index([status])
+  @@map("calendly_bookings")
+}
+
+/// Cuentas del panel (administradores y ejecutivos) con credenciales compartidas.
+model StaffAccount {
+  id                    String              @id @default(cuid())
+  email                 String              @unique
+  passwordHash          String              @map("password_hash")
+  fullName              String              @map("full_name")
+  role                  StaffRole
+  /// Solo para role=EXECUTIVE. Null en ADMIN.
+  executiveKind         ExecutiveKind?      @map("executive_kind")
+  phone                 String?
+  rut                   String?
+  active                Boolean             @default(true)
+  /// Sin recibir nuevos clientes/solicitudes (solo ejecutivos).
+  assignmentsSuspended  Boolean             @default(false) @map("assignments_suspended")
+  /// Perfil obligatorio completado tras activación (solo ejecutivos).
+  onboardingCompleted   Boolean             @default(false) @map("onboarding_completed")
+  subscriptionStatus    SubscriptionStatus? @map("subscription_status")
+  subscriptionPlanId    String?             @map("subscription_plan_id")
+  subscriptionExpiresAt DateTime?           @map("subscription_expires_at")
+  stripeCustomerId      String?             @unique @map("stripe_customer_id")
+  failedLoginAttempts   Int                 @default(0) @map("failed_login_attempts")
+  lockedUntil           DateTime?           @map("locked_until")
+  lastLoginAt           DateTime?           @map("last_login_at")
+  passwordChangedAt     DateTime            @default(now()) @map("password_changed_at")
+  mustChangePassword    Boolean             @default(false) @map("must_change_password")
+  createdAt             DateTime            @default(now()) @map("created_at")
+  updatedAt             DateTime            @updatedAt @map("updated_at")
+  assignedQuotes        Quote[]
+  assignedClients       User[]              @relation("AssignedClients")
+  passwordResetTokens   PasswordResetToken[]
+
+  @@index([role])
+  @@index([executiveKind])
+  @@index([subscriptionStatus])
+  @@map("staff_accounts")
+}
+
+/// Token de recuperación de contraseña (staff). Solo se guarda el hash SHA-256.
+model PasswordResetToken {
+  id             String       @id @default(cuid())
+  tokenHash      String       @unique @map("token_hash")
+  staffAccountId String       @map("staff_account_id")
+  staffAccount   StaffAccount @relation(fields: [staffAccountId], references: [id], onDelete: Cascade)
+  expiresAt      DateTime     @map("expires_at")
+  usedAt         DateTime?    @map("used_at")
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  @@index([staffAccountId])
+  @@index([expiresAt])
+  @@map("password_reset_tokens")
+}
+
+/// Invitación por correo para crear cuenta admin o ejecutivo (enlace único).
+model StaffInvite {
+  id               String         @id @default(cuid())
+  email            String
+  rut              String?
+  realm            String
+  /// Solo cuando realm=executive. Null en admin; al activar default ISAPRES_PREMIUM.
+  executiveKind    ExecutiveKind? @map("executive_kind")
+  tokenHash        String         @unique @map("token_hash")
+  expiresAt        DateTime       @map("expires_at")
+  acceptedAt       DateTime?      @map("accepted_at")
+  invitedByAdminId String?        @map("invited_by_admin_id")
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+
+  @@index([email])
+  @@map("staff_invites")
+}
+
+model Quote {
+  id                String      @id @default(cuid())
+  userId            String?     @map("user_id")
+  planCode          String?     @map("plan_code")
+  status            QuoteStatus @default(PENDING)
+  fullName          String      @map("full_name")
+  email             String
+  phone             String
+  rut               String?
+  region            String?
+  sex               String?
+  monthlyIncome     String?     @map("monthly_income")
+  contributorAge    Int?        @map("contributor_age")
+  dependentsCount   Int         @default(0) @map("dependents_count")
+  dependentAges     Json?       @map("dependent_ages")
+  contactPreference String?     @map("contact_preference")
+  quoteReason       String?     @map("quote_reason")
+  finalPriceUf      Float?      @map("final_price_uf")
+  finalPriceClp     Float?      @map("final_price_clp")
+  ufValue           Float?      @map("uf_value")
+  beneficiaryCount  Int?        @map("beneficiary_count")
+  totalFactors      Float?      @map("total_factors")
+  notes             String?
+  partnerEntitySlug String?           @map("partner_entity_slug")
+  partnerEntityName String?           @map("partner_entity_name")
+  companyAgreementRut String?         @map("company_agreement_rut")
+  companyAgreementName String?        @map("company_agreement_name")
+  companyAgreementDiscount Float?     @map("company_agreement_discount")
+  executiveAccountId String?          @map("executive_account_id")
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+  user              User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  plan              Plan?             @relation(fields: [planCode], references: [uniqueCode], onDelete: SetNull)
+  executiveAccount  StaffAccount? @relation(fields: [executiveAccountId], references: [id], onDelete: SetNull)
+  activities        QuoteActivity[]
+
+  @@index([status])
+  @@index([planCode])
+  @@index([userId])
+  @@index([partnerEntitySlug])
+  @@index([executiveAccountId])
+  @@index([createdAt])
+  @@map("quotes")
+}
+
+model QuoteActivity {
+  id            String            @id @default(cuid())
+  quoteId       String            @map("quote_id")
+  activityType  QuoteActivityType @map("activity_type")
+  previousValue String?           @map("previous_value")
+  newValue      String?           @map("new_value")
+  actorRealm    String?           @map("actor_realm")
+  actorId       String?           @map("actor_id")
+  actorName     String?           @map("actor_name")
+  description   String?
+  createdAt     DateTime          @default(now()) @map("created_at")
+  quote         Quote             @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  @@index([quoteId])
+  @@index([createdAt])
+  @@map("quote_activities")
+}
+
+model ClientActivity {
+  id            String             @id @default(cuid())
+  userId        String             @map("user_id")
+  activityType  ClientActivityType @map("activity_type")
+  previousValue String?            @map("previous_value")
+  newValue      String?            @map("new_value")
+  actorRealm    String?            @map("actor_realm")
+  actorId       String?            @map("actor_id")
+  actorName     String?            @map("actor_name")
+  description   String?
+  createdAt     DateTime           @default(now()) @map("created_at")
+  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("client_activities")
+}
+
+/// Entidades aliadas (ej. Cotízalo Antes) con branding white-label del cotizador.
+model PartnerEntity {
+  id              String   @id @default(cuid())
+  slug            String   @unique
+  /// Código público del widget y deep links (?agent=). Único por socio.
+  embedKey        String   @unique @map("embed_key")
+  name            String
+  logoUrl         String   @map("logo_url")
+  websiteUrl      String   @map("website_url")
+  whatsappNumber  String   @map("whatsapp_number")
+  whatsappMessage String?  @map("whatsapp_message")
+  exitLabel       String   @default("Volver al sitio") @map("exit_label")
+  brandKey        String   @map("brand_key")
+  theme           Json
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("partner_entities")
+}
+
+/// Reseñas publicadas de clientes sobre la atención del ejecutivo y el plan cotizado.
+model PlanReview {
+  id              String   @id @default(cuid())
+  authorName      String   @map("author_name")
+  authorAvatarUrl String?  @map("author_avatar_url")
+  userId          String?  @map("user_id")
+  planCode        String   @map("plan_code")
+  executiveRating Int      @map("executive_rating")
+  comment         String   @db.Text
+  published       Boolean  @default(true)
+  featured        Boolean  @default(false)
+  displayOrder    Int      @default(0) @map("display_order")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  user            User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  plan            Plan     @relation(fields: [planCode], references: [uniqueCode], onDelete: Cascade)
+
+  @@index([published, displayOrder])
+  @@index([planCode])
+  @@map("plan_reviews")
+}

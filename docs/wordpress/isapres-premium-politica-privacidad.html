@@ -1,0 +1,456 @@
+<!--
+  Isapres Premium — Política de Privacidad (bloque para WordPress)
+  Copia todo este bloque en un widget HTML personalizado o en el editor de código de la página.
+  Paleta: verde #6CC24A · teal #2EAEA0 · texto #1a2e2b
+-->
+<section class="isp-privacy" id="isp-politica-privacidad" aria-labelledby="isp-privacy-title">
+  <style>
+    .isp-privacy {
+      --isp-primary: #6cc24a;
+      --isp-primary-hover: #5ab83d;
+      --isp-primary-dark: #1f8f84;
+      --isp-secondary: #2eaea0;
+      --isp-secondary-muted: #e8f7f5;
+      --isp-foreground: #1a2e2b;
+      --isp-muted: #5c6b68;
+      --isp-border: #d4ebe8;
+      --isp-surface: #ffffff;
+      --isp-surface-soft: #f4fbf9;
+      --isp-radius: 16px;
+      --isp-shadow: 0 4px 24px -8px rgba(31, 143, 132, 0.12);
+      font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      color: var(--isp-foreground);
+      line-height: 1.65;
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 2.5rem 1.25rem 3rem;
+      box-sizing: border-box;
+    }
+
+    .isp-privacy *,
+    .isp-privacy *::before,
+    .isp-privacy *::after {
+      box-sizing: border-box;
+    }
+
+    .isp-privacy__badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.45rem 0.9rem;
+      border-radius: 999px;
+      border: 1px solid rgba(108, 194, 74, 0.25);
+      background: rgba(108, 194, 74, 0.08);
+      color: var(--isp-primary-dark);
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .isp-privacy__title {
+      margin: 1rem 0 0.75rem;
+      font-size: clamp(1.75rem, 4vw, 2.35rem);
+      line-height: 1.15;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--isp-foreground);
+    }
+
+    .isp-privacy__title span {
+      color: var(--isp-primary-dark);
+    }
+
+    .isp-privacy__lead {
+      margin: 0;
+      max-width: 42rem;
+      font-size: 1.05rem;
+      color: var(--isp-muted);
+    }
+
+    .isp-privacy__meta {
+      margin-top: 1rem;
+      font-size: 0.875rem;
+      color: var(--isp-muted);
+    }
+
+    .isp-privacy__principles {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 0.85rem;
+      margin: 2rem 0 2.25rem;
+      padding: 0;
+      list-style: none;
+    }
+
+    .isp-privacy__principle {
+      margin: 0;
+      padding: 1rem 1.1rem;
+      border: 1px solid var(--isp-border);
+      border-radius: var(--isp-radius);
+      background: var(--isp-surface);
+      box-shadow: var(--isp-shadow);
+    }
+
+    .isp-privacy__principle strong {
+      display: block;
+      margin-bottom: 0.25rem;
+      color: var(--isp-primary-dark);
+      font-size: 0.95rem;
+    }
+
+    .isp-privacy__principle span {
+      font-size: 0.85rem;
+      color: var(--isp-muted);
+    }
+
+    .isp-privacy__toc {
+      margin-bottom: 2rem;
+      padding: 1.25rem 1.35rem;
+      border: 1px solid var(--isp-border);
+      border-radius: var(--isp-radius);
+      background: var(--isp-surface-soft);
+    }
+
+    .isp-privacy__toc-title {
+      margin: 0 0 0.85rem;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--isp-primary-dark);
+    }
+
+    .isp-privacy__toc-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 0.35rem;
+    }
+
+    .isp-privacy__toc-list a {
+      display: block;
+      padding: 0.45rem 0.65rem;
+      border-radius: 10px;
+      color: var(--isp-muted);
+      text-decoration: none;
+      font-size: 0.92rem;
+      transition: background 0.2s ease, color 0.2s ease;
+    }
+
+    .isp-privacy__toc-list a:hover {
+      background: rgba(46, 174, 160, 0.1);
+      color: var(--isp-primary-dark);
+    }
+
+    .isp-privacy__section {
+      margin-bottom: 1rem;
+      padding: 1.35rem 1.4rem;
+      border: 1px solid var(--isp-border);
+      border-radius: var(--isp-radius);
+      background: var(--isp-surface);
+      box-shadow: var(--isp-shadow);
+      scroll-margin-top: 5rem;
+    }
+
+    .isp-privacy__section h2 {
+      margin: 0 0 0.85rem;
+      font-size: 1.15rem;
+      line-height: 1.3;
+      color: var(--isp-foreground);
+    }
+
+    .isp-privacy__section p {
+      margin: 0 0 0.75rem;
+      font-size: 0.95rem;
+      color: var(--isp-muted);
+    }
+
+    .isp-privacy__section p:last-child {
+      margin-bottom: 0;
+    }
+
+    .isp-privacy__section ul {
+      margin: 0.5rem 0 0.75rem;
+      padding-left: 1.2rem;
+      color: var(--isp-muted);
+      font-size: 0.95rem;
+    }
+
+    .isp-privacy__section li {
+      margin-bottom: 0.4rem;
+    }
+
+    .isp-privacy__cta {
+      margin-top: 1.5rem;
+      padding: 1.5rem 1.4rem;
+      border-radius: calc(var(--isp-radius) + 4px);
+      border: 1px solid rgba(46, 174, 160, 0.25);
+      background: linear-gradient(135deg, rgba(108, 194, 74, 0.1), rgba(232, 247, 245, 0.9));
+    }
+
+    .isp-privacy__cta h2 {
+      margin: 0 0 0.5rem;
+      font-size: 1.25rem;
+      color: var(--isp-foreground);
+    }
+
+    .isp-privacy__cta p {
+      margin: 0 0 1rem;
+      color: var(--isp-muted);
+      font-size: 0.95rem;
+    }
+
+    .isp-privacy__actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.65rem;
+    }
+
+    .isp-privacy__btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.7rem 1.15rem;
+      border-radius: 12px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      text-decoration: none;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+    }
+
+    .isp-privacy__btn--primary {
+      background: var(--isp-primary);
+      color: #fff;
+      box-shadow: 0 8px 20px -8px rgba(108, 194, 74, 0.55);
+    }
+
+    .isp-privacy__btn--primary:hover {
+      background: var(--isp-primary-hover);
+      transform: translateY(-1px);
+    }
+
+    .isp-privacy__btn--secondary {
+      background: #fff;
+      color: var(--isp-primary-dark);
+      border: 1px solid var(--isp-border);
+    }
+
+    .isp-privacy__btn--secondary:hover {
+      background: var(--isp-secondary-muted);
+    }
+
+    @media (min-width: 768px) {
+      .isp-privacy {
+        padding: 3rem 1.5rem 3.5rem;
+      }
+
+      .isp-privacy__toc-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.35rem 1rem;
+      }
+    }
+  </style>
+
+  <p class="isp-privacy__badge">Ley N° 21.719 · Protección de datos personales</p>
+
+  <h1 class="isp-privacy__title" id="isp-privacy-title">
+    Política de <span>Privacidad</span> y Protección de Datos Personales
+  </h1>
+
+  <p class="isp-privacy__lead">
+    En <strong>Isapres Premium</strong> nos comprometemos a proteger tus datos personales y a
+    tratarlos conforme a la Ley chilena N° 21.719, resguardando tu privacidad y tus derechos.
+  </p>
+
+  <p class="isp-privacy__meta">Última actualización: 8 de julio de 2026</p>
+
+  <ul class="isp-privacy__principles" role="list">
+    <li class="isp-privacy__principle">
+      <strong>Legalidad</strong>
+      <span>Tratamiento conforme a la normativa vigente.</span>
+    </li>
+    <li class="isp-privacy__principle">
+      <strong>Seguridad</strong>
+      <span>Medidas para resguardar tu información.</span>
+    </li>
+    <li class="isp-privacy__principle">
+      <strong>Transparencia</strong>
+      <span>Información clara sobre el uso de datos.</span>
+    </li>
+    <li class="isp-privacy__principle">
+      <strong>Responsabilidad</strong>
+      <span>Gestión diligente y trazable.</span>
+    </li>
+  </ul>
+
+  <nav class="isp-privacy__toc" aria-label="Contenido de la política">
+    <p class="isp-privacy__toc-title">En esta página</p>
+    <ul class="isp-privacy__toc-list">
+      <li><a href="#isp-ley-21719">¿De qué trata la Ley N° 21.719?</a></li>
+      <li><a href="#isp-responsable">Responsable del tratamiento</a></li>
+      <li><a href="#isp-datos">Datos personales que podemos tratar</a></li>
+      <li><a href="#isp-finalidades">Finalidades del tratamiento</a></li>
+      <li><a href="#isp-principios">Principios que aplicamos</a></li>
+      <li><a href="#isp-derechos">Derechos de los titulares</a></li>
+      <li><a href="#isp-cesion">Comunicación y encargados</a></li>
+      <li><a href="#isp-conservacion">Conservación y seguridad</a></li>
+      <li><a href="#isp-cookies">Cookies</a></li>
+      <li><a href="#isp-actualizaciones">Actualizaciones</a></li>
+      <li><a href="#isp-contacto">Contacto y ejercicio de derechos</a></li>
+    </ul>
+  </nav>
+
+  <article class="isp-privacy__section" id="isp-ley-21719">
+    <h2>¿De qué trata la Ley N° 21.719?</h2>
+    <p>
+      La Ley N° 21.719 sobre Protección de Datos Personales regula cómo las empresas, organismos
+      públicos y personas que traten datos personales deben recolectar, usar, almacenar, comunicar y
+      eliminar información relativa a personas naturales identificadas o identificables en Chile.
+    </p>
+    <p>
+      Su objetivo es proteger la privacidad y los derechos de las personas frente al uso de su
+      información, exigiendo tratamientos lícitos, transparentes, seguros y responsables. La norma
+      entrará en plena vigencia el <strong>1 de diciembre de 2026</strong>.
+    </p>
+    <p>
+      Isapres Premium adopta de manera anticipada los principios y estándares de esta ley en sus
+      procesos de cotización, comparación y contacto con usuarios.
+    </p>
+  </article>
+
+  <article class="isp-privacy__section" id="isp-responsable">
+    <h2>Responsable del tratamiento</h2>
+    <p>
+      El responsable del tratamiento de los datos personales recabados a través de
+      <strong>isaprespremium.cl</strong> es <strong>Isapres Premium</strong>.
+    </p>
+    <p>
+      Para consultas relacionadas con privacidad y protección de datos puede contactarnos en
+      <a href="mailto:contacto@isaprespremium.cl">contacto@isaprespremium.cl</a> o al WhatsApp
+      <a href="https://wa.me/56964133848" target="_blank" rel="noopener noreferrer">+56 9 6413 3848</a>,
+      en horario de atención de lunes a viernes de 9:00 a 18:00 hrs.
+    </p>
+  </article>
+
+  <article class="isp-privacy__section" id="isp-datos">
+    <h2>Datos personales que podemos tratar</h2>
+    <p>Según el servicio que utilice, podemos tratar las siguientes categorías de datos:</p>
+    <ul>
+      <li>Datos de identificación y contacto: nombre, RUT, correo electrónico, teléfono y región.</li>
+      <li>Datos demográficos y de cotización: edad, sexo, ingreso, cargas familiares y preferencias de planes.</li>
+      <li>Datos de navegación y uso: dirección IP, tipo de dispositivo, navegador, páginas visitadas, cookies y eventos de interacción.</li>
+      <li>Datos derivados de solicitudes de cotización o contacto con asesores vinculados al servicio.</li>
+    </ul>
+  </article>
+
+  <article class="isp-privacy__section" id="isp-finalidades">
+    <h2>Finalidades del tratamiento</h2>
+    <p>Tratamos datos personales para fines determinados, explícitos y legítimos, entre ellos:</p>
+    <ul>
+      <li>Permitir la cotización, comparación y visualización de planes de salud e Isapre.</li>
+      <li>Derivar solicitudes a entidades aliadas y asesores cuando usted lo solicite.</li>
+      <li>Responder consultas, brindar asesoría y dar seguimiento comercial autorizado.</li>
+      <li>Mejorar la experiencia del sitio, medir desempeño y mantener la seguridad de la plataforma.</li>
+      <li>Cumplir obligaciones legales, resolver reclamos y atender requerimientos de autoridad.</li>
+    </ul>
+  </article>
+
+  <article class="isp-privacy__section" id="isp-principios">
+    <h2>Principios que aplicamos</h2>
+    <p>En línea con la Ley 21.719 y buenas prácticas de protección de datos, aplicamos los siguientes principios:</p>
+    <ul>
+      <li><strong>Licitud y lealtad:</strong> solo tratamos datos cuando existe una base legal o su consentimiento.</li>
+      <li><strong>Finalidad:</strong> usamos la información para los fines informados y no para propósitos incompatibles.</li>
+      <li><strong>Proporcionalidad y minimización:</strong> solicitamos únicamente los datos necesarios para cada servicio.</li>
+      <li><strong>Calidad y exactitud:</strong> procuramos mantener datos actualizados y corregir errores cuando se nos informen.</li>
+      <li><strong>Transparencia:</strong> informamos de manera clara cómo tratamos los datos personales.</li>
+      <li><strong>Seguridad y confidencialidad:</strong> adoptamos medidas técnicas y organizativas para resguardar la información.</li>
+      <li><strong>Responsabilidad:</strong> revisamos periódicamente nuestros procesos de tratamiento.</li>
+    </ul>
+  </article>
+
+  <article class="isp-privacy__section" id="isp-derechos">
+    <h2>Derechos de los titulares de datos</h2>
+    <p>Usted tiene derecho a solicitar, entre otros, lo siguiente respecto de sus datos personales:</p>
+    <ul>
+      <li><strong>Acceso:</strong> conocer qué datos tratamos y obtener información sobre su origen y uso.</li>
+      <li><strong>Rectificación:</strong> corregir datos inexactos, incompletos o desactualizados.</li>
+      <li><strong>Supresión:</strong> solicitar la eliminación cuando corresponda conforme a la ley.</li>
+      <li><strong>Oposición:</strong> oponerse a determinados tratamientos en los casos previstos legalmente.</li>
+      <li><strong>Portabilidad y bloqueo:</strong> cuando la normativa lo habilite, solicitar la entrega o restricción del tratamiento.</li>
+      <li><strong>Revocación del consentimiento:</strong> cuando el tratamiento se base en consentimiento, sin afectar tratamientos previos lícitos.</li>
+    </ul>
+    <p>
+      Para ejercer sus derechos, escriba a
+      <a href="mailto:contacto@isaprespremium.cl">contacto@isaprespremium.cl</a> indicando su nombre,
+      RUT y el derecho que desea ejercer. Responderemos dentro de los plazos que establezca la normativa vigente.
+    </p>
+  </article>
+
+  <article class="isp-privacy__section" id="isp-cesion">
+    <h2>Comunicación y encargados del tratamiento</h2>
+    <p>Podemos compartir datos con proveedores y aliados que nos ayudan a operar el servicio, por ejemplo:</p>
+    <ul>
+      <li>Plataformas de hosting, analítica, correo electrónico y herramientas de atención.</li>
+      <li>Compañías de salud previsional y aseguradoras, cuando usted solicite cotizar o contratar.</li>
+      <li>Asesores o partners comerciales autorizados para dar seguimiento a su solicitud.</li>
+    </ul>
+    <p>
+      Estos terceros solo reciben la información necesaria para cumplir la finalidad solicitada y deben
+      aplicar medidas de seguridad y confidencialidad acordes a la ley.
+    </p>
+  </article>
+
+  <article class="isp-privacy__section" id="isp-conservacion">
+    <h2>Plazo de conservación y seguridad</h2>
+    <p>
+      Conservamos los datos personales solo durante el tiempo necesario para cumplir las finalidades
+      informadas, las obligaciones legales aplicables y la resolución de eventuales controversias.
+    </p>
+    <p>
+      Implementamos controles de acceso, cifrado en tránsito cuando corresponde, respaldos y
+      procedimientos internos para prevenir accesos no autorizados, pérdida o alteración de la información.
+    </p>
+  </article>
+
+  <article class="isp-privacy__section" id="isp-cookies">
+    <h2>Cookies y tecnologías similares</h2>
+    <p>
+      Utilizamos cookies y tecnologías similares para recordar preferencias, medir audiencia y mejorar
+      el funcionamiento del sitio. Puede configurar su navegador para bloquear o eliminar cookies;
+      algunas funciones del cotizador podrían verse limitadas.
+    </p>
+  </article>
+
+  <article class="isp-privacy__section" id="isp-actualizaciones">
+    <h2>Actualizaciones de esta política</h2>
+    <p>
+      Podemos actualizar esta política para reflejar cambios legales, técnicos o de nuestros servicios.
+      Publicaremos la versión vigente en esta página indicando la fecha de última actualización.
+    </p>
+    <p><strong>Última actualización:</strong> 8 de julio de 2026.</p>
+  </article>
+
+  <aside class="isp-privacy__cta" id="isp-contacto">
+    <h2>¿Tienes dudas? Ejerce tus derechos o contáctanos</h2>
+    <p>
+      Si deseas acceder, rectificar o eliminar tus datos personales, escríbenos y responderemos
+      conforme a los plazos de la Ley N° 21.719.
+    </p>
+    <div class="isp-privacy__actions">
+      <a class="isp-privacy__btn isp-privacy__btn--primary" href="mailto:contacto@isaprespremium.cl">
+        contacto@isaprespremium.cl
+      </a>
+      <a
+        class="isp-privacy__btn isp-privacy__btn--secondary"
+        href="https://wa.me/56964133848"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        WhatsApp +56 9 6413 3848
+      </a>
+    </div>
+  </aside>
+</section>

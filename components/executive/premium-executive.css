@@ -1,0 +1,246 @@
+@import "../../styles/premium-surface-palette.css";
+@import "../../styles/executive-cotizador-theme.css";
+
+[data-premium-surface] {
+  --premium-auth-mesh: color-mix(in srgb, var(--dash-royal) 10%, transparent);
+  --premium-auth-mesh-cyan: color-mix(in srgb, var(--dash-cyan) 8%, transparent);
+}
+
+[data-premium-surface][data-premium-variant="auth"],
+[data-premium-surface][data-premium-variant="dashboard"] {
+  background-color: var(--bg-layout);
+}
+
+[data-premium-surface][data-premium-variant="auth"] {
+  background-image:
+    radial-gradient(ellipse 60% 50% at 10% 0%, var(--premium-auth-mesh), transparent 55%),
+    radial-gradient(ellipse 50% 40% at 95% 10%, var(--premium-auth-mesh-cyan), transparent 50%);
+}
+
+/* ── Header / menú ejecutivo (mockup navy) ─────────────────────────── */
+
+[data-premium-surface] .premium-executive-header {
+  background: var(--dash-navy);
+  border-bottom: none;
+  box-shadow: 0 8px 28px -12px rgb(9 37 88 / 0.45);
+  color: #ffffff;
+}
+
+[data-premium-surface] .premium-executive-menu-btn {
+  color: #ffffff;
+  border-color: color-mix(in srgb, white 28%, transparent);
+  background: color-mix(in srgb, white 6%, transparent);
+}
+
+[data-premium-surface] .premium-executive-menu-btn:hover {
+  background: color-mix(in srgb, white 12%, transparent);
+  color: #ffffff;
+}
+
+[data-premium-surface] .premium-executive-header .premium-executive-tabs {
+  background: transparent;
+  border: none;
+}
+
+[data-premium-surface] .premium-executive-header .premium-executive-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border-radius: 0.375rem;
+  color: color-mix(in srgb, white 88%, transparent);
+  font-weight: 600;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+[data-premium-surface] .premium-executive-header .premium-executive-tab:hover {
+  background: color-mix(in srgb, white 10%, transparent);
+  color: #ffffff;
+}
+
+[data-premium-surface] .premium-executive-tab-active {
+  background: var(--dash-cyan) !important;
+  color: #ffffff !important;
+  box-shadow: 0 6px 18px -8px rgb(26 201 234 / 0.65);
+}
+
+[data-premium-surface] .premium-executive-tab-icon {
+  width: 1.05rem;
+  height: 1.05rem;
+  flex-shrink: 0;
+}
+
+/* User menu sobre header navy */
+[data-premium-surface] .premium-executive-user-on-dark .premium-user-name {
+  color: #ffffff;
+}
+
+[data-premium-surface] .premium-executive-user-on-dark .premium-user-subtitle {
+  color: color-mix(in srgb, var(--dash-cyan) 75%, white);
+}
+
+[data-premium-surface] .premium-executive-user-on-dark .premium-user-avatar {
+  background: var(--dash-cyan);
+  color: #ffffff;
+  border-color: transparent;
+}
+
+[data-premium-surface] .premium-executive-user-on-dark .premium-user-menu-trigger {
+  color: #ffffff;
+}
+
+[data-premium-surface] .premium-executive-user-on-dark .premium-user-menu-dropdown {
+  border-color: color-mix(in srgb, white 18%, transparent);
+  background: color-mix(in srgb, var(--dash-navy) 96%, black);
+  box-shadow: 0 12px 28px -10px rgb(0 0 0 / 0.45);
+}
+
+[data-premium-surface] .premium-executive-user-on-dark .premium-user-menu-item {
+  color: #ffffff;
+}
+
+[data-premium-surface] .premium-executive-user-on-dark .premium-user-menu-item:hover {
+  background: color-mix(in srgb, white 10%, transparent);
+}
+
+/* Mobile drawer */
+[data-premium-surface] .premium-executive-mobile-nav {
+  background: #ffffff;
+}
+
+[data-premium-surface] .premium-executive-mobile-nav-header {
+  background: var(--dash-navy);
+  color: #ffffff;
+  border-bottom: none;
+}
+
+[data-premium-surface] .premium-executive-mobile-nav-header .premium-mobile-nav-kicker {
+  color: var(--dash-cyan);
+}
+
+[data-premium-surface] .premium-executive-mobile-nav-header .premium-mobile-nav-title {
+  color: #ffffff;
+}
+
+/* ── Dashboard home ────────────────────────────────────────────────── */
+
+/* Radios más cuadrados en el panel (cards / botones / inputs), sin tocar avatares */
+[data-premium-surface][data-premium-variant="dashboard"] .rounded-2xl {
+  border-radius: 0.5rem;
+}
+
+[data-premium-surface][data-premium-variant="dashboard"] .rounded-xl {
+  border-radius: 0.375rem;
+}
+
+[data-premium-surface][data-premium-variant="dashboard"] .rounded-lg {
+  border-radius: 0.3125rem;
+}
+
+[data-premium-surface][data-premium-variant="dashboard"] button.rounded-full,
+[data-premium-surface][data-premium-variant="dashboard"] a.rounded-full,
+[data-premium-surface][data-premium-variant="dashboard"] .rounded-full:is(button, a, [role="button"]) {
+  border-radius: 0.375rem;
+}
+
+[data-premium-surface] .premium-dash-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border);
+  background: #ffffff;
+  box-shadow: var(--shadow-card);
+}
+
+[data-premium-surface] .premium-dash-hero-deco {
+  pointer-events: none;
+  position: absolute;
+  inset: auto -2% -20% auto;
+  width: min(42%, 280px);
+  height: 140%;
+  opacity: 0.55;
+}
+
+[data-premium-surface] .premium-dash-kicker {
+  color: var(--dash-cyan);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+[data-premium-surface] .premium-dash-greeting {
+  color: var(--dash-navy);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+[data-premium-surface] .premium-dash-greeting-name {
+  color: var(--dash-cyan);
+}
+
+[data-premium-surface] .premium-dash-stat-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border);
+  background: #ffffff;
+  box-shadow: var(--shadow-card);
+  padding: 1.15rem 1.2rem 1.25rem;
+}
+
+[data-premium-surface] .premium-executive-logo {
+  background: #f4f1ea !important;
+  box-shadow: 0 1px 2px rgb(9 37 88 / 0.12) !important;
+  border-radius: 0.375rem;
+  overflow: hidden;
+  padding: 0.2rem;
+  /* Un poco más grande que el `lg` base (56px) */
+  width: 3.75rem;
+  height: 3.75rem;
+}
+
+@media (min-width: 640px) {
+  [data-premium-surface] .premium-executive-logo {
+    width: 4.25rem;
+    height: 4.25rem;
+  }
+}
+
+[data-premium-surface] .premium-dash-stat-card::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--dash-cyan), var(--dash-blue));
+}
+
+[data-premium-surface] .premium-dash-stat-label {
+  color: var(--dash-navy);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+[data-premium-surface] .premium-dash-stat-value {
+  color: var(--dash-cyan);
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+
+[data-premium-surface] .premium-dash-stat-hint {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+[data-premium-surface] .premium-dash-stat-icon {
+  color: var(--dash-navy);
+  opacity: 0.85;
+}

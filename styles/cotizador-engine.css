@@ -1,0 +1,1054 @@
+/*
+ * Cotizador Virtual — vibrant green-centric design system
+ */
+
+:root {
+  --primary: #00b159;
+  --primary-hover: #00c966;
+  --primary-dark: #004d26;
+  --secondary: #0070f3;
+  --accent-warning: #ffb703;
+  --accent-warning-foreground: #3d2e00;
+  --accent-danger: #e63946;
+  --bg-layout: #f4f7f6;
+
+  --background: #ffffff;
+  --foreground: #0f1f17;
+  --muted: #5c6f66;
+  --border: #dce6e2;
+  --surface-hover: #eef4f2;
+
+  --primary-foreground: #ffffff;
+  --secondary-muted: #e8f2ff;
+  --warning-muted: #fff8e6;
+  --danger-muted: #fef2f2;
+
+  --gradient-coverage: linear-gradient(
+    90deg,
+    var(--primary) 0%,
+    var(--secondary) 100%
+  );
+
+  /* Radios más contenidos (look más cuadrado en cotizador) */
+  --radius-lg: 0.5rem;
+  --radius-md: 0.375rem;
+  --radius-sm: 0.25rem;
+  --radius-xl: 0.625rem;
+
+  --shadow-card: 0 4px 24px -8px rgb(0 77 38 / 0.08);
+  --shadow-card-hover: 0 12px 32px -10px rgb(0 177 89 / 0.22);
+  --shadow-cta: 0 8px 24px -8px rgb(0 177 89 / 0.45);
+
+  /* Plan cards — elevación y separación entre tarjetas del listado */
+  --plan-card-surface: #ffffff;
+  --plan-card-header-bg: color-mix(in srgb, var(--bg-layout) 26%, white);
+  --plan-card-coverage-bg: color-mix(in srgb, var(--bg-layout) 10%, white);
+  --plan-card-border: color-mix(in srgb, var(--border) 72%, var(--foreground) 28%);
+  --plan-card-ring: rgb(15 31 23 / 0.045);
+  --shadow-plan-card:
+    0 1px 2px rgb(0 0 0 / 0.05),
+    0 2px 8px -2px rgb(0 77 38 / 0.07),
+    0 10px 28px -8px rgb(0 77 38 / 0.11);
+  --shadow-plan-card-hover:
+    0 0 0 1px var(--primary),
+    0 4px 14px -4px rgb(0 177 89 / 0.14),
+    0 16px 40px -10px rgb(0 177 89 / 0.2);
+
+  /* Barra de criterios + panel de filtros (superficie de marca) */
+  --criteria-surface: #fff8e8;
+  --criteria-ring: #f0e4c8;
+  --criteria-on-surface: var(--foreground);
+  --criteria-on-surface-muted: var(--muted);
+  --criteria-control-bg: #ffffff;
+  --criteria-control-fg: var(--primary-dark);
+  --criteria-control-placeholder: color-mix(in srgb, var(--primary-dark) 45%, transparent);
+  --criteria-chip-idle-bg: color-mix(in srgb, var(--foreground) 4%, white);
+  --criteria-chip-idle-border: var(--border);
+  --criteria-chip-idle-fg: var(--muted);
+  --criteria-section-bg: color-mix(in srgb, var(--bg-layout) 35%, white);
+  --criteria-section-border: color-mix(in srgb, var(--border) 70%, transparent);
+  --criteria-divider: color-mix(in srgb, var(--border) 80%, transparent);
+  /* Acento para filtros seleccionados — mismo color principal del agente */
+  --criteria-accent: var(--primary);
+  --criteria-accent-fg: var(--primary-foreground);
+  --criteria-accent-soft: color-mix(in srgb, var(--primary) 22%, white);
+
+  /* Convenio — fallback coral (marcas naranja / prueba de contraste) */
+  --convenio-accent: #d85a30;
+  --convenio-accent-strong: #ff6b4a;
+  --convenio-accent-muted: #fce8e0;
+
+  /* CTA de acción: por defecto = primary; marcas pueden sobreescribir (--cta) */
+  --cta: var(--primary);
+  --cta-hover: var(--primary-hover);
+
+  /* Espaciado base 8pt */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+}
+
+/*
+ * Marca: Cotízalo Antes (naranja) — sobreescribe los tokens base solo dentro
+ * del subárbol marcado con data-brand. Los componentes siguen usando las
+ * mismas clases (bg-primary, text-primary-dark, …); solo cambian los valores.
+ * A futuro: agregar otras marcas con la misma estructura.
+ * Marca premium: cotizadorpremium.cl (ver también [data-brand="premium"]).
+ */
+[data-brand="cotizalo-antes"] {
+  /* Barra naranja; verde manzana en CTAs (Buscar / Solicitar) y acentos convenio */
+  --primary: #ed7d11;
+  --primary-hover: #f59324;
+  --primary-dark: #92450a;
+  --primary-foreground: #ffffff;
+
+  --secondary: #0e7c9c;
+  --secondary-muted: #eef6f8;
+
+  --cta: #8cc63f;
+  --cta-hover: #7ab82f;
+
+  /* Fondo neutro: blanco / gris muy suave (sin tinte naranja) */
+  --bg-layout: #ffffff;
+  --foreground: #1a1a1a;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+  --surface-hover: #f4f4f5;
+
+  --shadow-card: 0 4px 24px -8px rgb(0 0 0 / 0.06);
+  --shadow-card-hover: 0 12px 32px -10px rgb(0 0 0 / 0.1);
+  --shadow-cta: 0 8px 24px -8px rgb(140 198 63 / 0.45);
+
+  --plan-card-header-bg: color-mix(in srgb, var(--bg-layout) 14%, white);
+  --plan-card-coverage-bg: #fafafa;
+  --plan-card-border: color-mix(in srgb, var(--border) 80%, var(--foreground) 20%);
+  --plan-card-ring: rgb(0 0 0 / 0.05);
+  --shadow-plan-card:
+    0 1px 2px rgb(0 0 0 / 0.05),
+    0 2px 8px -2px rgb(0 0 0 / 0.06),
+    0 10px 28px -8px rgb(0 0 0 / 0.09);
+  --shadow-plan-card-hover:
+    0 0 0 1px var(--primary),
+    0 4px 14px -4px rgb(237 125 17 / 0.12),
+    0 16px 40px -10px rgb(237 125 17 / 0.16);
+
+  --criteria-surface: #ed7d11;
+  --criteria-ring: #c4650c;
+  --criteria-on-surface: #ffffff;
+  --criteria-on-surface-muted: rgb(255 255 255 / 0.9);
+  --criteria-control-bg: #ffffff;
+  --criteria-control-fg: #92450a;
+  --criteria-control-placeholder: rgb(146 69 10 / 0.45);
+  --criteria-chip-idle-bg: rgb(255 255 255 / 0.16);
+  --criteria-chip-idle-border: rgb(255 255 255 / 0.38);
+  --criteria-chip-idle-fg: #ffffff;
+  --criteria-section-bg: rgb(255 255 255 / 0.12);
+  --criteria-section-border: rgb(255 255 255 / 0.22);
+  --criteria-divider: rgb(255 255 255 / 0.22);
+  --criteria-accent: var(--primary);
+  --criteria-accent-fg: var(--primary-foreground);
+  --criteria-accent-soft: color-mix(in srgb, var(--primary) 18%, white);
+  --convenio-accent: #ed7d11;
+  --convenio-accent-strong: #0e7c9c;
+  --convenio-accent-muted: #eef6f8;
+}
+
+[data-brand="desdetu7"] {
+  /* Barra naranja; verde manzana en CTAs (Buscar / Solicitar) y acentos convenio */
+  --primary: #ff6600;
+  --primary-hover: #ff8533;
+  --primary-dark: #cc5200;
+  --primary-foreground: #ffffff;
+
+  --secondary: #111827;
+  --secondary-muted: #f5f7fa;
+
+  --cta: #8cc63f;
+  --cta-hover: #7ab82f;
+
+  --bg-layout: #ffffff;
+  --foreground: #111827;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+  --surface-hover: #f4f4f5;
+
+  --shadow-card: 0 4px 24px -8px rgb(0 0 0 / 0.06);
+  --shadow-card-hover: 0 12px 32px -10px rgb(255 102 0 / 0.18);
+  --shadow-cta: 0 8px 24px -8px rgb(140 198 63 / 0.45);
+
+  --plan-card-header-bg: color-mix(in srgb, var(--bg-layout) 14%, white);
+  --plan-card-coverage-bg: #fafafa;
+  --criteria-surface: #ff6600;
+  --criteria-ring: #cc5200;
+  --criteria-on-surface: #ffffff;
+  --criteria-on-surface-muted: rgb(255 255 255 / 0.9);
+  --criteria-control-bg: #ffffff;
+  --criteria-control-fg: #cc5200;
+  --criteria-control-placeholder: rgb(204 82 0 / 0.45);
+  --criteria-chip-idle-bg: rgb(255 255 255 / 0.16);
+  --criteria-chip-idle-border: rgb(255 255 255 / 0.38);
+  --criteria-chip-idle-fg: #ffffff;
+  --criteria-section-bg: rgb(255 255 255 / 0.12);
+  --criteria-section-border: rgb(255 255 255 / 0.22);
+  --criteria-divider: rgb(255 255 255 / 0.22);
+  --criteria-accent: var(--primary);
+  --criteria-accent-fg: var(--primary-foreground);
+  --criteria-accent-soft: color-mix(in srgb, var(--primary) 18%, white);
+  --convenio-accent: #ff6600;
+  --convenio-accent-strong: #111827;
+  --convenio-accent-muted: #f5f7fa;
+}
+
+[data-brand="premium"] {
+  /* Alinear con cotizador-premium-palette.ts */
+  --primary: #0d6dee;
+  --primary-hover: #1289f8;
+  --primary-dark: #092558;
+  --primary-foreground: #ffffff;
+
+  --secondary: #1ac9ea;
+  --secondary-muted: #e6f9fd;
+
+  /* Verde manzana: Buscar / Solicitar asesoría */
+  --cta: #8cc63f;
+  --cta-hover: #7ab82f;
+
+  --bg-layout: #f5f9fc;
+  --foreground: #092558;
+  --muted: #7a8fa5;
+  --border: #d0e2f0;
+  --surface-hover: #eaf3fa;
+
+  --shadow-card: 0 4px 24px -8px rgb(9 37 88 / 0.07);
+  --shadow-card-hover: 0 12px 32px -10px rgb(13 109 238 / 0.18);
+  --shadow-cta: 0 8px 24px -8px rgb(140 198 63 / 0.5);
+
+  --plan-card-header-bg: color-mix(in srgb, var(--secondary-muted) 45%, white);
+  --plan-card-coverage-bg: color-mix(in srgb, var(--bg-layout) 35%, white);
+  --plan-card-border: color-mix(in srgb, var(--border) 80%, var(--foreground) 20%);
+  --plan-card-ring: rgb(9 37 88 / 0.04);
+  --shadow-plan-card:
+    0 1px 2px rgb(9 37 88 / 0.04),
+    0 2px 8px -2px rgb(13 109 238 / 0.08),
+    0 10px 28px -8px rgb(13 109 238 / 0.1);
+  --shadow-plan-card-hover:
+    0 0 0 1px var(--primary),
+    0 4px 14px -4px rgb(13 109 238 / 0.14),
+    0 16px 40px -10px rgb(13 109 238 / 0.18);
+
+  --criteria-surface: #0d6dee;
+  --criteria-ring: #0956c4;
+  --criteria-on-surface: #ffffff;
+  --criteria-on-surface-muted: rgb(255 255 255 / 0.9);
+  --criteria-control-bg: #ffffff;
+  --criteria-control-fg: #092558;
+  --criteria-control-placeholder: rgb(9 37 88 / 0.45);
+  --criteria-chip-idle-bg: rgb(255 255 255 / 0.16);
+  --criteria-chip-idle-border: rgb(255 255 255 / 0.38);
+  --criteria-chip-idle-fg: #ffffff;
+  --criteria-section-bg: rgb(255 255 255 / 0.12);
+  --criteria-section-border: rgb(255 255 255 / 0.22);
+  --criteria-divider: rgb(255 255 255 / 0.22);
+  /* Misma familia que badge / barra: color principal del agente */
+  --criteria-accent: var(--primary);
+  --criteria-accent-fg: var(--primary-foreground);
+  --criteria-accent-soft: color-mix(in srgb, var(--primary) 18%, white);
+
+  /* Convenio: coral sobre azul primary de la barra de criterios */
+  --convenio-accent: #d85a30;
+  --convenio-accent-strong: #ff6b4a;
+  --convenio-accent-muted: #fce8e0;
+}
+
+/* Barra de criterios: tipografía sobre superficie de marca */
+[data-criteria-bar] {
+  color: var(--criteria-on-surface);
+}
+
+[data-criteria-bar] input,
+[data-criteria-bar] select,
+[data-criteria-bar] textarea {
+  color: var(--criteria-control-fg);
+  background-color: var(--criteria-control-bg);
+}
+
+[data-criteria-bar] input::placeholder,
+[data-criteria-bar] textarea::placeholder {
+  color: var(--criteria-control-placeholder);
+}
+
+[data-criteria-bar] select option {
+  color: var(--criteria-control-fg);
+  background-color: var(--criteria-control-bg);
+}
+
+[data-criteria-bar] label,
+[data-criteria-bar] .text-muted,
+[data-criteria-bar] [data-criteria-added] {
+  color: var(--criteria-on-surface-muted) !important;
+}
+
+/*
+ * Panel de filtros: superficie blanca, acento de marca en bordes / activos.
+ * Activos usan --primary (mismo color que badge "Mostrando…" y CTAs).
+ */
+[data-filters-panel] {
+  background-color: #ffffff !important;
+  border-color: var(--border) !important;
+  color: var(--foreground);
+  box-shadow: 0 4px 18px -10px rgb(0 0 0 / 0.12);
+}
+
+[data-filters-panel] [data-filters-header] {
+  border-color: var(--border) !important;
+  color: var(--foreground);
+}
+
+[data-filters-panel] [data-filters-header] .text-primary-dark,
+[data-filters-panel] [data-filters-title] {
+  color: var(--foreground) !important;
+}
+
+[data-filters-panel] [data-filters-header] .text-muted,
+[data-filters-panel] [data-filters-close] {
+  color: var(--muted) !important;
+}
+
+[data-filters-panel] .divide-y > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--border) !important;
+}
+
+[data-filters-panel] h2,
+[data-filters-panel] .text-primary-dark,
+[data-filters-panel] [class*="text-primary-dark"] {
+  color: var(--foreground) !important;
+}
+
+[data-filters-panel] .text-muted,
+[data-filters-panel] [class*="text-muted"] {
+  color: var(--muted) !important;
+}
+
+[data-filters-panel] .text-foreground {
+  color: var(--foreground) !important;
+}
+
+[data-filters-panel] [class*="bg-bg-layout"],
+[data-filters-panel] [class*="border-border"] {
+  background-color: #ffffff !important;
+  border-color: var(--border) !important;
+}
+
+/* Chips de cobertura / opciones inactivas — borde suave */
+[data-filters-panel] button[aria-pressed="false"] {
+  background-color: #ffffff !important;
+  border-color: var(--border) !important;
+  color: var(--muted) !important;
+  box-shadow: none !important;
+}
+
+[data-filters-panel] button[aria-pressed="false"]:hover {
+  background-color: var(--surface-hover) !important;
+  border-color: color-mix(in srgb, var(--primary) 35%, var(--border)) !important;
+  color: var(--foreground) !important;
+}
+
+/* Chip activo: criteria-accent (brand) — CTAs usan --primary por separado */
+[data-filters-panel] button[aria-pressed="true"],
+[data-filters-panel] [data-filter-active="true"] {
+  background-color: var(--criteria-accent, var(--primary)) !important;
+  border-color: var(--criteria-accent, var(--primary)) !important;
+  color: var(--criteria-accent-fg, var(--primary-foreground)) !important;
+  font-weight: 800 !important;
+  box-shadow: none !important;
+}
+
+[data-filters-panel] [data-filter-tone="ambulatory"][aria-pressed="true"] {
+  background-color: var(--criteria-accent, var(--primary)) !important;
+  color: var(--criteria-accent-fg, var(--primary-foreground)) !important;
+  border-color: var(--criteria-accent, var(--primary)) !important;
+  box-shadow: none !important;
+}
+
+/* Select de prestador y controles tipo input */
+[data-filters-panel] button[aria-haspopup="dialog"] {
+  background-color: #ffffff !important;
+  border-color: var(--border) !important;
+  color: var(--foreground) !important;
+  box-shadow: none;
+}
+
+[data-filters-panel] button[aria-haspopup="dialog"][data-filter-active="true"] {
+  background-color: #ffffff !important;
+  border-color: var(--criteria-accent, var(--primary)) !important;
+  color: var(--criteria-accent, var(--primary)) !important;
+  box-shadow: inset 0 0 0 1px var(--criteria-accent, var(--primary)) !important;
+}
+
+[data-filters-panel] button[aria-haspopup="dialog"] .text-primary-dark,
+[data-filters-panel] button[aria-haspopup="dialog"] [class*="text-primary-dark"],
+[data-filters-panel] button[aria-haspopup="dialog"] .text-muted,
+[data-filters-panel] button[aria-haspopup="dialog"] [class*="text-muted"] {
+  color: inherit !important;
+  opacity: 0.92;
+}
+
+[data-filters-panel] button[aria-haspopup="dialog"][data-filter-active="true"] .text-primary-dark,
+[data-filters-panel] button[aria-haspopup="dialog"][data-filter-active="true"] [class*="text-primary-dark"],
+[data-filters-panel] button[aria-haspopup="dialog"][data-filter-active="true"] .text-muted,
+[data-filters-panel] button[aria-haspopup="dialog"][data-filter-active="true"] [class*="text-muted"] {
+  color: inherit !important;
+  opacity: 1;
+}
+
+[data-filters-panel] input,
+[data-filters-panel] select,
+[data-filters-panel] textarea {
+  background-color: #ffffff !important;
+  color: var(--foreground) !important;
+  border-color: var(--border) !important;
+}
+
+[data-filters-panel] input[type="checkbox"] {
+  accent-color: var(--criteria-accent, var(--primary)) !important;
+  background-color: #ffffff !important;
+}
+
+[data-filters-panel] label:has(input[type="checkbox"]:checked) {
+  background-color: color-mix(
+    in srgb,
+    var(--criteria-accent, var(--primary)) 10%,
+    white
+  ) !important;
+  color: var(--foreground) !important;
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--criteria-accent, var(--primary)) 55%, var(--border));
+}
+
+[data-filters-panel] label:has(input[type="checkbox"]:checked) span {
+  color: var(--foreground) !important;
+  font-weight: 700;
+}
+
+/* Grupo de chips / rango de precio sobre blanco */
+[data-filters-panel] [data-coverage-chip-group] {
+  background-color: #ffffff !important;
+  border-color: var(--border) !important;
+}
+
+[data-filters-panel] [data-price-range] {
+  background-color: #ffffff !important;
+  border-color: var(--border) !important;
+}
+
+[data-filters-panel] [data-price-range] .text-muted,
+[data-filters-panel] [data-price-range] [class*="text-muted"] {
+  color: var(--muted) !important;
+}
+
+[data-filters-panel] [data-price-range] .text-primary-dark,
+[data-filters-panel] [data-price-range] [class*="text-primary-dark"] {
+  color: var(--foreground) !important;
+}
+
+/* Pista del rango: contraste visible sobre panel blanco */
+[data-price-track] {
+  background-color: color-mix(in srgb, var(--foreground) 18%, var(--border));
+}
+
+[data-price-track-active] {
+  background-color: var(--primary);
+}
+
+[data-filters-panel] [data-price-track] {
+  background-color: color-mix(in srgb, var(--foreground) 22%, #ffffff) !important;
+}
+
+[data-filters-panel] [data-price-track-active] {
+  background-color: var(--primary) !important;
+}
+
+.price-range-input {
+  pointer-events: none;
+}
+
+.price-range-input:focus-visible {
+  outline: none;
+}
+
+.price-range-input::-webkit-slider-runnable-track {
+  height: 0.5rem;
+  background: transparent;
+  border: none;
+}
+
+.price-range-input::-moz-range-track {
+  height: 0.5rem;
+  background: transparent;
+  border: none;
+}
+
+.price-range-input::-webkit-slider-thumb {
+  pointer-events: auto;
+  -webkit-appearance: none;
+  appearance: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-top: -0.375rem;
+  border-radius: 9999px;
+  border: 2px solid #ffffff;
+  background: var(--primary);
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.35),
+    0 6px 14px -4px rgb(0 0 0 / 0.45);
+  cursor: grab;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+.price-range-input::-moz-range-thumb {
+  pointer-events: auto;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 9999px;
+  border: 2px solid #ffffff;
+  background: var(--primary);
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.35),
+    0 6px 14px -4px rgb(0 0 0 / 0.45);
+  cursor: grab;
+}
+
+.price-range-input:active::-webkit-slider-thumb,
+.price-range-input:focus-visible::-webkit-slider-thumb {
+  cursor: grabbing;
+  transform: scale(1.08);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--primary) 35%, white),
+    0 8px 18px -4px rgb(0 0 0 / 0.5);
+}
+
+.price-range-input:active::-moz-range-thumb,
+.price-range-input:focus-visible::-moz-range-thumb {
+  cursor: grabbing;
+  transform: scale(1.08);
+}
+
+[data-filters-panel] input::placeholder,
+[data-filters-panel] textarea::placeholder {
+  color: var(--muted) !important;
+}
+
+[data-filters-panel] [data-filters-clear] {
+  background-color: #ffffff !important;
+  border-color: var(--border) !important;
+  color: var(--primary) !important;
+}
+
+[data-filters-panel] [data-filters-clear]:hover {
+  background-color: var(--surface-hover) !important;
+  border-color: color-mix(in srgb, var(--primary) 40%, var(--border)) !important;
+}
+
+[data-filters-panel] button[aria-label^="Más información"],
+[data-filters-panel] button[aria-describedby] {
+  color: var(--muted) !important;
+}
+
+[data-filters-panel] button[aria-label^="Más información"]:hover,
+[data-filters-panel] button[aria-describedby]:hover {
+  color: var(--primary) !important;
+}
+
+/* Barra de criterios Premium: CTA / convenio específicos sobre primary azul */
+[data-brand="premium"] [data-criteria-bar] {
+  /* Coral claro legible sobre azul (el #D85A30 sólido no contrasta) */
+  --convenio-accent: #ffd2c2;
+  --convenio-accent-strong: #ff6b4a;
+  --convenio-accent-muted: rgb(255 255 255 / 0.18);
+}
+
+/* «Agregar / Actualizar»: cyan de marca — se lee como botón, no se confunde con el CTA */
+[data-brand="premium"] [data-criteria-bar] [data-criteria-add] {
+  background-color: #1ac9ea !important;
+  color: #092558 !important;
+  border: none !important;
+  border-radius: 0.375rem !important;
+  font-weight: 700 !important;
+  padding-inline: 0.9rem !important;
+  box-shadow:
+    0 2px 0 rgb(9 37 88 / 0.12),
+    0 6px 16px -6px rgb(26 201 234 / 0.65);
+  opacity: 1 !important;
+}
+
+[data-brand="premium"] [data-criteria-bar] [data-criteria-add]:disabled {
+  background-color: rgb(26 201 234 / 0.45) !important;
+  color: #092558 !important;
+  box-shadow: none;
+  opacity: 1 !important;
+  cursor: not-allowed;
+}
+
+[data-brand="premium"] [data-criteria-bar] [data-criteria-add]:not(:disabled):hover {
+  background-color: #3dd4f0 !important;
+  color: #092558 !important;
+  filter: none;
+}
+
+[data-brand="premium"] [data-criteria-bar] [data-criteria-add]:not(:disabled):active {
+  transform: scale(0.98);
+}
+
+[data-criteria-bar] [data-criteria-committed-icon] {
+  background-color: rgb(255 255 255 / 0.22) !important;
+  color: var(--criteria-on-surface) !important;
+}
+
+[data-criteria-bar] [data-criteria-loads] {
+  background-color: var(--criteria-control-bg) !important;
+  color: var(--criteria-control-fg) !important;
+  border-color: rgb(255 255 255 / 0.55) !important;
+}
+
+[data-criteria-bar] [data-criteria-loads]:hover {
+  background-color: #ffffff !important;
+}
+
+[data-criteria-bar] [data-criteria-secondary] {
+  background-color: rgb(255 255 255 / 0.14) !important;
+  color: var(--criteria-on-surface) !important;
+  border-color: rgb(255 255 255 / 0.4) !important;
+}
+
+[data-criteria-bar] [data-criteria-secondary]:hover {
+  background-color: rgb(255 255 255 / 0.22) !important;
+}
+
+/* CTA / add Premium (overrides genéricos anteriores) */
+[data-brand="premium"] [data-criteria-bar] [data-criteria-committed-icon] {
+  background-color: rgb(255 255 255 / 0.22) !important;
+  color: #ffffff !important;
+}
+
+/* CTA principal «Buscar plan»: verde manzana sobre barra azul */
+[data-brand="premium"] [data-criteria-bar] [data-criteria-cta] {
+  background-color: #8cc63f !important;
+  color: #ffffff !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.01em;
+  border: 2px solid rgb(255 255 255 / 0.85) !important;
+  box-shadow:
+    0 4px 0 rgb(9 37 88 / 0.18),
+    0 12px 32px -8px rgb(140 198 63 / 0.75),
+    0 0 0 4px rgb(255 255 255 / 0.2);
+  transform: translateY(0);
+}
+
+[data-brand="premium"] [data-criteria-bar] [data-criteria-cta]:hover {
+  background-color: #7ab82f !important;
+  color: #ffffff !important;
+  filter: none;
+  box-shadow:
+    0 5px 0 rgb(9 37 88 / 0.16),
+    0 16px 36px -8px rgb(140 198 63 / 0.85),
+    0 0 0 4px rgb(255 255 255 / 0.28);
+}
+
+[data-brand="premium"] [data-criteria-bar] [data-criteria-cta]:active {
+  transform: translateY(1px) scale(0.99);
+}
+
+[data-brand="premium"] [data-criteria-bar] [data-criteria-secondary] {
+  color: #092558 !important;
+  border: 1.5px solid rgb(255 255 255 / 0.85) !important;
+  background-color: #ffffff !important;
+  font-weight: 700 !important;
+  border-radius: 0.375rem;
+  box-shadow: 0 4px 14px -6px rgb(9 37 88 / 0.28);
+}
+
+[data-brand="premium"] [data-criteria-bar] [data-criteria-secondary]:hover {
+  background-color: #eaf3fa !important;
+  border-color: #ffffff !important;
+  color: #092558 !important;
+}
+
+[data-brand="premium"] [data-criteria-bar] [data-criteria-loads] {
+  border-color: rgb(255 255 255 / 0.55);
+  background-color: rgb(255 255 255 / 0.95);
+  color: var(--primary-dark);
+}
+
+[data-brand="premium"] [data-criteria-bar] [data-criteria-loads]:hover {
+  background-color: #ffffff;
+}
+
+/* Convenio sobre fondo primary: acento claro + CTA coral relleno */
+[data-brand="premium"] [data-convenio-inline] {
+  border-color: rgb(255 255 255 / 0.35) !important;
+}
+
+[data-brand="premium"] [data-convenio-title],
+[data-brand="premium"] [data-convenio-toggle],
+[data-brand="premium"] [data-convenio-info] {
+  color: #ffd2c2 !important;
+}
+
+[data-brand="premium"] [data-convenio-info] {
+  border-color: rgb(255 210 194 / 0.55) !important;
+  background-color: rgb(255 255 255 / 0.12);
+}
+
+[data-brand="premium"] [data-convenio-info]:hover {
+  background-color: rgb(255 255 255 / 0.22) !important;
+  color: #ffffff !important;
+}
+
+[data-brand="premium"] [data-convenio-hint] {
+  color: rgb(255 255 255 / 0.78) !important;
+}
+
+[data-brand="premium"] [data-convenio-field-label] {
+  color: rgb(255 255 255 / 0.9) !important;
+}
+
+/* CTA Validar convenio: color sólido por marca (evita conflicto con variant ghost). */
+[data-convenio-cta] {
+  background-color: var(--convenio-accent-strong) !important;
+  color: #ffffff !important;
+}
+
+[data-convenio-cta]:hover:not(:disabled) {
+  background-color: var(--convenio-accent-strong) !important;
+  filter: brightness(0.95);
+  color: #ffffff !important;
+}
+
+[data-brand="isapre-premium"] {
+  /* Brand turquesa; verde manzana solo en --cta (Buscar / Solicitar asesoría) */
+  --primary: #0f8d8e;
+  --primary-hover: #0c7576;
+  --primary-dark: #154b56;
+  --primary-foreground: #ffffff;
+
+  --secondary: #0f8d8e;
+  --secondary-muted: #e8f5f2;
+
+  --cta: #8cc63f;
+  --cta-hover: #7ab82f;
+
+  --bg-layout: #f7fafb;
+  --background: #ffffff;
+  --foreground: #154b56;
+  --muted: #7a8d93;
+  --border: #e6eff0;
+  --surface-hover: #eef5f6;
+
+  --shadow-card: 0 4px 24px -8px rgb(21 75 86 / 0.07);
+  --shadow-card-hover: 0 12px 32px -10px rgb(15 141 142 / 0.18);
+  --shadow-cta: 0 8px 24px -8px rgb(140 198 63 / 0.5);
+
+  --plan-card-surface: #ffffff;
+  --plan-card-header-bg: color-mix(in srgb, var(--bg-layout) 40%, white);
+  --plan-card-coverage-bg: color-mix(in srgb, var(--bg-layout) 55%, white);
+  --plan-card-border: color-mix(in srgb, var(--border) 85%, var(--foreground) 15%);
+  --plan-card-ring: rgb(21 75 86 / 0.04);
+  --shadow-plan-card:
+    0 1px 2px rgb(21 75 86 / 0.04),
+    0 2px 8px -2px rgb(15 141 142 / 0.08),
+    0 10px 28px -8px rgb(15 141 142 / 0.1);
+  --shadow-plan-card-hover:
+    0 0 0 1px var(--primary),
+    0 4px 14px -4px rgb(15 141 142 / 0.14),
+    0 16px 40px -10px rgb(15 141 142 / 0.18);
+
+  --gradient-coverage: linear-gradient(90deg, #0f8d8e 0%, #0c7576 100%);
+
+  --criteria-surface: #0f8d8e;
+  --criteria-ring: #0c7576;
+  --criteria-on-surface: #ffffff;
+  --criteria-on-surface-muted: rgb(255 255 255 / 0.9);
+  --criteria-control-bg: #ffffff;
+  --criteria-control-fg: #154b56;
+  --criteria-control-placeholder: rgb(21 75 86 / 0.45);
+  --criteria-chip-idle-bg: rgb(255 255 255 / 0.16);
+  --criteria-chip-idle-border: rgb(255 255 255 / 0.38);
+  --criteria-chip-idle-fg: #ffffff;
+  --criteria-section-bg: rgb(255 255 255 / 0.12);
+  --criteria-section-border: rgb(255 255 255 / 0.22);
+  --criteria-divider: rgb(255 255 255 / 0.22);
+  --criteria-accent: #0f8d8e;
+  --criteria-accent-fg: #ffffff;
+  --criteria-accent-soft: #e8f5f2;
+  --convenio-accent: #0f8d8e;
+  --convenio-accent-strong: #0f8d8e;
+  --convenio-accent-muted: #e8f5f2;
+}
+
+/*
+ * Convenio inline sobre barra de criterios de marca (tipografía clara).
+ * Aplica a todos los agentes con criteria-surface de color sólido.
+ */
+[data-brand] [data-criteria-bar] {
+  --convenio-accent: #ffffff;
+  --convenio-accent-muted: rgb(255 255 255 / 0.18);
+}
+
+[data-brand="premium"] [data-criteria-bar] {
+  --convenio-accent: #ffd2c2;
+  --convenio-accent-strong: #ff6b4a;
+  --convenio-accent-muted: rgb(255 255 255 / 0.18);
+}
+
+[data-brand] [data-convenio-inline] {
+  border-color: rgb(255 255 255 / 0.35) !important;
+}
+
+[data-brand] [data-convenio-info] {
+  border-color: rgb(255 255 255 / 0.45) !important;
+  background-color: rgb(255 255 255 / 0.12);
+}
+
+[data-brand] [data-convenio-info]:hover {
+  background-color: rgb(255 255 255 / 0.22) !important;
+  color: #ffffff !important;
+}
+
+[data-brand] [data-convenio-hint],
+[data-brand] [data-convenio-field-label] {
+  color: rgb(255 255 255 / 0.88) !important;
+}
+
+/* Pill de descuento: acento secundario soft, legible sobre la barra */
+[data-convenio-discount] {
+  display: inline-flex;
+  align-items: center;
+  margin-inline: 0.15em;
+  border-radius: 9999px;
+  padding: 0.1em 0.55em;
+  font-weight: 800;
+  background: color-mix(in srgb, var(--secondary) 32%, white);
+  color: var(--primary-dark);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--secondary) 28%, white);
+}
+
+[data-brand] [data-criteria-bar] [data-convenio-discount] {
+  background: color-mix(in srgb, var(--secondary) 42%, white);
+  color: var(--primary-dark);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.35);
+}
+
+/* Todos los agentes: “convenio” + pill descuento en verde manzana (sin relleno) */
+[data-brand="isapre-premium"] [data-convenio-word],
+[data-brand="desdetu7"] [data-convenio-word],
+[data-brand="cotizalo-antes"] [data-convenio-word],
+[data-brand="premium"] [data-convenio-word] {
+  color: #8cc63f !important;
+}
+
+[data-brand="isapre-premium"] [data-convenio-discount],
+[data-brand="isapre-premium"] [data-criteria-bar] [data-convenio-discount],
+[data-brand="desdetu7"] [data-convenio-discount],
+[data-brand="desdetu7"] [data-criteria-bar] [data-convenio-discount],
+[data-brand="cotizalo-antes"] [data-convenio-discount],
+[data-brand="cotizalo-antes"] [data-criteria-bar] [data-convenio-discount],
+[data-brand="premium"] [data-convenio-discount],
+[data-brand="premium"] [data-criteria-bar] [data-convenio-discount] {
+  background: transparent !important;
+  color: #8cc63f !important;
+  box-shadow: none !important;
+  border: 1px solid #8cc63f;
+}
+
+/* Gradiente de marca eliminado: barra y filtros usan color sólido / blanco */
+
+@theme inline {
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-dark: var(--primary-dark);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-muted: var(--secondary-muted);
+  --color-accent-warning: var(--accent-warning);
+  --color-accent-warning-foreground: var(--accent-warning-foreground);
+  --color-warning-muted: var(--warning-muted);
+  --color-accent-danger: var(--accent-danger);
+  --color-danger-muted: var(--danger-muted);
+  --color-bg-layout: var(--bg-layout);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-surface-hover: var(--surface-hover);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+* {
+  border-color: var(--border);
+}
+
+/*
+ * Contención móvil — evita desborde lateral y rebote elástico del navegador.
+ * No altera tokens ni estilos de componentes; solo ancla el viewport.
+ */
+html {
+  width: 100%;
+  overflow-x: clip;
+  overscroll-behavior: none;
+}
+
+body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
+  overscroll-behavior: none;
+  background: var(--bg-layout);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Envoltorio seguro para hijos que puedan exceder el ancho del viewport */
+.safe-width {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Foco accesible global */
+:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--primary) 55%, transparent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  .app-shell-scroll {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Contenedores de scroll nativos — fluidos en móvil y desktop */
+.app-shell-scroll {
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+}
+
+.horizontal-scroll-rail {
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
+}
+
+.filters-sidebar-scroll {
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+}
+
+/* Utilidad para animaciones opcionales */
+@media (prefers-reduced-motion: no-preference) {
+  .motion-safe-fade-in {
+    animation: cotizador-fade-in 0.4s ease-out both;
+  }
+}
+
+@keyframes cotizador-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Widget embebido: altura natural, sin recortar contenido horizontal */
+html[data-cotizador-embed="true"],
+html[data-cotizador-embed="true"] body {
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: fit-content !important;
+  overflow-x: clip;
+  overflow-y: visible !important;
+  overscroll-behavior-x: none;
+  overscroll-behavior-y: none;
+}
+
+html[data-cotizador-embed="true"] body {
+  display: block !important;
+}
+
+@media (max-width: 768px) {
+  html[data-cotizador-embed="true"],
+  html[data-cotizador-embed="true"] body {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: fit-content !important;
+    overflow-x: clip;
+    overflow-y: visible !important;
+    overscroll-behavior-x: none;
+    overscroll-behavior-y: none;
+  }
+}
+
+[data-embed="true"] {
+  overflow: visible !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: fit-content !important;
+  width: 100%;
+}
+
+/* Widget embebido: sin FAB de WhatsApp */
+[data-embed="true"] [data-public-whatsapp-fab] {
+  display: none !important;
+}
+
+/* Widget embebido: tarjetas y filtros sin recorte horizontal */
+[data-embed="true"] [data-embed-results-row] {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+[data-embed="true"] [data-embed-results-row] > * {
+  min-width: 0;
+}
+
+[data-embed="true"] [data-public-plan-card] {
+  max-width: 100%;
+}
+
+[data-embed="true"] [data-public-plan-card] .plan-card-header {
+  min-width: 0;
+}
+
+[data-embed="true"] [data-public-plan-card] .plan-card-header-actions {
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem 0.75rem;
+  min-width: 0;
+}

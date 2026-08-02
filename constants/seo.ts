@@ -100,7 +100,7 @@ export const SEO_PAGES = {
     path: "/nosotros",
     title: "Nosotros: Asesores Independientes de Isapre en Chile",
     description:
-      "Conoce a Isapres Premium: asesores independientes en planes de salud Isapre. Valores, equipo y acompañamiento personalizado para personas y empresas en Chile.",
+      "Conoce a Isapres Premium: misión, visión y por qué somos diferentes. Asesoría independiente, comparativo de Isapres y respaldo legal para personas y empresas.",
     keywords: SEO_KEYWORDS.nosotros,
     ogTitle: "Quiénes somos | Isapres Premium",
   },
@@ -118,6 +118,14 @@ export const SEO_PAGES = {
       "Respaldo legal sin costo para afiliados Premium: reclamo directo, intervención ante la Superintendencia de Salud y defensa judicial si tu Isapre no responde o incumple.",
     keywords: SEO_KEYWORDS.respaldoLegal,
     ogTitle: "Respaldo legal gratuito frente a tu Isapre | Isapres Premium",
+  },
+  cotizador: {
+    path: "/cotizador",
+    title: "Cotizador de planes Isapre",
+    description:
+      "Compara y cotiza planes de Isapre en línea con Isapres Premium. Precios según edad, ingreso y región, con asesoría experta.",
+    keywords: SEO_KEYWORDS.home,
+    ogTitle: "Cotizador Isapre | Isapres Premium",
   },
 } as const satisfies Record<string, SeoPageConfig>;
 
@@ -360,6 +368,11 @@ export function getHomeJsonLd() {
 
 export const SITEMAP_ROUTES = [
   { key: "home" as const, changeFrequency: "weekly" as const, priority: 1 },
+  {
+    key: "cotizador" as const,
+    changeFrequency: "weekly" as const,
+    priority: 0.95,
+  },
   {
     key: "empresas" as const,
     changeFrequency: "weekly" as const,

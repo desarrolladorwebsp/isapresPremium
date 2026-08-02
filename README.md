@@ -1,27 +1,33 @@
 # Isapres Premium
 
-Sitio web de Isapres Premium — asesoría especializada en planes de salud Isapres en Chile.
+Sitio marketing de [isaprespremium.cl](https://isaprespremium.cl) + **motor del cotizador** (`/cotizador`).
 
-## Requisitos
+## Qué incluye
 
-- Node.js 18+
-- npm
+- Páginas marketing: `/`, `/empresas`, `/nosotros`, `/respaldo-legal`, `/politicas`
+- Cotizador: `/cotizador?agent=…` (default `isaprespremium`)
+- Widget: `/cotizador-widget.js` (iframe → `/cotizador?embed=1`)
+- Paneles staff: `/cotizador/acceso`, `/cotizador/ejecutivos`, `/cotizador/admin`
+- Misma base Neon/Prisma del cotizador previo en cotizadorpremium.cl
+- Scripts ops / docs / storage migrados desde `cotizadorVirtual`
 
-## Desarrollo local
+## Desarrollo
 
 ```bash
 npm install
+# Copia `.env.example` → `.env.local` y completa DATABASE_URL, AUTH_SECRET, Resend, Blob
 npm run dev
 ```
 
-Abre [http://localhost:3000](http://localhost:3000) en el navegador.
+Acceso local típico:
 
-## Variables de entorno
+- Home: http://localhost:3000
+- Cotizador: http://localhost:3000/cotizador?agent=isaprespremium
+- Widget script: http://localhost:3000/cotizador-widget.js
+- Staff: http://localhost:3000/cotizador/acceso
 
-Copia `.env.example` a `.env.local` y completa los valores cuando integres Neon, Resend y el resto de servicios.
+## Deploy (Vercel)
 
-## Stack
+Configura en el proyecto de `isaprespremium.cl` las variables de `.env.example` (especialmente `DATABASE_URL`, `AUTH_SECRET`, `NEXT_PUBLIC_APP_URL=https://isaprespremium.cl`, `DEFAULT_PARTNER_ENTITY_SLUG=isaprespremium`).
 
-- Next.js 16 (App Router)
-- React 19 + TypeScript
-- Tailwind CSS v4
+La landing de captación permanece en **cotizadorpremium.cl** y redirige `/cotizador*`, `/api/*`, `/embed/*` y el widget hacia este host.

@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowUpRight, Mail, Phone } from "lucide-react";
+import { ArrowUpRight, Mail, Phone, UsersRound } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { SocialIcons } from "@/components/ui/SocialIcons";
 import { FOOTER_MARKET_INDICATORS, FOOTER_SITEMAP_LINKS } from "@/constants/footer";
@@ -143,6 +143,19 @@ export function Footer() {
             <p className="mt-2 text-xs text-white/50">
               Valores referenciales, revisa el valor oficial vigente en sii.cl
             </p>
+
+            <Link
+              href={siteConfig.cotizadorEjecutivosUrl}
+              className="group mt-5 flex min-h-11 items-center gap-3 rounded-xl py-1.5 pr-2 transition-transform duration-200 motion-safe:hover:translate-x-1"
+            >
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10 text-brand-green transition-colors duration-200 group-hover:bg-brand-green group-hover:text-white">
+                <UsersRound className="h-4 w-4" />
+              </span>
+              <span className="text-sm text-white/85 transition-colors duration-200 group-hover:text-white">
+                Acceso ejecutivos
+              </span>
+              <ArrowUpRight className="h-3.5 w-3.5 text-white/40 opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
+            </Link>
           </motion.div>
         </div>
 

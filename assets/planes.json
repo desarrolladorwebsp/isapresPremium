@@ -1,0 +1,646 @@
+[
+  {
+    "isapre": "Consalud",
+    "plan_name": "Consalud 13-SF1001-26",
+    "unique_code": "13-SF1001-26",
+    "base_price_uf": 3.41,
+    "has_top": false,
+    "additional_notes": null,
+    "coverage": [
+      {
+        "clinic_id": "cl-redsalud-vitacura",
+        "clinic_name": "Clínica RedSalud Vitacura",
+        "percentage": 100,
+        "type": "hospitalaria"
+      },
+      {
+        "clinic_id": "cl-redsalud-providencia",
+        "clinic_name": "Clínica RedSalud Providencia",
+        "percentage": 100,
+        "type": "hospitalaria"
+      },
+      {
+        "clinic_id": "cl-redsalud-santiago",
+        "clinic_name": "Clínica RedSalud Santiago",
+        "percentage": 100,
+        "type": "hospitalaria"
+      },
+      {
+        "clinic_id": "cl-san-carlos",
+        "clinic_name": "Clínica San Carlos de Apoquindo",
+        "percentage": 100,
+        "type": "hospitalaria"
+      },
+      {
+        "clinic_id": "hosp-clinico-uc",
+        "clinic_name": "Hospital Clínico Universidad Católica",
+        "percentage": 100,
+        "type": "hospitalaria"
+      },
+      {
+        "clinic_id": "cl-indisa-maipu",
+        "clinic_name": "Clínica Indisa Maipú",
+        "percentage": 100,
+        "type": "hospitalaria"
+      },
+      {
+        "clinic_id": "cl-indisa-providencia-anexo",
+        "clinic_name": "Clínica Indisa Providencia (y prestadores Anexo I)",
+        "percentage": 100,
+        "type": "hospitalaria"
+      },
+      {
+        "clinic_id": "cl-meds",
+        "clinic_name": "Clínica Meds",
+        "percentage": 90,
+        "type": "hospitalaria"
+      },
+      {
+        "clinic_id": "cl-santa-maria",
+        "clinic_name": "Clínica Santa María",
+        "percentage": 90,
+        "type": "hospitalaria"
+      },
+      {
+        "clinic_id": "cm-redsalud",
+        "clinic_name": "Centros Médicos RedSalud",
+        "percentage": 70,
+        "type": "ambulatoria"
+      },
+      {
+        "clinic_id": "integramedica",
+        "clinic_name": "Integramédica",
+        "percentage": 70,
+        "type": "ambulatoria"
+      },
+      {
+        "clinic_id": "cl-redsalud-vitacura",
+        "clinic_name": "Clínica RedSalud Vitacura",
+        "percentage": 70,
+        "type": "ambulatoria"
+      },
+      {
+        "clinic_id": "cl-redsalud-providencia",
+        "clinic_name": "Clínica RedSalud Providencia",
+        "percentage": 70,
+        "type": "ambulatoria"
+      },
+      {
+        "clinic_id": "cl-redsalud-santiago",
+        "clinic_name": "Clínica RedSalud Santiago",
+        "percentage": 70,
+        "type": "ambulatoria"
+      },
+      {
+        "clinic_id": "red-uc-christus",
+        "clinic_name": "Red de Salud UC Christus",
+        "percentage": 70,
+        "type": "ambulatoria"
+      },
+      {
+        "clinic_id": "cl-indisa-maipu",
+        "clinic_name": "Clínica Indisa Maipú",
+        "percentage": 70,
+        "type": "ambulatoria"
+      },
+      {
+        "clinic_id": "cl-indisa-providencia-anexo",
+        "clinic_name": "Clínica Indisa Providencia (y prestadores Anexo I)",
+        "percentage": 70,
+        "type": "ambulatoria"
+      },
+      {
+        "clinic_id": "cl-san-carlos",
+        "clinic_name": "Clínica San Carlos de Apoquindo",
+        "percentage": 60,
+        "type": "ambulatoria"
+      },
+      {
+        "clinic_id": "cl-meds",
+        "clinic_name": "Clínica Meds",
+        "percentage": 60,
+        "type": "ambulatoria"
+      },
+      {
+        "clinic_id": "cl-santa-maria",
+        "clinic_name": "Clínica Santa María",
+        "percentage": 60,
+        "type": "ambulatoria"
+      }
+    ]
+  },
+  {
+    "isapre": "Consalud",
+    "plan_name": "Consalud 13-SF2001-26",
+    "unique_code": "13-SF2001-26",
+    "base_price_uf": 3.64,
+    "has_top": false,
+    "additional_notes": "Sólo con médicos staff. Habitación Individual.",
+    "coverage": [
+      {
+        "clinic_id": "cl-redsalud-vitacura",
+        "clinic_name": "Clínica RedSalud Vitacura",
+        "percentage": 100,
+        "type": "hospitalaria"
+      },
+      {
+        "clinic_id": "cl-redsalud-providencia",
+        "clinic_name": "Clínica RedSalud Providencia",
+        "percentage": 100,
+        "type": "hospitalaria"
+      },
+      {
+        "clinic_id": "cl-redsalud-santiago",
+        "clinic_name": "Clínica RedSalud Santiago",
+        "percentage": 100,
+        "type": "hospitalaria"
+      },
+      {
+        "clinic_id": "cl-san-carlos",
+        "clinic_name": "Clínica San Carlos de Apoquindo",
+        "percentage": 100,
+        "type": "hospitalaria"
+      },
+      {
+        "clinic_id": "hosp-clinico-uc",
+        "clinic_name": "Hospital Clínico Universidad Católica",
+        "percentage": 100,
+        "type": "hospitalaria"
+      },
+      {
+        "clinic_id": "cl-indisa-maipu",
+        "clinic_name": "Clínica Indisa Maipú",
+        "percentage": 100,
+        "type": "hospitalaria"
+      },
+      {
+        "clinic_id": "cl-indisa-providencia-anexo",
+        "clinic_name": "Clínica Indisa Providencia (y prestadores Anexo I)",
+        "percentage": 100,
+        "type": "hospitalaria"
+      },
+      {
+        "clinic_id": "cl-meds",
+        "clinic_name": "Clínica Meds",
+        "percentage": 90,
+        "type": "hospitalaria"
+      },
+      {
+        "clinic_id": "cl-santa-maria",
+        "clinic_name": "Clínica Santa María",
+        "percentage": 90,
+        "type": "hospitalaria"
+      },
+      {
+        "clinic_id": "cm-redsalud",
+        "clinic_name": "Centros Médicos RedSalud",
+        "percentage": 80,
+        "type": "ambulatoria"
+      },
+      {
+        "clinic_id": "integramedica",
+        "clinic_name": "Integramédica",
+        "percentage": 80,
+        "type": "ambulatoria"
+      },
+      {
+        "clinic_id": "cl-redsalud-vitacura",
+        "clinic_name": "Clínica RedSalud Vitacura",
+        "percentage": 80,
+        "type": "ambulatoria"
+      },
+      {
+        "clinic_id": "cl-redsalud-providencia",
+        "clinic_name": "Clínica RedSalud Providencia",
+        "percentage": 80,
+        "type": "ambulatoria"
+      },
+      {
+        "clinic_id": "cl-redsalud-santiago",
+        "clinic_name": "Clínica RedSalud Santiago",
+        "percentage": 80,
+        "type": "ambulatoria"
+      },
+      {
+        "clinic_id": "cl-indisa-maipu",
+        "clinic_name": "Clínica Indisa Maipú",
+        "percentage": 80,
+        "type": "ambulatoria"
+      },
+      {
+        "clinic_id": "cl-indisa-providencia-anexo",
+        "clinic_name": "Clínica Indisa Providencia (y prestadores Anexo I)",
+        "percentage": 80,
+        "type": "ambulatoria"
+      },
+      {
+        "clinic_id": "cl-san-carlos",
+        "clinic_name": "Clínica San Carlos de Apoquindo",
+        "percentage": 70,
+        "type": "ambulatoria"
+      },
+      {
+        "clinic_id": "cl-meds",
+        "clinic_name": "Clínica Meds",
+        "percentage": 70,
+        "type": "ambulatoria"
+      },
+      {
+        "clinic_id": "cl-santa-maria",
+        "clinic_name": "Clínica Santa María",
+        "percentage": 70,
+        "type": "ambulatoria"
+      },
+      {
+        "clinic_id": "red-uc-christus",
+        "clinic_name": "Red de Salud UC Christus",
+        "percentage": 70,
+        "type": "ambulatoria"
+      }
+    ]
+  },
+  {
+    "isapre": "Consalud",
+    "plan_name": "Consalud 13-SF3001-26",
+    "unique_code": "13-SF3001-26",
+    "base_price_uf": 3.79,
+    "has_top": false,
+    "additional_notes": null,
+    "coverage": [
+      {
+        "clinic_id": "cm-redsalud",
+        "clinic_name": "Centros Médicos RedSalud",
+        "percentage": 80,
+        "type": "ambulatoria"
+      },
+      {
+        "clinic_id": "integramedica",
+        "clinic_name": "Integramédica",
+        "percentage": 80,
+        "type": "ambulatoria"
+      },
+      {
+        "clinic_id": "cl-redsalud-vitacura",
+        "clinic_name": "Clínica RedSalud Vitacura",
+        "percentage": 80,
+        "type": "ambulatoria"
+      },
+      {
+        "clinic_id": "cl-redsalud-providencia",
+        "clinic_name": "Clínica RedSalud Providencia",
+        "percentage": 80,
+        "type": "ambulatoria"
+      },
+      {
+        "clinic_id": "cl-redsalud-santiago",
+        "clinic_name": "Clínica RedSalud Santiago",
+        "percentage": 80,
+        "type": "ambulatoria"
+      },
+      {
+        "clinic_id": "cl-san-carlos",
+        "clinic_name": "Clínica San Carlos de Apoquindo",
+        "percentage": 80,
+        "type": "ambulatoria"
+      },
+      {
+        "clinic_id": "cl-meds",
+        "clinic_name": "Clínica Meds",
+        "percentage": 80,
+        "type": "ambulatoria"
+      },
+      {
+        "clinic_id": "cl-santa-maria",
+        "clinic_name": "Clínica Santa María",
+        "percentage": 80,
+        "type": "ambulatoria"
+      },
+      {
+        "clinic_id": "red-uc-christus",
+        "clinic_name": "Red de Salud UC Christus",
+        "percentage": 80,
+        "type": "ambulatoria"
+      },
+      {
+        "clinic_id": "cl-indisa-maipu",
+        "clinic_name": "Clínica Indisa Maipú",
+        "percentage": 80,
+        "type": "ambulatoria"
+      },
+      {
+        "clinic_id": "cl-indisa-providencia-anexo",
+        "clinic_name": "Clínica Indisa Providencia (y prestadores Anexo I)",
+        "percentage": 80,
+        "type": "ambulatoria"
+      }
+    ]
+  },
+  {
+    "isapre": "Consalud",
+    "plan_name": "Consalud 13-SF4001-26",
+    "unique_code": "13-SF4001-26",
+    "base_price_uf": 3.68,
+    "has_top": false,
+    "additional_notes": "Sólo con médicos staff. Habitación Individual.",
+    "coverage": [
+      {
+        "clinic_id": "cl-redsalud-vitacura",
+        "clinic_name": "Clínica RedSalud Vitacura",
+        "percentage": 100,
+        "type": "hospitalaria"
+      },
+      {
+        "clinic_id": "cl-redsalud-providencia",
+        "clinic_name": "Clínica RedSalud Providencia",
+        "percentage": 100,
+        "type": "hospitalaria"
+      },
+      {
+        "clinic_id": "cl-redsalud-santiago",
+        "clinic_name": "Clínica RedSalud Santiago",
+        "percentage": 100,
+        "type": "hospitalaria"
+      },
+      {
+        "clinic_id": "hosp-clinico-uc",
+        "clinic_name": "Hospital Clínico Universidad Católica",
+        "percentage": 100,
+        "type": "hospitalaria"
+      },
+      {
+        "clinic_id": "cl-indisa-maipu",
+        "clinic_name": "Clínica Indisa Maipú",
+        "percentage": 100,
+        "type": "hospitalaria"
+      },
+      {
+        "clinic_id": "cl-indisa-providencia-anexo",
+        "clinic_name": "Clínica Indisa Providencia (y prestadores Anexo I)",
+        "percentage": 100,
+        "type": "hospitalaria"
+      },
+      {
+        "clinic_id": "cl-san-carlos",
+        "clinic_name": "Clínica San Carlos de Apoquindo",
+        "percentage": 80,
+        "type": "hospitalaria"
+      },
+      {
+        "clinic_id": "cl-meds",
+        "clinic_name": "Clínica Meds",
+        "percentage": 80,
+        "type": "hospitalaria"
+      },
+      {
+        "clinic_id": "cl-santa-maria",
+        "clinic_name": "Clínica Santa María",
+        "percentage": 80,
+        "type": "hospitalaria"
+      },
+      {
+        "clinic_id": "cl-las-condes",
+        "clinic_name": "Clínica Las Condes",
+        "percentage": 60,
+        "type": "hospitalaria"
+      },
+      {
+        "clinic_id": "cl-univ-andes",
+        "clinic_name": "Clínica Universidad de los Andes",
+        "percentage": 60,
+        "type": "hospitalaria"
+      },
+      {
+        "clinic_id": "cm-redsalud",
+        "clinic_name": "Centros Médicos RedSalud",
+        "percentage": 80,
+        "type": "ambulatoria"
+      },
+      {
+        "clinic_id": "integramedica",
+        "clinic_name": "Integramédica",
+        "percentage": 70,
+        "type": "ambulatoria"
+      },
+      {
+        "clinic_id": "cl-redsalud-vitacura",
+        "clinic_name": "Clínica RedSalud Vitacura",
+        "percentage": 70,
+        "type": "ambulatoria"
+      },
+      {
+        "clinic_id": "cl-redsalud-providencia",
+        "clinic_name": "Clínica RedSalud Providencia",
+        "percentage": 70,
+        "type": "ambulatoria"
+      },
+      {
+        "clinic_id": "cl-redsalud-santiago",
+        "clinic_name": "Clínica RedSalud Santiago",
+        "percentage": 70,
+        "type": "ambulatoria"
+      },
+      {
+        "clinic_id": "red-uc-christus",
+        "clinic_name": "Red de Salud UC Christus",
+        "percentage": 70,
+        "type": "ambulatoria"
+      },
+      {
+        "clinic_id": "cl-indisa-maipu",
+        "clinic_name": "Clínica Indisa Maipú",
+        "percentage": 70,
+        "type": "ambulatoria"
+      },
+      {
+        "clinic_id": "cl-indisa-providencia-anexo",
+        "clinic_name": "Clínica Indisa Providencia (y prestadores Anexo I)",
+        "percentage": 70,
+        "type": "ambulatoria"
+      },
+      {
+        "clinic_id": "cl-san-carlos",
+        "clinic_name": "Clínica San Carlos de Apoquindo",
+        "percentage": 60,
+        "type": "ambulatoria"
+      },
+      {
+        "clinic_id": "cl-meds",
+        "clinic_name": "Clínica Meds",
+        "percentage": 60,
+        "type": "ambulatoria"
+      },
+      {
+        "clinic_id": "cl-santa-maria",
+        "clinic_name": "Clínica Santa María",
+        "percentage": 60,
+        "type": "ambulatoria"
+      },
+      {
+        "clinic_id": "cl-las-condes",
+        "clinic_name": "Clínica Las Condes",
+        "percentage": 50,
+        "type": "ambulatoria"
+      },
+      {
+        "clinic_id": "cl-univ-andes",
+        "clinic_name": "Clínica Universidad de los Andes",
+        "percentage": 50,
+        "type": "ambulatoria"
+      }
+    ]
+  },
+  {
+    "isapre": "Consalud",
+    "plan_name": "Consalud 13-SF5001-26",
+    "unique_code": "13-SF5001-26",
+    "base_price_uf": 3.95,
+    "has_top": false,
+    "additional_notes": "Sólo con médicos staff. Habitación Individual.",
+    "coverage": [
+      {
+        "clinic_id": "cl-redsalud-vitacura",
+        "clinic_name": "Clínica RedSalud Vitacura",
+        "percentage": 100,
+        "type": "hospitalaria"
+      },
+      {
+        "clinic_id": "cl-redsalud-providencia",
+        "clinic_name": "Clínica RedSalud Providencia",
+        "percentage": 100,
+        "type": "hospitalaria"
+      },
+      {
+        "clinic_id": "cl-redsalud-santiago",
+        "clinic_name": "Clínica RedSalud Santiago",
+        "percentage": 100,
+        "type": "hospitalaria"
+      },
+      {
+        "clinic_id": "hosp-clinico-uc",
+        "clinic_name": "Hospital Clínico Universidad Católica",
+        "percentage": 100,
+        "type": "hospitalaria"
+      },
+      {
+        "clinic_id": "cl-indisa-maipu",
+        "clinic_name": "Clínica Indisa Maipú",
+        "percentage": 100,
+        "type": "hospitalaria"
+      },
+      {
+        "clinic_id": "cl-indisa-providencia-anexo",
+        "clinic_name": "Clínica Indisa Providencia (y prestadores Anexo I)",
+        "percentage": 100,
+        "type": "hospitalaria"
+      },
+      {
+        "clinic_id": "cl-san-carlos",
+        "clinic_name": "Clínica San Carlos de Apoquindo",
+        "percentage": 80,
+        "type": "hospitalaria"
+      },
+      {
+        "clinic_id": "cl-meds",
+        "clinic_name": "Clínica Meds",
+        "percentage": 80,
+        "type": "hospitalaria"
+      },
+      {
+        "clinic_id": "cl-santa-maria",
+        "clinic_name": "Clínica Santa María",
+        "percentage": 80,
+        "type": "hospitalaria"
+      },
+      {
+        "clinic_id": "cl-las-condes",
+        "clinic_name": "Clínica Las Condes",
+        "percentage": 60,
+        "type": "hospitalaria"
+      },
+      {
+        "clinic_id": "cl-univ-andes",
+        "clinic_name": "Clínica Universidad de los Andes",
+        "percentage": 60,
+        "type": "hospitalaria"
+      },
+      {
+        "clinic_id": "cm-redsalud",
+        "clinic_name": "Centros Médicos RedSalud",
+        "percentage": 80,
+        "type": "ambulatoria"
+      },
+      {
+        "clinic_id": "integramedica",
+        "clinic_name": "Integramédica",
+        "percentage": 80,
+        "type": "ambulatoria"
+      },
+      {
+        "clinic_id": "cl-redsalud-vitacura",
+        "clinic_name": "Clínica RedSalud Vitacura",
+        "percentage": 80,
+        "type": "ambulatoria"
+      },
+      {
+        "clinic_id": "cl-redsalud-providencia",
+        "clinic_name": "Clínica RedSalud Providencia",
+        "percentage": 80,
+        "type": "ambulatoria"
+      },
+      {
+        "clinic_id": "cl-redsalud-santiago",
+        "clinic_name": "Clínica RedSalud Santiago",
+        "percentage": 80,
+        "type": "ambulatoria"
+      },
+      {
+        "clinic_id": "cl-indisa-maipu",
+        "clinic_name": "Clínica Indisa Maipú",
+        "percentage": 80,
+        "type": "ambulatoria"
+      },
+      {
+        "clinic_id": "cl-indisa-providencia-anexo",
+        "clinic_name": "Clínica Indisa Providencia (y prestadores Anexo I)",
+        "percentage": 80,
+        "type": "ambulatoria"
+      },
+      {
+        "clinic_id": "cl-san-carlos",
+        "clinic_name": "Clínica San Carlos de Apoquindo",
+        "percentage": 70,
+        "type": "ambulatoria"
+      },
+      {
+        "clinic_id": "cl-meds",
+        "clinic_name": "Clínica Meds",
+        "percentage": 70,
+        "type": "ambulatoria"
+      },
+      {
+        "clinic_id": "cl-santa-maria",
+        "clinic_name": "Clínica Santa María",
+        "percentage": 70,
+        "type": "ambulatoria"
+      },
+      {
+        "clinic_id": "red-uc-christus",
+        "clinic_name": "Red de Salud UC Christus",
+        "percentage": 70,
+        "type": "ambulatoria"
+      },
+      {
+        "clinic_id": "cl-las-condes",
+        "clinic_name": "Clínica Las Condes",
+        "percentage": 60,
+        "type": "ambulatoria"
+      },
+      {
+        "clinic_id": "cl-univ-andes",
+        "clinic_name": "Clínica Universidad de los Andes",
+        "percentage": 60,
+        "type": "ambulatoria"
+      }
+    ]
+  }
+]

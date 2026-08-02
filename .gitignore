@@ -41,3 +41,14 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .tmp-verify/
+
+# scripts cache / parse dumps
+scripts/.*-plans-parsed.json
+scripts/.*-audit-parsed.json
+
+# PDFs y artefactos locales (Blob/DB en prod)
+/storage/
+!/storage/planes-pdf/.gitkeep
+
+# basura local
+public/images/Untitled

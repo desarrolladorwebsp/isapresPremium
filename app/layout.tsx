@@ -1,12 +1,11 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import { Inter, Plus_Jakarta_Sans } from "next/font/google";
-import { Footer } from "@/components/layout/Footer";
-import { Navbar } from "@/components/layout/Navbar";
-import { IsapresMarquee } from "@/components/sections/IsapresMarquee";
-import { JsonLd } from "@/components/seo/JsonLd";
-import { WhatsAppFloat } from "@/components/ui/WhatsAppFloat";
-import { createRootMetadata, getHomeJsonLd } from "@/constants/seo";
+import { Analytics } from "@vercel/analytics/next";
+import { EMBED_DOCUMENT_HEADER } from "@/lib/embed/is-embed-request";
+import { createRootMetadata } from "@/constants/seo";
 import "./globals.css";
+import "@/styles/cotizador-engine.css";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -28,25 +27,33 @@ export const viewport: Viewport = {
     { media: "(prefers-color-scheme: dark)", color: "#064e45" },
   ],
   colorScheme: "light",
+  width: "device-width",
+  initialScale: 1,
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const headerList = await headers();
+  const isEmbedDocument = headerList.get(EMBED_DOCUMENT_HEADER) === "1";
+
   return (
     <html
       lang="es-CL"
-      className={`${inter.variable} ${plusJakartaSans.variable} h-full antialiased`}
+      data-cotizador-embed={isEmbedDocument ? "true" : undefined}
+      className={`${inter.variable} ${plusJakartaSans.variable} ${isEmbedDocument ? "" : "h-full"} overflow-x-clip overscroll-none antialiased`}
     >
-      <body className="min-h-full flex flex-col font-sans">
-        <JsonLd data={getHomeJsonLd()} />
-        <Navbar />
+      <body
+        className={
+          isEmbedDocument
+            ? "block max-w-full overflow-x-clip overscroll-none bg-background font-sans text-foreground"
+            : "flex min-h-full max-w-full flex-col overflow-x-clip overscroll-none bg-background font-sans text-foreground"
+        }
+      >
         {children}
-        <IsapresMarquee />
-        <Footer />
-        <WhatsAppFloat />
+        <Analytics />
       </body>
     </html>
   );

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 224 59" role="img" aria-label="Cotizador Premium">
+  <rect width="224" height="59" rx="12" fill="#fafafa"/>
+  <rect x="8" y="9" width="41" height="41" rx="10" fill="#6d28d9"/>
+  <text x="28.5" y="36" text-anchor="middle" fill="#ffffff" font-family="system-ui,sans-serif" font-size="16" font-weight="700">CP</text>
+  <text x="58" y="27" fill="#111827" font-family="system-ui,sans-serif" font-size="15" font-weight="700">Cotizador Premium</text>
+  <text x="58" y="44" fill="#6b7280" font-family="system-ui,sans-serif" font-size="11">Logo provisional</text>
+</svg>

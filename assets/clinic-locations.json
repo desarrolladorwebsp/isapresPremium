@@ -1,0 +1,967 @@
+{
+  "generated_at": "2026-07-12T22:41:15.393Z",
+  "total": 161,
+  "with_location": 157,
+  "unresolved": [
+    {
+      "id": "vt-libre-eleccion-a",
+      "name": "Libre Elección"
+    },
+    {
+      "id": "mv-libre-eleccion-h",
+      "name": "Libre Elección"
+    },
+    {
+      "id": "mv-libre-eleccion-a",
+      "name": "Libre Elección"
+    },
+    {
+      "id": "vt-libre-eleccion-h",
+      "name": "Libre Elección"
+    }
+  ],
+  "locations": {
+    "centro-medico-andes-salud-talca": {
+      "address": "1 Sur 1205, Talca",
+      "lat": -35.4268,
+      "lng": -71.6554,
+      "source": "curated"
+    },
+    "cl-centromed": {
+      "address": "4 Poniente 377, Viña del Mar",
+      "lat": -33.0185,
+      "lng": -71.5555,
+      "source": "curated"
+    },
+    "centromed": {
+      "address": "4 Poniente 377, Viña del Mar",
+      "lat": -33.0185,
+      "lng": -71.5555,
+      "source": "curated"
+    },
+    "cl-centros-medicos": {
+      "address": "Av. Libertador Bernardo O'Higgins 1620, Santiago",
+      "lat": -33.4465,
+      "lng": -70.6588,
+      "source": "curated"
+    },
+    "cm-santa-maria": {
+      "address": "Av. Santa María 0500, Providencia, Santiago",
+      "lat": -33.4221,
+      "lng": -70.6103,
+      "source": "curated"
+    },
+    "cl-centros-medicos-davila": {
+      "address": "Av. Recoleta 464, Recoleta, Santiago",
+      "lat": -33.4378,
+      "lng": -70.6456,
+      "source": "curated"
+    },
+    "cm-red-davila": {
+      "address": "Av. Recoleta 464, Recoleta, Santiago",
+      "lat": -33.4378,
+      "lng": -70.6456,
+      "source": "curated"
+    },
+    "red-uc-christus": {
+      "address": "Marcoleta 367, Santiago Centro",
+      "lat": -33.4417,
+      "lng": -70.6506,
+      "source": "curated"
+    },
+    "centros-medicos-red-uc-christus": {
+      "address": "Marcoleta 367, Santiago Centro",
+      "lat": -33.4417,
+      "lng": -70.6506,
+      "source": "curated"
+    },
+    "cm-redsalud": {
+      "address": "Av. Libertador Bernardo O'Higgins 4850, Estación Central, Santiago",
+      "lat": -33.4573,
+      "lng": -70.7018,
+      "source": "curated"
+    },
+    "cl-centros-medicos-santa-maria": {
+      "address": "Av. Santa María 0500, Providencia, Santiago",
+      "lat": -33.4221,
+      "lng": -70.6103,
+      "source": "curated"
+    },
+    "cl-clinica": {
+      "address": "Clínica Las Condes, 450, Estoril, Las Condes, Santiago, Provincia de Santiago, Región Metropolitana de Santiago, 8320000, Chile",
+      "lat": -33.3846367,
+      "lng": -70.5307603,
+      "source": "geocoded"
+    },
+    "cl-adventista-los-angeles": {
+      "address": "Manuel Rodríguez 645, Los Ángeles",
+      "lat": -37.4748,
+      "lng": -72.3542,
+      "source": "curated"
+    },
+    "cl-alemana-santiago-a3": {
+      "address": "Av. Vitacura 5951, Vitacura, Santiago",
+      "lat": -33.3745,
+      "lng": -70.5764,
+      "source": "curated"
+    },
+    "clinica-alemana": {
+      "address": "Av. Vitacura 5951, Vitacura, Santiago",
+      "lat": -33.3745,
+      "lng": -70.5764,
+      "source": "curated"
+    },
+    "cl-alemana-santiago": {
+      "address": "Av. Vitacura 5951, Vitacura, Santiago",
+      "lat": -33.3745,
+      "lng": -70.5764,
+      "source": "curated"
+    },
+    "clinica-alemana-de-osorno": {
+      "address": "Av. Zenteno 1530, Osorno",
+      "lat": -40.5738,
+      "lng": -73.1289,
+      "source": "curated"
+    },
+    "cl-alemana-osorno": {
+      "address": "Av. Zenteno 1530, Osorno",
+      "lat": -40.5738,
+      "lng": -73.1289,
+      "source": "curated"
+    },
+    "cl-alemana-santiago-a": {
+      "address": "Av. Vitacura 5951, Vitacura, Santiago",
+      "lat": -33.3745,
+      "lng": -70.5764,
+      "source": "curated"
+    },
+    "cl-alemana-santiago-a2": {
+      "address": "Av. Vitacura 5951, Vitacura, Santiago",
+      "lat": -33.3745,
+      "lng": -70.5764,
+      "source": "curated"
+    },
+    "cl-alemana-temuco": {
+      "address": "Senador Estébanez 645, Temuco",
+      "lat": -38.7398,
+      "lng": -72.6125,
+      "source": "curated"
+    },
+    "clinica-alemana-de-temuco": {
+      "address": "Senador Estébanez 645, Temuco",
+      "lat": -38.7398,
+      "lng": -72.6125,
+      "source": "curated"
+    },
+    "cl-alemana-valdivia": {
+      "address": "Beauchef 765, Valdivia",
+      "lat": -39.8147,
+      "lng": -73.2454,
+      "source": "curated"
+    },
+    "clinica-alemana-de-valdivia": {
+      "address": "Beauchef 765, Valdivia",
+      "lat": -39.8147,
+      "lng": -73.2454,
+      "source": "curated"
+    },
+    "cl-andes-salud-chillan": {
+      "address": "Pedro Aguirre Cerda 35, Chillán",
+      "lat": -36.6152,
+      "lng": -72.1076,
+      "source": "curated"
+    },
+    "clinica-andes-salud-concepcion": {
+      "address": "Av. Pedro de Valdivia 745, Concepción",
+      "lat": -36.8275,
+      "lng": -73.0498,
+      "source": "curated"
+    },
+    "cl-andes-salud-concepcion": {
+      "address": "Av. Pedro de Valdivia 745, Concepción",
+      "lat": -36.8275,
+      "lng": -73.0498,
+      "source": "curated"
+    },
+    "cl-andes-salud-el-loa": {
+      "address": "Av. Balmaceda 2355, Calama",
+      "lat": -22.4558,
+      "lng": -68.9294,
+      "source": "curated"
+    },
+    "cl-andes-salud-puerto-montt": {
+      "address": "Av. Diego Portales 500, Puerto Montt",
+      "lat": -41.4712,
+      "lng": -72.9368,
+      "source": "curated"
+    },
+    "clinica-andes-salud-puerto-montt": {
+      "address": "Av. Diego Portales 500, Puerto Montt",
+      "lat": -41.4712,
+      "lng": -72.9368,
+      "source": "curated"
+    },
+    "cl-atacama": {
+      "address": "Av. Copayapu 2500, Copiapó",
+      "lat": -27.3689,
+      "lng": -70.3321,
+      "source": "curated"
+    },
+    "cl-clinica-atacama-achs-salud": {
+      "address": "Av. Copayapu 2500, Copiapó",
+      "lat": -27.3689,
+      "lng": -70.3321,
+      "source": "curated"
+    },
+    "cl-atacama-achs": {
+      "address": "Av. Copayapu 2500, Copiapó",
+      "lat": -27.3689,
+      "lng": -70.3321,
+      "source": "curated"
+    },
+    "clinica-biobio": {
+      "address": "Av. San Martín 285, Concepción",
+      "lat": -36.8269,
+      "lng": -73.0503,
+      "source": "curated"
+    },
+    "cl-biobio": {
+      "address": "Av. San Martín 285, Concepción",
+      "lat": -36.8269,
+      "lng": -73.0503,
+      "source": "curated"
+    },
+    "cl-clinica-biobio-hospital-clinico-del-sur": {
+      "address": "Av. San Martín 285, Concepción",
+      "lat": -36.8269,
+      "lng": -73.0503,
+      "source": "curated"
+    },
+    "cl-bupa-antofagasta": {
+      "address": "Av. Angamos 745, Antofagasta",
+      "lat": -23.6521,
+      "lng": -70.4012,
+      "source": "curated"
+    },
+    "clinica-bupa-antofagasta": {
+      "address": "Av. Angamos 745, Antofagasta",
+      "lat": -23.6521,
+      "lng": -70.4012,
+      "source": "curated"
+    },
+    "cl-clinica-bupa-antofagasta-clinica-atacama": {
+      "address": "Av. Angamos 745, Antofagasta",
+      "lat": -23.6521,
+      "lng": -70.4012,
+      "source": "curated"
+    },
+    "cl-bupa-renaca": {
+      "address": "Av. Borgoño 14444, Viña del Mar",
+      "lat": -33.0245,
+      "lng": -71.5521,
+      "source": "curated"
+    },
+    "clinica-bupa-renaca": {
+      "address": "Av. Borgoño 14444, Viña del Mar",
+      "lat": -33.0245,
+      "lng": -71.5521,
+      "source": "curated"
+    },
+    "cl-bupa-santiago": {
+      "address": "Av. El Bosque Norte 200, Las Condes, Santiago",
+      "lat": -33.4148,
+      "lng": -70.5975,
+      "source": "curated"
+    },
+    "cl-clinica-bupa-santiago-integramedica": {
+      "address": "Av. El Bosque Norte 200, Las Condes, Santiago",
+      "lat": -33.4148,
+      "lng": -70.5975,
+      "source": "curated"
+    },
+    "clinica-ciudad-del-mar": {
+      "address": "Av. Borgoño 14750, Reñaca, Viña del Mar",
+      "lat": -33.0189,
+      "lng": -71.5489,
+      "source": "curated"
+    },
+    "cl-ciudad-del-mar": {
+      "address": "Av. Borgoño 14750, Reñaca, Viña del Mar",
+      "lat": -33.0189,
+      "lng": -71.5489,
+      "source": "curated"
+    },
+    "cl-clinica-ciudad-del-mar-clinica-bupa-renaca": {
+      "address": "Av. Borgoño 14444, Viña del Mar",
+      "lat": -33.0245,
+      "lng": -71.5521,
+      "source": "curated"
+    },
+    "cl-cordillera": {
+      "address": "Av. Alejandro Fleming 7889, Las Condes, Santiago",
+      "lat": -33.4255,
+      "lng": -70.5504,
+      "source": "curated"
+    },
+    "cl-cumbres-del-norte": {
+      "address": "José de San Martín 2447, Antofagasta",
+      "lat": -23.648,
+      "lng": -70.3995,
+      "source": "curated"
+    },
+    "clinica-curico-achs-salud": {
+      "address": "Villota 355, Curicó",
+      "lat": -34.9825,
+      "lng": -71.2389,
+      "source": "curated"
+    },
+    "cl-davila": {
+      "address": "Av. Recoleta 464, Recoleta, Santiago",
+      "lat": -33.4378,
+      "lng": -70.6456,
+      "source": "curated"
+    },
+    "cl-clinica-davila-clinica-bupa-santiago": {
+      "address": "Av. Recoleta 464, Recoleta, Santiago",
+      "lat": -33.4378,
+      "lng": -70.6456,
+      "source": "curated"
+    },
+    "cl-clinica-davila-clinica-bupa-stgo": {
+      "address": "Av. Recoleta 464, Recoleta, Santiago",
+      "lat": -33.4378,
+      "lng": -70.6456,
+      "source": "curated"
+    },
+    "cl-clinica-davila-integramedica": {
+      "address": "Av. Recoleta 464, Recoleta, Santiago",
+      "lat": -33.4378,
+      "lng": -70.6456,
+      "source": "curated"
+    },
+    "clinica-davila-vespucio": {
+      "address": "Av. Vespucio Norte 3455, Huechuraba, Santiago",
+      "lat": -33.3589,
+      "lng": -70.6358,
+      "source": "curated"
+    },
+    "cl-davila-a3": {
+      "address": "Av. Recoleta 464, Recoleta, Santiago",
+      "lat": -33.4378,
+      "lng": -70.6456,
+      "source": "curated"
+    },
+    "hosp-clinico-del-sur": {
+      "address": "Av. San Martín 285, Concepción",
+      "lat": -36.8269,
+      "lng": -73.0503,
+      "source": "curated"
+    },
+    "cl-fleming-arica": {
+      "address": "Av. Diego Portales 2296, Arica",
+      "lat": -18.4745,
+      "lng": -70.3121,
+      "source": "curated"
+    },
+    "cl-hospital-del-profesor": {
+      "address": "Av. Libertador Bernardo O'Higgins 4860, Estación Central, Santiago",
+      "lat": -33.4576,
+      "lng": -70.7026,
+      "source": "curated"
+    },
+    "cl-indisa-maipu": {
+      "address": "Av. Pajaritos 3999, Maipú, Santiago",
+      "lat": -33.5112,
+      "lng": -70.7589,
+      "source": "curated"
+    },
+    "cl-indisa-providencia-anexo": {
+      "address": "Av. Santa María 1810, Providencia, Santiago",
+      "lat": -33.4189,
+      "lng": -70.6106,
+      "source": "curated"
+    },
+    "clinica-isamedica": {
+      "address": "Carretera Frei Montalva 884, Rancagua",
+      "lat": -34.1864,
+      "lng": -70.723,
+      "source": "curated"
+    },
+    "cl-juan-pablo-ii": {
+      "address": "Av. Santa Rosa 1234, Santiago Centro",
+      "lat": -33.4641,
+      "lng": -70.6423,
+      "source": "curated"
+    },
+    "cl-la-portad": {
+      "address": "Av. Balmaceda 2648, Antofagasta",
+      "lat": -23.6452,
+      "lng": -70.3989,
+      "source": "curated"
+    },
+    "cl-clinica-la-portada-clinica-tarapaca": {
+      "address": "Barros Arana 1550, Iquique",
+      "lat": -20.2138,
+      "lng": -70.1489,
+      "source": "curated"
+    },
+    "cl-las-amapolas": {
+      "address": "Av. Vicente Méndez 75, Chillán",
+      "lat": -36.6012,
+      "lng": -72.0906,
+      "source": "curated"
+    },
+    "cl-las-condes": {
+      "address": "Av. Lo Fontecilla 441, Las Condes, Santiago",
+      "lat": -33.3776,
+      "lng": -70.5151,
+      "source": "curated"
+    },
+    "cl-andes-salud-talca": {
+      "address": "1 Sur 1205, Talca",
+      "lat": -35.4268,
+      "lng": -71.6554,
+      "source": "curated"
+    },
+    "clinica-los-andes-achs-salud": {
+      "address": "Av. Alemania 821, Los Ángeles",
+      "lat": -37.4689,
+      "lng": -72.3521,
+      "source": "curated"
+    },
+    "cl-los-andes-la": {
+      "address": "Genaro Reyes 581, Los Ángeles",
+      "lat": -37.4674,
+      "lng": -72.3367,
+      "source": "curated"
+    },
+    "cl-los-carrera": {
+      "address": "Caupolicán 958, Quilpué",
+      "lat": -33.0486,
+      "lng": -71.4364,
+      "source": "curated"
+    },
+    "clinica-los-carrera": {
+      "address": "Caupolicán 958, Quilpué",
+      "lat": -33.0486,
+      "lng": -71.4364,
+      "source": "curated"
+    },
+    "cl-clinica-los-carrera-clinica-davila": {
+      "address": "Av. Recoleta 464, Recoleta, Santiago",
+      "lat": -33.4378,
+      "lng": -70.6456,
+      "source": "curated"
+    },
+    "cl-clinica-los-carrera-inter": {
+      "address": "Av. O'Higgins 1234, Chillán",
+      "lat": -36.6068,
+      "lng": -72.1034,
+      "source": "curated"
+    },
+    "clinica-los-carrera-interclinica": {
+      "address": "Av. O'Higgins 1234, Chillán",
+      "lat": -36.6068,
+      "lng": -72.1034,
+      "source": "curated"
+    },
+    "cl-los-leones": {
+      "address": "Av. Los Leones 1100, Providencia, Santiago",
+      "lat": -33.4212,
+      "lng": -70.5989,
+      "source": "curated"
+    },
+    "clinica-los-leones": {
+      "address": "Av. Los Leones 1100, Providencia, Santiago",
+      "lat": -33.4212,
+      "lng": -70.5989,
+      "source": "curated"
+    },
+    "cl-meds": {
+      "address": "Av. Santa María 640, Providencia, Santiago",
+      "lat": -33.4254,
+      "lng": -70.6158,
+      "source": "curated"
+    },
+    "cl-portada-achs": {
+      "address": "Av. Balmaceda 2648, Antofagasta",
+      "lat": -23.6452,
+      "lng": -70.3989,
+      "source": "curated"
+    },
+    "cl-la-portada": {
+      "address": "Av. Balmaceda 2648, Antofagasta",
+      "lat": -23.6452,
+      "lng": -70.3989,
+      "source": "curated"
+    },
+    "clinica-puerto-montt-achs-salud": {
+      "address": "Av. Diego Portales 500, Puerto Montt",
+      "lat": -41.4712,
+      "lng": -72.9368,
+      "source": "curated"
+    },
+    "cl-puerto-montt": {
+      "address": "Av. Diego Portales 500, Puerto Montt",
+      "lat": -41.4712,
+      "lng": -72.9368,
+      "source": "curated"
+    },
+    "clinica-puerto-varas": {
+      "address": "Dr. Félix Raimann 300, Puerto Varas",
+      "lat": -41.32,
+      "lng": -72.9916,
+      "source": "curated"
+    },
+    "cl-puerto-varas": {
+      "address": "Dr. Félix Raimann 300, Puerto Varas",
+      "lat": -41.32,
+      "lng": -72.9916,
+      "source": "curated"
+    },
+    "cl-clinica-rcr-atacama-clinica-bupa-antofagasta": {
+      "address": "Av. Angamos 745, Antofagasta",
+      "lat": -23.6521,
+      "lng": -70.4012,
+      "source": "curated"
+    },
+    "cl-redsalud-elqui": {
+      "address": "Av. El Santo 1477, La Serena",
+      "lat": -29.9021,
+      "lng": -71.2512,
+      "source": "curated"
+    },
+    "cl-redsalud-iquique": {
+      "address": "Av. Arturo Prat 3050, Iquique",
+      "lat": -20.2142,
+      "lng": -70.1521,
+      "source": "curated"
+    },
+    "clinica-redsalud-magallanes": {
+      "address": "Av. Bulnes 299, Punta Arenas",
+      "lat": -53.1638,
+      "lng": -70.9172,
+      "source": "curated"
+    },
+    "cl-redsalud-magallanes": {
+      "address": "Av. Bulnes 299, Punta Arenas",
+      "lat": -53.1638,
+      "lng": -70.9172,
+      "source": "curated"
+    },
+    "clinica-redsalud-mayor-temuco": {
+      "address": "Av. Gabriela Mistral 1955, Temuco",
+      "lat": -38.7301,
+      "lng": -72.6273,
+      "source": "curated"
+    },
+    "cl-redsalud-mayor": {
+      "address": "Av. Gabriela Mistral 1955, Temuco",
+      "lat": -38.7301,
+      "lng": -72.6273,
+      "source": "curated"
+    },
+    "cl-redsalud-providencia": {
+      "address": "Av. Salvador 100, Providencia, Santiago",
+      "lat": -33.4325,
+      "lng": -70.6108,
+      "source": "curated"
+    },
+    "cl-clinica-redsalud-providencia-ex-avansalud": {
+      "address": "Av. Salvador 100, Providencia, Santiago",
+      "lat": -33.4325,
+      "lng": -70.6108,
+      "source": "curated"
+    },
+    "cl-redsalud-providencia-avansalud": {
+      "address": "Av. Salvador 100, Providencia, Santiago",
+      "lat": -33.4325,
+      "lng": -70.6108,
+      "source": "curated"
+    },
+    "clinica-redsalud-providencia": {
+      "address": "Av. Salvador 100, Providencia, Santiago",
+      "lat": -33.4325,
+      "lng": -70.6108,
+      "source": "curated"
+    },
+    "cl-redsalud-rancagua": {
+      "address": "Av. Libertador Bernardo O'Higgins 306, Rancagua",
+      "lat": -34.1702,
+      "lng": -70.7405,
+      "source": "curated"
+    },
+    "cl-redsalud-santiago": {
+      "address": "Av. Libertador Bernardo O'Higgins 4850, Estación Central, Santiago",
+      "lat": -33.4573,
+      "lng": -70.7018,
+      "source": "curated"
+    },
+    "cl-redsalud-santiago-bicentenario": {
+      "address": "Av. Libertador Bernardo O'Higgins 4850, Estación Central, Santiago",
+      "lat": -33.4573,
+      "lng": -70.7018,
+      "source": "curated"
+    },
+    "cl-clinica-redsalud-santiago-ex-bicentenario": {
+      "address": "Av. Libertador Bernardo O'Higgins 4850, Estación Central, Santiago",
+      "lat": -33.4573,
+      "lng": -70.7018,
+      "source": "curated"
+    },
+    "cl-redsalud-valparaiso": {
+      "address": "Av. Brasil 1786, Valparaíso",
+      "lat": -33.0458,
+      "lng": -71.6195,
+      "source": "curated"
+    },
+    "clinica-redsalud-valparaiso": {
+      "address": "Av. Brasil 1786, Valparaíso",
+      "lat": -33.0458,
+      "lng": -71.6195,
+      "source": "curated"
+    },
+    "cl-redsalud-vitacura": {
+      "address": "Av. Vitacura 5250, Vitacura, Santiago",
+      "lat": -33.3842,
+      "lng": -70.5721,
+      "source": "curated"
+    },
+    "cl-regional-la-portada": {
+      "address": "Av. Balmaceda 2648, Antofagasta",
+      "lat": -23.6452,
+      "lng": -70.3989,
+      "source": "curated"
+    },
+    "cl-clinica-regional-la-portada": {
+      "address": "Av. Balmaceda 2648, Antofagasta",
+      "lat": -23.6452,
+      "lng": -70.3989,
+      "source": "curated"
+    },
+    "clinica-renaca": {
+      "address": "Av. Borgoño 14444, Viña del Mar",
+      "lat": -33.0245,
+      "lng": -71.5521,
+      "source": "curated"
+    },
+    "cl-clinica-renaca": {
+      "address": "Av. Borgoño 14444, Viña del Mar",
+      "lat": -33.0245,
+      "lng": -71.5521,
+      "source": "curated"
+    },
+    "cl-rio-blanco": {
+      "address": "Caletera Ruta 60 km 777, Los Andes",
+      "lat": -32.8461,
+      "lng": -70.5862,
+      "source": "curated"
+    },
+    "cl-san-antonio": {
+      "address": "Av. Barros Luco 105, San Antonio",
+      "lat": -33.581,
+      "lng": -71.6088,
+      "source": "curated"
+    },
+    "cl-san-carlos": {
+      "address": "San Carlos de Apoquindo 2200, Las Condes, Santiago",
+      "lat": -33.4012,
+      "lng": -70.5121,
+      "source": "curated"
+    },
+    "cl-san-jose-arica": {
+      "address": "Av. Dr. Juan Noé 1370, Arica",
+      "lat": -18.4789,
+      "lng": -70.3187,
+      "source": "curated"
+    },
+    "cl-clinica-san-jose": {
+      "address": "Av. Dr. Juan Noé 1370, Arica",
+      "lat": -18.4789,
+      "lng": -70.3187,
+      "source": "curated"
+    },
+    "cl-clinica-san-jose-inter": {
+      "address": "Av. Dr. Juan Noé 1370, Arica",
+      "lat": -18.4789,
+      "lng": -70.3187,
+      "source": "curated"
+    },
+    "cl-san-jose-interclinica": {
+      "address": "Av. Dr. Juan Noé 1370, Arica",
+      "lat": -18.4789,
+      "lng": -70.3187,
+      "source": "curated"
+    },
+    "clinica-sanatorio-aleman": {
+      "address": "Av. Pedro de Valdivia 801, Concepción",
+      "lat": -36.8436,
+      "lng": -73.052,
+      "source": "curated"
+    },
+    "sanatorio-aleman": {
+      "address": "Av. Pedro de Valdivia 801, Concepción",
+      "lat": -36.8436,
+      "lng": -73.052,
+      "source": "curated"
+    },
+    "cl-santa-maria": {
+      "address": "Av. Santa María 0500, Providencia, Santiago",
+      "lat": -33.4221,
+      "lng": -70.6103,
+      "source": "curated"
+    },
+    "cl-sierra-bella": {
+      "address": "Sierra Bella 1181, Santiago",
+      "lat": -33.4582,
+      "lng": -70.6369,
+      "source": "curated"
+    },
+    "cl-clinica-tarapaca-clinica-la-portada": {
+      "address": "Barros Arana 1550, Iquique",
+      "lat": -20.2138,
+      "lng": -70.1489,
+      "source": "curated"
+    },
+    "cl-tarapaca": {
+      "address": "Barros Arana 1550, Iquique",
+      "lat": -20.2138,
+      "lng": -70.1489,
+      "source": "curated"
+    },
+    "clinica-tarapaca-interclinica": {
+      "address": "Barros Arana 1550, Iquique",
+      "lat": -20.2138,
+      "lng": -70.1489,
+      "source": "curated"
+    },
+    "cl-tarapaca-interclinica": {
+      "address": "Barros Arana 1550, Iquique",
+      "lat": -20.2138,
+      "lng": -70.1489,
+      "source": "curated"
+    },
+    "cl-uc": {
+      "address": "Av. Raúl Bitrán 1305, La Serena",
+      "lat": -29.9252,
+      "lng": -71.2577,
+      "source": "curated"
+    },
+    "cl-clinica-universidad-de": {
+      "address": "Av. Angamos 0610, Antofagasta",
+      "lat": -23.6582,
+      "lng": -70.3959,
+      "source": "curated"
+    },
+    "clinica-universidad-de-los-andes": {
+      "address": "San Carlos de Apoquindo 2200, Las Condes, Santiago",
+      "lat": -33.4012,
+      "lng": -70.5121,
+      "source": "curated"
+    },
+    "cl-univ-andes": {
+      "address": "San Carlos de Apoquindo 2200, Las Condes, Santiago",
+      "lat": -33.4012,
+      "lng": -70.5121,
+      "source": "curated"
+    },
+    "cl-clinica-universidad-de-los-andes-clinica-uc-san-carlos": {
+      "address": "San Carlos de Apoquindo 2200, Las Condes, Santiago",
+      "lat": -33.4012,
+      "lng": -70.5121,
+      "source": "curated"
+    },
+    "cl-clinica-universidad-de-los-andes-clinica-uc-san-carlos-clinica-las-condes": {
+      "address": "Av. Lo Fontecilla 441, Las Condes, Santiago",
+      "lat": -33.3776,
+      "lng": -70.5151,
+      "source": "curated"
+    },
+    "cl-davila-vespucio": {
+      "address": "Av. Vespucio Norte 3455, Huechuraba, Santiago",
+      "lat": -33.3589,
+      "lng": -70.6358,
+      "source": "curated"
+    },
+    "falp": {
+      "address": "Av. José Manuel Infante 805, Providencia, Santiago",
+      "lat": -33.439,
+      "lng": -70.6224,
+      "source": "curated"
+    },
+    "hosp-clinico-fach": {
+      "address": "Av. La Paz 1003, Independencia, Santiago",
+      "lat": -33.4258,
+      "lng": -70.6612,
+      "source": "curated"
+    },
+    "hospital-clinico-fusat": {
+      "address": "Carretera Frei Montalva 1002, Rancagua",
+      "lat": -34.1878,
+      "lng": -70.7206,
+      "source": "curated"
+    },
+    "hosp-clinico-fusat": {
+      "address": "Carretera Frei Montalva 1002, Rancagua",
+      "lat": -34.1878,
+      "lng": -70.7206,
+      "source": "curated"
+    },
+    "hospital-clinico-uc": {
+      "address": "Marcoleta 367, Santiago Centro",
+      "lat": -33.4417,
+      "lng": -70.6506,
+      "source": "curated"
+    },
+    "hosp-clinico-uc": {
+      "address": "Marcoleta 367, Santiago Centro",
+      "lat": -33.4417,
+      "lng": -70.6506,
+      "source": "curated"
+    },
+    "cl-hospital-clinico-uc-christus-clinica-santa-maria": {
+      "address": "Av. Santa María 0500, Providencia, Santiago",
+      "lat": -33.4221,
+      "lng": -70.6103,
+      "source": "curated"
+    },
+    "hosp-clinico-uc-a2": {
+      "address": "Marcoleta 367, Santiago Centro",
+      "lat": -33.4417,
+      "lng": -70.6506,
+      "source": "curated"
+    },
+    "hosp-clinico-uch": {
+      "address": "Santos Dumont 999, Independencia, Santiago",
+      "lat": -33.4175,
+      "lng": -70.6528,
+      "source": "curated"
+    },
+    "hosp-clinico-uch-a2": {
+      "address": "Santos Dumont 999, Independencia, Santiago",
+      "lat": -33.4175,
+      "lng": -70.6528,
+      "source": "curated"
+    },
+    "hosp-clinico-uch-a3": {
+      "address": "Santos Dumont 999, Independencia, Santiago",
+      "lat": -33.4175,
+      "lng": -70.6528,
+      "source": "curated"
+    },
+    "hosp-clinico-uch-a4": {
+      "address": "Santos Dumont 999, Independencia, Santiago",
+      "lat": -33.4175,
+      "lng": -70.6528,
+      "source": "curated"
+    },
+    "hosp-vina-del-mar": {
+      "address": "Av. 3 Norte 1445, Viña del Mar",
+      "lat": -33.0182,
+      "lng": -71.5512,
+      "source": "curated"
+    },
+    "hospital-clinico-vina-del-mar": {
+      "address": "Av. 3 Norte 1445, Viña del Mar",
+      "lat": -33.0182,
+      "lng": -71.5512,
+      "source": "curated"
+    },
+    "cl-hospital-clinico-vina-del-mar-clinica-los-leones": {
+      "address": "Av. Los Leones 1100, Providencia, Santiago",
+      "lat": -33.4212,
+      "lng": -70.5989,
+      "source": "curated"
+    },
+    "hosp-ffaa-guzman": {
+      "address": "Av. Las Salinas 3125, Viña del Mar",
+      "lat": -33.0121,
+      "lng": -71.5412,
+      "source": "curated"
+    },
+    "hosp-militar-santiago": {
+      "address": "Av. Castillo Velasco 9100, La Reina, Santiago",
+      "lat": -33.4502,
+      "lng": -70.5381,
+      "source": "curated"
+    },
+    "hosp-militar-norte": {
+      "address": "General Borgoño 957, Antofagasta",
+      "lat": -23.6666,
+      "lng": -70.4016,
+      "source": "curated"
+    },
+    "hosp-naval-nef": {
+      "address": "Av. Alessandri 785, Viña del Mar",
+      "lat": -32.9989,
+      "lng": -71.5432,
+      "source": "curated"
+    },
+    "hosp-parroquial-san-bernardo": {
+      "address": "Av. Portales 3499, San Bernardo",
+      "lat": -33.6012,
+      "lng": -70.7121,
+      "source": "curated"
+    },
+    "integramedica": {
+      "address": "Av. Apoquindo 3039, Las Condes, Santiago",
+      "lat": -33.4189,
+      "lng": -70.5821,
+      "source": "curated"
+    },
+    "cl-integramedica-clinica-los-leones": {
+      "address": "Av. Los Leones 1100, Providencia, Santiago",
+      "lat": -33.4212,
+      "lng": -70.5989,
+      "source": "curated"
+    },
+    "cl-lircay-de-talca-clinica-los-andes-de-los-angeles": {
+      "address": "1 Sur 1205, Talca",
+      "lat": -35.4268,
+      "lng": -71.6554,
+      "source": "curated"
+    },
+    "cl-lircay-de-talca-los-andes-de-los-angeles-clinica-alemana-de-osorno": {
+      "address": "Av. Zenteno 1530, Osorno",
+      "lat": -40.5738,
+      "lng": -73.1289,
+      "source": "curated"
+    },
+    "cl-los-andes": {
+      "address": "Av. Argentina 447, Los Andes",
+      "lat": -32.8337,
+      "lng": -70.5982,
+      "source": "curated"
+    },
+    "cl-red-cm-uc-christus-e": {
+      "address": "Marcoleta 367, Santiago Centro",
+      "lat": -33.4417,
+      "lng": -70.6506,
+      "source": "curated"
+    },
+    "red-uc-christus-a4": {
+      "address": "Marcoleta 367, Santiago Centro",
+      "lat": -33.4417,
+      "lng": -70.6506,
+      "source": "curated"
+    },
+    "red-uc-christus-a3": {
+      "address": "Marcoleta 367, Santiago Centro",
+      "lat": -33.4417,
+      "lng": -70.6506,
+      "source": "curated"
+    },
+    "cl-red-uc-christus": {
+      "address": "Marcoleta 367, Santiago Centro",
+      "lat": -33.4417,
+      "lng": -70.6506,
+      "source": "curated"
+    },
+    "vidaintegra": {
+      "address": "Bandera 101, Santiago Centro",
+      "lat": -33.4417,
+      "lng": -70.6519,
+      "source": "curated"
+    }
+  }
+}

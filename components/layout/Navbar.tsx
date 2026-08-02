@@ -52,7 +52,9 @@ function isNavLinkActive(pathname: string, hash: string, href: string) {
     return false;
   }
 
-  if (href === "/") {
+  const pathOnly = href.split("?")[0] ?? href;
+
+  if (pathOnly === "/") {
     return pathname === "/" && (hash === "" || hash === "#");
   }
 
@@ -60,7 +62,7 @@ function isNavLinkActive(pathname: string, hash: string, href: string) {
     return pathname === "/" && hash === href.slice(1);
   }
 
-  return pathname === href || pathname.startsWith(`${href}/`);
+  return pathname === pathOnly || pathname.startsWith(`${pathOnly}/`);
 }
 
 function NavLink({

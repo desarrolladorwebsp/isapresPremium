@@ -1,0 +1,246 @@
+[
+  {
+    "id": "cm-redsalud",
+    "name": "Centros Médicos RedSalud"
+  },
+  {
+    "id": "cl-bupa-renaca",
+    "name": "Clínica Bupa Reñaca"
+  },
+  {
+    "id": "cl-bupa-santiago",
+    "name": "Clínica Bupa Santiago"
+  },
+  {
+    "id": "cl-ciudad-del-mar",
+    "name": "Clínica Ciudad del Mar"
+  },
+  {
+    "id": "cl-indisa-maipu",
+    "name": "Clínica Indisa Maipú"
+  },
+  {
+    "id": "cl-indisa-providencia-anexo",
+    "name": "Clínica Indisa Providencia (y prestadores Anexo I)"
+  },
+  {
+    "id": "cl-las-condes",
+    "name": "Clínica Las Condes"
+  },
+  {
+    "id": "cl-los-carrera",
+    "name": "Clínica Los Carrera"
+  },
+  {
+    "id": "cl-los-leones",
+    "name": "Clínica Los Leones"
+  },
+  {
+    "id": "cl-meds",
+    "name": "Clínica Meds"
+  },
+  {
+    "id": "cl-redsalud-providencia",
+    "name": "Clínica RedSalud Providencia"
+  },
+  {
+    "id": "cl-redsalud-rancagua",
+    "name": "Clínica RedSalud Rancagua"
+  },
+  {
+    "id": "cl-redsalud-valparaiso",
+    "name": "Clínica RedSalud Valparaíso"
+  },
+  {
+    "id": "cl-redsalud-santiago",
+    "name": "Clínica RedSalud Santiago"
+  },
+  {
+    "id": "cl-redsalud-vitacura",
+    "name": "Clínica RedSalud Vitacura"
+  },
+  {
+    "id": "cl-san-carlos",
+    "name": "Clínica San Carlos de Apoquindo"
+  },
+  {
+    "id": "cl-santa-maria",
+    "name": "Clínica Santa María"
+  },
+  {
+    "id": "cl-univ-andes",
+    "name": "Clínica Universidad de los Andes"
+  },
+  {
+    "id": "hosp-clinico-fusat",
+    "name": "Hospital Clinico Fusat"
+  },
+  {
+    "id": "hosp-clinico-uc",
+    "name": "Hospital Clínico Universidad Católica"
+  },
+  {
+    "id": "hosp-vina-del-mar",
+    "name": "Hospital Clinico de Viña del Mar"
+  },
+  {
+    "id": "integramedica",
+    "name": "Integramédica"
+  },
+  {
+    "id": "red-uc-christus",
+    "name": "Red de Salud UC Christus"
+  },
+  {
+    "id": "cl-san-jose-arica",
+    "name": "Clínica San José de Arica"
+  },
+  {
+    "id": "cl-atacama",
+    "name": "Clínica Atacama"
+  },
+  {
+    "id": "cl-redsalud-iquique",
+    "name": "Clínica RedSalud Iquique"
+  },
+  {
+    "id": "cl-la-portada",
+    "name": "Clínica La Portada"
+  },
+  {
+    "id": "cl-la-portad",
+    "name": "Clínica La Portad"
+  },
+  {
+    "id": "cl-tarapaca",
+    "name": "Clínica Tarapacá"
+  },
+  {
+    "id": "cl-andes-salud-el-loa",
+    "name": "Clínica Andes Salud El Loa"
+  },
+  {
+    "id": "cl-redsalud-elqui",
+    "name": "Clínica RedSalud Elqui"
+  },
+  {
+    "id": "cl-bupa-antofagasta",
+    "name": "Clínica Bupa Antofagasta"
+  },
+  {
+    "id": "cl-alemana-santiago-a",
+    "name": "Clínica Alemana de Santiago(A.)"
+  },
+  {
+    "id": "cl-alemana-santiago-a2",
+    "name": "Clínica Alemana de Santiago(A.2)"
+  },
+  {
+    "id": "cl-alemana-santiago-a3",
+    "name": "Clínica Alemana de Santiago(A.3)"
+  },
+  {
+    "id": "cl-davila",
+    "name": "Clínica Dávila"
+  },
+  {
+    "id": "cl-davila-vespucio",
+    "name": "Clínica Dávila Vespucio"
+  },
+  {
+    "id": "hosp-clinico-uc-a2",
+    "name": "Hospital Clínico Universidad Católica(A.2)"
+  },
+  {
+    "id": "hosp-clinico-uch",
+    "name": "Hospital Clínico Universidad de Chile"
+  },
+  {
+    "id": "hosp-clinico-uch-a2",
+    "name": "Hospital Clínico Universidad de Chile(A.2)"
+  },
+  {
+    "id": "red-uc-christus-a3",
+    "name": "Red de Salud UC Christus(A.3)"
+  },
+  {
+    "id": "cl-los-andes-la",
+    "name": "Clínica Los Andes Los Ángeles"
+  },
+  {
+    "id": "cl-andes-salud-talca",
+    "name": "Clínica Andes Salud Talca"
+  },
+  {
+    "id": "cl-andes-salud-chillan",
+    "name": "Clínica Andes Salud Chillán"
+  },
+  {
+    "id": "cl-andes-salud-concepcion",
+    "name": "Clínica Andes Salud Concepción"
+  },
+  {
+    "id": "cl-biobio",
+    "name": "Clínica Biobío"
+  },
+  {
+    "id": "sanatorio-aleman",
+    "name": "Sanatorio Alemán"
+  },
+  {
+    "id": "cl-cordillera",
+    "name": "Clínica Cordillera"
+  },
+  {
+    "id": "cl-hospital-del-profesor",
+    "name": "Clínica Hospital del Profesor"
+  },
+  {
+    "id": "hosp-clinico-uch-a3",
+    "name": "Hospital Clínico Universidad de Chile (A.3)"
+  },
+  {
+    "id": "hosp-clinico-uch-a4",
+    "name": "Hospital Clínico Universidad de Chile (A.4)"
+  },
+  {
+    "id": "hosp-parroquial-san-bernardo",
+    "name": "Hospital Parroquial de San Bernardo"
+  },
+  {
+    "id": "red-uc-christus-a4",
+    "name": "Red de Salud UC Christus (A.4)"
+  },
+  {
+    "id": "cl-alemana-osorno",
+    "name": "Clínica Alemana de Osorno"
+  },
+  {
+    "id": "cl-alemana-temuco",
+    "name": "Clínica Alemana de Temuco"
+  },
+  {
+    "id": "cl-alemana-valdivia",
+    "name": "Clínica Alemana de Valdivia"
+  },
+  {
+    "id": "cl-andes-salud-puerto-montt",
+    "name": "Clínica Andes Salud Puerto Montt"
+  },
+  {
+    "id": "cl-puerto-montt",
+    "name": "Clínica Puerto Montt"
+  },
+  {
+    "id": "cl-puerto-varas",
+    "name": "Clínica Puerto Varas"
+  },
+  {
+    "id": "cl-redsalud-magallanes",
+    "name": "Clínica RedSalud Magallanes"
+  },
+  {
+    "id": "cl-redsalud-mayor",
+    "name": "Clínica RedSalud Mayor"
+  }
+]
