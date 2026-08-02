@@ -119,6 +119,8 @@ export function CotizadorForm() {
   const [submitSuccessHint, setSubmitSuccessHint] = useState<string | null>(
     null,
   );
+  /** Honeypot anti-bot: debe permanecer vacío. */
+  const [honeypot, setHoneypot] = useState("");
 
   useEffect(() => {
     formTopRef.current?.scrollIntoView({
@@ -187,7 +189,7 @@ export function CotizadorForm() {
       const response = await fetch("/api/leads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({ ...formData, _hp: honeypot }),
       });
 
       const result = (await response.json().catch(() => null)) as {
@@ -195,7 +197,23 @@ export function CotizadorForm() {
         error?: string;
         fieldErrors?: LeadFieldErrors;
         clientEmailSent?: boolean;
+        retryAfterSeconds?: number;
       } | null;
+
+      if (response.status === 429) {
+        setSubmitError(
+          result?.error ||
+            "Demasiadas solicitudes. Intenta nuevamente en unos minutos.",
+        );
+        return;
+      }
+
+      if (response.status === 403) {
+        setSubmitError(
+          result?.error || "No pudimos validar el origen de la solicitud.",
+        );
+        return;
+      }
 
       if (response.status === 400 && result?.fieldErrors) {
         setErrors(result.fieldErrors);
@@ -286,6 +304,21 @@ export function CotizadorForm() {
       <div className="flex min-h-[320px] flex-1 flex-col lg:justify-between">
         {currentStep < 4 ? (
           <form className="space-y-4" onSubmit={handleFormSubmit} noValidate>
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute -left-[10000px] h-0 w-0 overflow-hidden opacity-0"
+            >
+              <label htmlFor={`${formId}-website`}>Sitio web</label>
+              <input
+                id={`${formId}-website`}
+                name="website"
+                type="text"
+                tabIndex={-1}
+                autoComplete="off"
+                value={honeypot}
+                onChange={(event) => setHoneypot(event.target.value)}
+              />
+            </div>
             {currentStep === 1 && (
               <>
                 <div>

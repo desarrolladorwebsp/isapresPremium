@@ -1,0 +1,21 @@
+---
+description: Cómo registrar leads como clientes del cotizador (API pública y formulario Isapres Premium)
+globs: "**/api/leads/**,**/api/public/v1/clients/**,**/lib/clients/register-lead-client.ts,**/lib/public-api/**,**/lib/leads/**,**/CotizadorForm.tsx"
+alwaysApply: false
+---
+
+# Leads → clientes del cotizador
+
+Antes de integrar o cambiar captura de leads, lee:
+
+`docs/PUBLIC-API-LEADS-CLIENTS.md`
+
+## Reglas rápidas
+
+- Motor en **isapresPremium** (`https://isaprespremium.cl`), no en la landing `cotizadorPremium`.
+- Mismo app: usa `registerLeadClient()` (`lib/clients/register-lead-client.ts`).
+- App externa: `POST /api/public/v1/clients` con `Authorization: Bearer <PUBLIC_API_SECRET>` (solo server-to-server).
+- Origen CRM: `FORMULARIO_WEB`. Default `executiveKind`: `ISAPRES_PREMIUM`.
+- No exponer `PUBLIC_API_SECRET` en frontend/widget.
+- No quitar rate limits, write-guard, honeypot de `/api/leads`, ni devolver IDs de ejecutivo en la API pública.
+- Autodocs: `GET /api/public/v1/docs` (también requiere secret).

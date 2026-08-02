@@ -9,7 +9,7 @@ Sitio marketing de [isaprespremium.cl](https://isaprespremium.cl) + **motor del 
 - Widget: `/cotizador-widget.js` (iframe → `/cotizador?embed=1`)
 - Paneles staff: `/cotizador/acceso`, `/cotizador/ejecutivos`, `/cotizador/admin`
 - Misma base Neon/Prisma del cotizador previo en cotizadorpremium.cl
-- Scripts ops / docs / storage migrados desde `cotizadorVirtual`
+- Scripts ops / docs / storage (antes en `cotizadorVirtual`, ahora `cotizadorPremium`)
 
 ## Desarrollo
 
@@ -30,4 +30,16 @@ Acceso local típico:
 
 Configura en el proyecto de `isaprespremium.cl` las variables de `.env.example` (especialmente `DATABASE_URL`, `AUTH_SECRET`, `NEXT_PUBLIC_APP_URL=https://isaprespremium.cl`, `DEFAULT_PARTNER_ENTITY_SLUG=isaprespremium`).
 
-La landing de captación permanece en **cotizadorpremium.cl** y redirige `/cotizador*`, `/api/*`, `/embed/*` y el widget hacia este host.
+La landing de captación permanece en **cotizadorpremium.cl** (`cotizadorPremium/`) y redirige `/cotizador*`, `/api/*`, `/embed/*` y el widget hacia este host.
+
+## Documentación (para humanos e IAs)
+
+| Doc | Contenido |
+|-----|-----------|
+| [docs/PUBLIC-API-LEADS-CLIENTS.md](./docs/PUBLIC-API-LEADS-CLIENTS.md) | **Registrar leads como clientes** — endpoint público, auth, ejemplos, seguridad |
+| [docs/WIDGET-INTEGRATION.md](./docs/WIDGET-INTEGRATION.md) | Widget embed |
+| [docs/ROLES-AND-PERMISSIONS.md](./docs/ROLES-AND-PERMISSIONS.md) | Roles staff |
+| [docs/ARCHITECTURE-COTIZADOR-PREMIUM.md](./docs/ARCHITECTURE-COTIZADOR-PREMIUM.md) | Arquitectura multitenant (contexto histórico) |
+
+Autodocs runtime (requiere `PUBLIC_API_SECRET`): `GET /api/public/v1/docs`.
+

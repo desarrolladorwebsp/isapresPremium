@@ -147,3 +147,11 @@ DO $$ BEGIN
 EXCEPTION
   WHEN duplicate_object THEN null;
 END $$;
+
+-- Origen de leads desde formularios web (API pública /api/public/v1/clients)
+DO $$ BEGIN
+  ALTER TYPE "ClientOrigin" ADD VALUE IF NOT EXISTS 'FORMULARIO_WEB';
+EXCEPTION
+  WHEN duplicate_object THEN null;
+  WHEN undefined_object THEN null;
+END $$;

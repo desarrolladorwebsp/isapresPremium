@@ -75,6 +75,8 @@ enum ClientOrigin {
   COTIZADOR
   MANUAL
   CAMPANA_LEAD_WHATSAPP
+  /// Lead captado por formulario web (Isapres Premium u otros) vía API.
+  FORMULARIO_WEB
 }
 
 enum ClientContactMethod {

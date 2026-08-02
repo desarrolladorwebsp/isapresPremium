@@ -12,6 +12,8 @@ const PUBLIC_POST_PROFILES = {
   quote: { limit: 15, label: "cotizaciones" },
   "cotizacion-notify": { limit: 20, label: "notificaciones" },
   "company-agreement": { limit: 10, label: "consultas de convenio" },
+  /** Formulario marketing Isapres Premium → /api/leads */
+  leads: { limit: 8, label: "solicitudes" },
 } as const;
 
 export type PublicPostProfile = keyof typeof PUBLIC_POST_PROFILES;

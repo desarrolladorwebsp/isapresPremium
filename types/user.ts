@@ -8,11 +8,15 @@ import type { ClientPlanSnapshot } from "@/types/client-plan";
 import type { CotizadorSourceInfo } from "@/lib/partner-entity/source-label";
 
 export type UserRole = "CLIENT" | "EXECUTIVE" | "ADMIN";
-export type ClientOrigin = "COTIZADOR" | "MANUAL" | "CAMPANA_LEAD_WHATSAPP";
+export type ClientOrigin =
+  | "COTIZADOR"
+  | "MANUAL"
+  | "CAMPANA_LEAD_WHATSAPP"
+  | "FORMULARIO_WEB";
 
 /** Orígenes seleccionables al registrar un cliente desde el panel. */
 export const MANUAL_CLIENT_ORIGIN_OPTIONS: Array<{
-  value: Exclude<ClientOrigin, "COTIZADOR">;
+  value: Exclude<ClientOrigin, "COTIZADOR" | "FORMULARIO_WEB">;
   label: string;
 }> = [
   { value: "MANUAL", label: "Registro propio" },
@@ -21,7 +25,7 @@ export const MANUAL_CLIENT_ORIGIN_OPTIONS: Array<{
 
 export function isManualSelectableClientOrigin(
   value: string,
-): value is Exclude<ClientOrigin, "COTIZADOR"> {
+): value is Exclude<ClientOrigin, "COTIZADOR" | "FORMULARIO_WEB"> {
   return MANUAL_CLIENT_ORIGIN_OPTIONS.some((option) => option.value === value);
 }
 
@@ -29,7 +33,7 @@ export interface CreateManualClientInput extends ClientProfileInput {
   pipelineNotes?: string | null;
   assignedExecutiveId?: string | null;
   /** Origen del alta manual. Por defecto MANUAL. */
-  clientOrigin?: Exclude<ClientOrigin, "COTIZADOR">;
+  clientOrigin?: Exclude<ClientOrigin, "COTIZADOR" | "FORMULARIO_WEB">;
 }
 
 export interface UserRecord {

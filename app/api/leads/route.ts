@@ -1,5 +1,6 @@
 import { Resend } from "resend";
 import { INITIAL_FORM_DATA } from "@/constants/cotizador";
+import { registerLeadClient } from "@/lib/clients/register-lead-client";
 import {
   buildAdminLeadEmail,
   buildClientLeadEmail,
@@ -8,6 +9,9 @@ import {
   leadPayloadSchema,
   zodIssuesToFieldErrors,
 } from "@/lib/leads/validation";
+import type { LeadPayload } from "@/lib/leads/validation";
+import { enforceLeadEmailRateLimit } from "@/lib/public-api/write-guard";
+import { enforcePublicPostGuard } from "@/lib/security/public-post-guard";
 
 export const runtime = "nodejs";
 
@@ -35,8 +39,51 @@ function toPublicError(error: unknown) {
   return PUBLIC_ERROR;
 }
 
+/** Honeypot anti-bot: si viene relleno, fingimos éxito sin side-effects. */
+function isHoneypotTripped(body: unknown): boolean {
+  if (!body || typeof body !== "object" || Array.isArray(body)) return false;
+  const raw = body as Record<string, unknown>;
+  const bait = raw._hp ?? raw.website ?? raw.companyUrl;
+  return typeof bait === "string" && bait.trim().length > 0;
+}
+
+async function registerLeadFromMarketingForm(data: LeadPayload) {
+  try {
+    enforceLeadEmailRateLimit(data.email);
+    return await registerLeadClient({
+      fullName: data.nombreApellido,
+      email: data.email,
+      phone: data.telefono,
+      rut: data.rut || null,
+      source: "isapres-premium",
+      preferenciaContacto: data.preferenciaContacto,
+      notes: data.motivoCotizacion
+        ? `Motivo: ${data.motivoCotizacion}`
+        : null,
+      metadata: {
+        región: data.region,
+        edad: data.edad || undefined,
+        "previsión actual": data.previsionActual,
+        "UF actuales": data.ufActuales || undefined,
+        "cargas médicas": data.cargasMedicas,
+        "edad cargas": data.edadCargas || undefined,
+        "renta imponible": data.rentaImponible,
+      },
+      executiveKind: "ISAPRES_PREMIUM",
+      autoAssign: true,
+      clientOrigin: "FORMULARIO_WEB",
+    });
+  } catch (error) {
+    console.error("Lead → cotizador client registration failed", error);
+    return null;
+  }
+}
+
 export async function POST(request: Request) {
   try {
+    const blocked = enforcePublicPostGuard(request, "leads");
+    if (blocked) return blocked;
+
     let body: unknown;
     try {
       body = await request.json();
@@ -45,6 +92,15 @@ export async function POST(request: Request) {
         { ok: false, error: "Solicitud inválida." },
         { status: 400 },
       );
+    }
+
+    if (isHoneypotTripped(body)) {
+      return Response.json({
+        ok: true,
+        adminId: null,
+        clientId: null,
+        clientEmailSent: false,
+      });
     }
 
     const payload =
@@ -66,6 +122,10 @@ export async function POST(request: Request) {
     }
 
     const data = parsed.data;
+
+    // Registrar en el cotizador como cliente (CRM). Si falla, no bloquear el lead por email.
+    const cotizadorClient = await registerLeadFromMarketingForm(data);
+
     const from =
       process.env.RESEND_FROM_EMAIL ??
       "Isapres Premium <contacto@isaprespremium.cl>";
@@ -98,16 +158,18 @@ export async function POST(request: Request) {
       }),
     ]);
 
-    // Admin email is critical: without it the lead is lost.
+    // Admin email is critical: without it the lead is lost (salvo que ya esté en CRM).
     if (adminResult.error) {
       console.error("Resend admin error", adminResult.error);
-      return Response.json(
-        {
-          ok: false,
-          error: PUBLIC_ERROR,
-        },
-        { status: 502 },
-      );
+      if (!cotizadorClient) {
+        return Response.json(
+          {
+            ok: false,
+            error: PUBLIC_ERROR,
+          },
+          { status: 502 },
+        );
+      }
     }
 
     // Client confirmation is secondary: lead was captured.

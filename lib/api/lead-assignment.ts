@@ -130,6 +130,7 @@ export async function pickExecutiveRoundRobin(
 /** Asigna automáticamente un cliente sin ejecutivo. Devuelve el id asignado o null. */
 export async function autoAssignClientExecutive(
   userId: string,
+  options?: Pick<ListEligibleExecutivesOptions, "executiveKind">,
 ): Promise<string | null> {
   const client = await prisma.user.findUnique({
     where: { id: userId },
@@ -139,7 +140,7 @@ export async function autoAssignClientExecutive(
   if (!client || client.role !== "CLIENT") return null;
   if (client.assignedExecutiveId) return client.assignedExecutiveId;
 
-  const executiveId = await pickExecutiveRoundRobin();
+  const executiveId = await pickExecutiveRoundRobin(options);
   if (!executiveId) return null;
 
   await prisma.user.update({

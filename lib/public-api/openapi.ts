@@ -37,7 +37,7 @@ export function buildPublicApiAgentGuide(request: Request) {
       base_url: baseUrl,
       status: "beta",
       description:
-        "API para integradores y agentes de IA. Expone listado de planes y documentación de deep links para redirigir usuarios al cotizador web con parámetros en la URL.",
+        "API para integradores y agentes de IA. Expone listado de planes, registro de leads como clientes, y documentación de deep links para redirigir usuarios al cotizador web con parámetros en la URL.",
     },
     authentication: {
       required: true,
@@ -60,6 +60,7 @@ export function buildPublicApiAgentGuide(request: Request) {
         "La clave se configura en el servidor como PUBLIC_API_SECRET.",
         "No compartas la clave en repositorios públicos ni en el frontend del cliente.",
         "Ante 401 INVALID_API_SECRET o MISSING_API_SECRET, verifica la cabecera.",
+        "POST /clients aplica rate limiting y validación estricta del payload; úsalo solo desde backend.",
       ],
     },
     endpoints: [
@@ -102,6 +103,54 @@ export function buildPublicApiAgentGuide(request: Request) {
             `Devuelve exactamente ${PUBLIC_API_PLANS_PREVIEW_LIMIT} planes ordenados por nombre.`,
             "Usa coverage_summary en lugar del array coverage completo para reducir el payload.",
             "Para el catálogo completo con coberturas por clínica, usa GET /plans.",
+          ],
+        },
+      },
+      {
+        method: "POST",
+        path: `${baseUrl}/clients`,
+        summary:
+          "Registra un lead como cliente del cotizador (upsert por email). Usar desde formularios web u otras capturas.",
+        auth_required: true,
+        documentation:
+          "Ver docs/PUBLIC-API-LEADS-CLIENTS.md en el repo isapresPremium para guía completa (auth, seguridad, checklist IA).",
+        request: {
+          content_type: "application/json",
+          required_fields: ["fullName", "email", "phone"],
+          shape: {
+            fullName: "string — nombre y apellido",
+            email: "string — único; si ya existe cliente, se actualiza",
+            phone: "string — con código de país (ej. +56 9 ...)",
+            rut: "string — opcional",
+            source: "string — id del formulario (ej. isapres-premium, empresas)",
+            notes: "string — notas libres para el ejecutivo",
+            preferenciaContacto:
+              "string — whatsapp | telefono | email | video-llamada",
+            metadata:
+              "object — pares clave/valor adicionales (región, renta, etc.)",
+            executiveKind:
+              "ISAPRES_PREMIUM | ISAPRES | ZOOM — default ISAPRES_PREMIUM",
+            autoAssign: "boolean — default true; round-robin al ejecutivo",
+          },
+        },
+        response: {
+          content_type: "application/json",
+          shape: {
+            data: {
+              clientId: "string",
+              email: "string",
+              created: "boolean — true si es alta nueva",
+              assigned: "boolean — true si quedó con ejecutivo asignado",
+            },
+            meta: { version: "string" },
+          },
+          notes: [
+            "HTTP 201 si se creó el cliente; 200 si se actualizó uno existente.",
+            "Origen del cliente: FORMULARIO_WEB.",
+            "No sobrescribe el origen si el cliente ya viene del cotizador.",
+            "Requiere PUBLIC_API_SECRET. Pensado para server-to-server (no uses la clave en el frontend).",
+            "Rate limit por IP y por API key; también por email (anti-spam de upserts).",
+            "Payload máximo ~16 KB; metadata máx. 20 campos.",
           ],
         },
       },
