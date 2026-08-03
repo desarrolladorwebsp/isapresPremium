@@ -313,7 +313,7 @@ export async function createManualClient(
 ): Promise<UserRecord> {
   let normalized;
   try {
-    normalized = normalizeClientProfileInput(input, { requireTitularRut: true });
+    normalized = normalizeClientProfileInput(input, { requireTitularRut: false });
   } catch (error) {
     throw new ApiError(
       error instanceof Error ? error.message : "Datos inválidos.",

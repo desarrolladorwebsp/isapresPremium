@@ -533,23 +533,45 @@ export async function redirectClientToIsapres(
 }
 
 export async function fetchPremiumExecutives(): Promise<
-  Array<{ id: string; fullName: string; email: string }>
+  Array<{
+    id: string;
+    fullName: string;
+    email: string;
+    executiveKind: "ISAPRES_PREMIUM" | "ZOOM" | "ISAPRES";
+  }>
 > {
   const response = await fetch("/api/executive/premium-executives");
   const data = await parseJsonResponse<{
-    executives: Array<{ id: string; fullName: string; email: string }>;
+    executives: Array<{
+      id: string;
+      fullName: string;
+      email: string;
+      executiveKind: "ISAPRES_PREMIUM" | "ZOOM" | "ISAPRES";
+    }>;
   }>(response);
   return data.executives;
 }
 
 export async function fetchEligibleExecutives(
   kind: "ZOOM" | "ISAPRES" | "ISAPRES_PREMIUM",
-): Promise<Array<{ id: string; fullName: string; email: string }>> {
+): Promise<
+  Array<{
+    id: string;
+    fullName: string;
+    email: string;
+    executiveKind: "ISAPRES_PREMIUM" | "ZOOM" | "ISAPRES";
+  }>
+> {
   const response = await fetch(
     `/api/executive/eligible-executives?kind=${encodeURIComponent(kind)}`,
   );
   const data = await parseJsonResponse<{
-    executives: Array<{ id: string; fullName: string; email: string }>;
+    executives: Array<{
+      id: string;
+      fullName: string;
+      email: string;
+      executiveKind: "ISAPRES_PREMIUM" | "ZOOM" | "ISAPRES";
+    }>;
   }>(response);
   return data.executives;
 }

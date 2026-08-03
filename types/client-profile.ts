@@ -20,6 +20,12 @@ export interface ClientAdditionalTitularProfile {
   currentIsapre: string;
 }
 
+/**
+ * Compatibilidad con perfiles antiguos.
+ * La ubicación se guarda en `coverageRegionId` (zona del catálogo).
+ */
+export type ClientCoverageArea = "" | "santiago-centro" | "region";
+
 export interface ClientExecutiveProfile {
   firstNames: string;
   lastNames: string;
@@ -30,17 +36,27 @@ export interface ClientExecutiveProfile {
   maritalStatus: string;
   address: string;
   commune: string;
+  /** Derivado: "region" si hay coverageRegionId. */
+  coverageArea: ClientCoverageArea;
+  /** Id de zona / región (catálogo ZONE_FILTER_OPTIONS). */
+  coverageRegionId: string;
+  /** Clínicas de preferencia (una o varias). */
+  preferredClinicIds: string[];
+  /** Si el beneficiario tiene anualidad. */
+  anualidad: boolean;
+  /** Comentario cuando no tiene anualidad. */
+  anualidadComment: string;
   dependents: ClientDependentProfile[];
   additionalTitulares: ClientAdditionalTitularProfile[];
   updatedAt: string;
 }
 
 export interface ClientProfileInput {
-  email: string;
+  email?: string | null;
   phone?: string | null;
   rut?: string | null;
   firstNames: string;
-  lastNames: string;
+  lastNames?: string | null;
   birthDate?: string | null;
   currentIsapre?: string | null;
   heightCm?: string | null;
@@ -48,6 +64,11 @@ export interface ClientProfileInput {
   maritalStatus?: string | null;
   address?: string | null;
   commune?: string | null;
+  coverageArea?: ClientCoverageArea | null;
+  coverageRegionId?: string | null;
+  preferredClinicIds?: string[] | null;
+  anualidad?: boolean | null;
+  anualidadComment?: string | null;
   dependents?: ClientDependentProfile[];
   additionalTitulares?: ClientAdditionalTitularProfile[];
 }

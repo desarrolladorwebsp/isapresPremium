@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CollapsibleSection } from "@/components/executive/collapsible-section";
 import {
   buildEmptyAdditionalTitular,
   buildEmptyDependent,
+  CLIENT_REGION_OPTIONS,
   MARITAL_STATUS_OPTIONS,
   splitFullName,
 } from "@/lib/client-profile/constants";
@@ -15,13 +16,16 @@ import {
   getClientManagementRutErrors,
   getClientManagementRutWarnings,
 } from "@/lib/client-profile/validate-client-ruts";
+import { fetchClinics } from "@/lib/api/admin-client";
 import { CURRENT_COVERAGE_OPTIONS } from "@/lib/filter-options";
 import { ui } from "@/lib/ui-tokens";
 import { joinClasses } from "@/lib/utils";
 import type {
   ClientAdditionalTitularProfile,
+  ClientCoverageArea,
   ClientDependentProfile,
 } from "@/types/client-profile";
+import type { Clinic } from "@/types/clinic";
 
 const COVERAGE_SELECT_OPTIONS = CURRENT_COVERAGE_OPTIONS.map((option) => ({
   value: option.label,
@@ -41,6 +45,11 @@ export interface ClientProfileFormValue {
   maritalStatus: string;
   address: string;
   commune: string;
+  coverageArea: ClientCoverageArea;
+  coverageRegionId: string;
+  preferredClinicIds: string[];
+  anualidad: boolean;
+  anualidadComment: string;
   dependents: ClientDependentProfile[];
   additionalTitulares: ClientAdditionalTitularProfile[];
 }
@@ -59,6 +68,11 @@ export function buildEmptyClientProfileFormValue(): ClientProfileFormValue {
     maritalStatus: "",
     address: "",
     commune: "",
+    coverageArea: "",
+    coverageRegionId: "",
+    preferredClinicIds: [],
+    anualidad: false,
+    anualidadComment: "",
     dependents: [],
     additionalTitulares: [],
   };
@@ -68,7 +82,7 @@ export interface ClientProfileFormProps {
   value: ClientProfileFormValue;
   onChange: (value: ClientProfileFormValue) => void;
   showEmail?: boolean;
-  /** Al crear cliente el RUT titular es obligatorio. */
+  /** @deprecated RUT ya no es obligatorio; se mantiene por compatibilidad. */
   requireTitularRut?: boolean;
   rutErrors?: {
     titular?: string;
@@ -89,6 +103,30 @@ export function ClientProfileForm({
     dependents: Record<string, string>;
     additionalTitulares: Record<string, string>;
   }>({ dependents: {}, additionalTitulares: {} });
+  const [clinics, setClinics] = useState<Clinic[]>([]);
+  const [clinicsLoading, setClinicsLoading] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setClinicsLoading(true);
+    void fetchClinics()
+      .then((rows) => {
+        if (!cancelled) {
+          setClinics(
+            [...rows].sort((a, b) => a.name.localeCompare(b.name, "es")),
+          );
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setClinics([]);
+      })
+      .finally(() => {
+        if (!cancelled) setClinicsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const titularRutError = rutErrors?.titular ?? blurRutErrors.titular;
   const titularRutIsSoftWarning = Boolean(
@@ -245,6 +283,21 @@ export function ClientProfileForm({
     });
   }
 
+  function togglePreferredClinic(clinicId: string) {
+    const selected = new Set(value.preferredClinicIds);
+    if (selected.has(clinicId)) selected.delete(clinicId);
+    else selected.add(clinicId);
+    updateField("preferredClinicIds", Array.from(selected));
+  }
+
+  function updateCoverageRegion(regionId: string) {
+    onChange({
+      ...value,
+      coverageRegionId: regionId,
+      coverageArea: regionId ? "region" : "",
+    });
+  }
+
   function renderIsapreSelect(
     currentValue: string,
     onSelect: (next: string) => void,
@@ -299,10 +352,9 @@ export function ClientProfileForm({
           <div className="grid gap-3 sm:grid-cols-2">
             {showEmail ? (
               <label className="block space-y-1.5 sm:col-span-2">
-                <span className="text-xs font-medium">Correo electrónico *</span>
+                <span className="text-xs font-medium">Correo electrónico</span>
                 <Input
                   type="email"
-                  required
                   value={value.email}
                   onChange={(event) => updateField("email", event.target.value)}
                   placeholder="cliente@gmail.com"
@@ -320,12 +372,9 @@ export function ClientProfileForm({
             </label>
 
             <label className="block space-y-1.5">
-              <span className="text-xs font-medium">
-                RUT titular{requireTitularRut ? " *" : ""}
-              </span>
+              <span className="text-xs font-medium">RUT titular</span>
               <Input
                 value={value.rut}
-                required={requireTitularRut}
                 aria-invalid={
                   Boolean(titularRutError) && !titularRutIsSoftWarning
                 }
@@ -370,9 +419,8 @@ export function ClientProfileForm({
             </label>
 
             <label className="block space-y-1.5">
-              <span className="text-xs font-medium">Apellidos *</span>
+              <span className="text-xs font-medium">Apellidos</span>
               <Input
-                required
                 value={value.lastNames}
                 onChange={(event) =>
                   updateField("lastNames", event.target.value)
@@ -459,6 +507,103 @@ export function ClientProfileForm({
                 placeholder="Ej. Las Condes"
               />
             </label>
+
+            <label className="block space-y-1.5">
+              <span className="text-xs font-medium">Región / zona</span>
+              <select
+                value={value.coverageRegionId}
+                onChange={(event) => updateCoverageRegion(event.target.value)}
+                className={joinClasses(
+                  "h-10 w-full rounded-md px-3 text-sm",
+                  ui.input,
+                )}
+              >
+                <option value="">Seleccionar región…</option>
+                {CLIENT_REGION_OPTIONS.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <fieldset className="space-y-2 sm:col-span-2">
+              <legend className="text-xs font-medium text-foreground">
+                Clínicas de preferencia
+              </legend>
+              <p className="text-[11px] text-muted">
+                Opcional. Puedes marcar una o varias clínicas preferidas del
+                beneficiario.
+              </p>
+              {clinicsLoading ? (
+                <p className="rounded-lg border border-dashed border-border px-3 py-3 text-sm text-muted">
+                  Cargando clínicas…
+                </p>
+              ) : clinics.length === 0 ? (
+                <p className="rounded-lg border border-dashed border-border px-3 py-3 text-sm text-muted">
+                  No hay clínicas disponibles para seleccionar.
+                </p>
+              ) : (
+                <div className="max-h-48 space-y-1 overflow-y-auto rounded-lg border border-border bg-white p-2">
+                  {clinics.map((clinic) => {
+                    const checked = value.preferredClinicIds.includes(clinic.id);
+                    return (
+                      <label
+                        key={clinic.id}
+                        className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-surface-hover"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => togglePreferredClinic(clinic.id)}
+                        />
+                        <span className="min-w-0 truncate">{clinic.name}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+              {value.preferredClinicIds.length > 0 ? (
+                <p className="text-[11px] text-muted">
+                  {value.preferredClinicIds.length} clínica
+                  {value.preferredClinicIds.length === 1 ? "" : "s"} seleccionada
+                  {value.preferredClinicIds.length === 1 ? "" : "s"}.
+                </p>
+              ) : null}
+            </fieldset>
+
+            <div className="flex flex-col gap-3 sm:col-span-2 sm:flex-row sm:items-end">
+              <label className="flex h-10 shrink-0 cursor-pointer items-center gap-2 text-sm sm:pb-0">
+                <input
+                  type="checkbox"
+                  checked={value.anualidad}
+                  onChange={(event) =>
+                    onChange({
+                      ...value,
+                      anualidad: event.target.checked,
+                      anualidadComment: event.target.checked
+                        ? ""
+                        : value.anualidadComment,
+                    })
+                  }
+                />
+                <span className="font-medium">Anualidad</span>
+              </label>
+              {!value.anualidad ? (
+                <label className="min-w-0 flex-1 space-y-1.5">
+                  <span className="text-xs font-medium">
+                    Comentario (sin anualidad)
+                  </span>
+                  <Input
+                    value={value.anualidadComment}
+                    onChange={(event) =>
+                      updateField("anualidadComment", event.target.value)
+                    }
+                    placeholder="Agregar comentario…"
+                  />
+                </label>
+              ) : null}
+            </div>
           </div>
         </div>
 
@@ -506,9 +651,8 @@ export function ClientProfileForm({
                   </label>
 
                   <label className="block space-y-1.5">
-                    <span className="text-xs font-medium">Apellidos *</span>
+                    <span className="text-xs font-medium">Apellidos</span>
                     <Input
-                      required
                       value={titular.lastNames}
                       onChange={(event) =>
                         updateAdditionalTitular(
@@ -801,6 +945,11 @@ export function userRecordToProfileFormValue(
       maritalStatus?: string;
       address?: string;
       commune?: string;
+      coverageArea?: ClientCoverageArea;
+      coverageRegionId?: string;
+      preferredClinicIds?: string[];
+      anualidad?: boolean;
+      anualidadComment?: string;
       dependents?: ClientDependentProfile[];
       additionalTitulares?: ClientAdditionalTitularProfile[];
     };
@@ -808,8 +957,10 @@ export function userRecordToProfileFormValue(
 ): ClientProfileFormValue {
   const profile = user?.clientProfile;
   const fromName = splitFullName(user?.fullName);
+  const email = user?.email ?? "";
+  const isPlaceholderEmail = email.includes("@clientes.isaprespremium.local");
   return {
-    email: user?.email ?? "",
+    email: isPlaceholderEmail ? "" : email,
     phone: user?.phone ?? "",
     rut: user?.rut ?? "",
     firstNames: profile?.firstNames || fromName.firstNames,
@@ -821,6 +972,11 @@ export function userRecordToProfileFormValue(
     maritalStatus: profile?.maritalStatus ?? "",
     address: profile?.address ?? "",
     commune: profile?.commune ?? "",
+    coverageArea: profile?.coverageArea ?? "",
+    coverageRegionId: profile?.coverageRegionId ?? "",
+    preferredClinicIds: profile?.preferredClinicIds ?? [],
+    anualidad: profile?.anualidad === true,
+    anualidadComment: profile?.anualidadComment ?? "",
     dependents: profile?.dependents ?? [],
     additionalTitulares: profile?.additionalTitulares ?? [],
   };

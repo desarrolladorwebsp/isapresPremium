@@ -73,7 +73,7 @@ export function CreateClientModal({
         dependents: profile.dependents,
         additionalTitulares: profile.additionalTitulares,
       },
-      { requireTitularRut: true },
+      { requireTitularRut: false },
     );
     if (errors.firstMessage) {
       setRutErrors({
@@ -88,7 +88,7 @@ export function CreateClientModal({
     setSaving(true);
     try {
       const created = await createExecutiveClient({
-        email: profile.email.trim(),
+        email: profile.email.trim() || null,
         phone: profile.phone.trim() || null,
         rut: profile.rut.trim() || null,
         firstNames: profile.firstNames.trim(),
@@ -100,6 +100,13 @@ export function CreateClientModal({
         maritalStatus: profile.maritalStatus || null,
         address: profile.address || null,
         commune: profile.commune || null,
+        coverageArea: profile.coverageArea || null,
+        coverageRegionId: profile.coverageRegionId || null,
+        preferredClinicIds: profile.preferredClinicIds,
+        anualidad: profile.anualidad,
+        anualidadComment: profile.anualidad
+          ? null
+          : profile.anualidadComment.trim() || null,
         dependents: profile.dependents,
         additionalTitulares: profile.additionalTitulares,
         pipelineNotes: pipelineNotes.trim() || null,
@@ -148,7 +155,6 @@ export function CreateClientModal({
         <ClientProfileForm
           value={profile}
           onChange={handleProfileChange}
-          requireTitularRut
           rutErrors={rutErrors}
         />
 

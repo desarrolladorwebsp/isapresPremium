@@ -17,7 +17,10 @@ import {
   type ClientProfileFormValue,
 } from "@/components/executive/client-profile-form";
 import { useStaffSession } from "@/hooks/use-auth-session";
-import { canUseZoomExecutiveWorkflow } from "@/lib/auth/staff-role";
+import {
+  canUseZoomExecutiveWorkflow,
+  formatExecutiveOptionLabel,
+} from "@/lib/auth/staff-role";
 import {
   fetchCalendlySchedulingLink,
   fetchEligibleExecutives,
@@ -379,6 +382,11 @@ function profileSnapshot(value: ClientProfileFormValue): string {
     maritalStatus: value.maritalStatus || "",
     address: value.address || "",
     commune: value.commune || "",
+    coverageArea: value.coverageArea || "",
+    coverageRegionId: value.coverageRegionId || "",
+    preferredClinicIds: value.preferredClinicIds,
+    anualidad: value.anualidad === true,
+    anualidadComment: value.anualidadComment || "",
     dependents: value.dependents,
     additionalTitulares: value.additionalTitulares,
   });
@@ -432,13 +440,28 @@ export function ClientPipelineDrawer({
   const [saving, setSaving] = useState(false);
   const [actionBusy, setActionBusy] = useState(false);
   const [premiumExecutives, setPremiumExecutives] = useState<
-    Array<{ id: string; fullName: string; email: string }>
+    Array<{
+      id: string;
+      fullName: string;
+      email: string;
+      executiveKind: "ISAPRES_PREMIUM" | "ZOOM" | "ISAPRES";
+    }>
   >([]);
   const [zoomExecutives, setZoomExecutives] = useState<
-    Array<{ id: string; fullName: string; email: string }>
+    Array<{
+      id: string;
+      fullName: string;
+      email: string;
+      executiveKind: "ISAPRES_PREMIUM" | "ZOOM" | "ISAPRES";
+    }>
   >([]);
   const [isapresExecutives, setIsapresExecutives] = useState<
-    Array<{ id: string; fullName: string; email: string }>
+    Array<{
+      id: string;
+      fullName: string;
+      email: string;
+      executiveKind: "ISAPRES_PREMIUM" | "ZOOM" | "ISAPRES";
+    }>
   >([]);
   const [redirectTargetId, setRedirectTargetId] = useState("");
   const [redirectContactMethod, setRedirectContactMethod] =
@@ -859,7 +882,7 @@ export function ClientPipelineDrawer({
 
   function buildProfilePayload() {
     return {
-      email: profileForm.email.trim(),
+      email: profileForm.email.trim() || null,
       phone: profileForm.phone.trim() || null,
       rut: profileForm.rut.trim() || null,
       firstNames: profileForm.firstNames.trim(),
@@ -871,6 +894,13 @@ export function ClientPipelineDrawer({
       maritalStatus: profileForm.maritalStatus || null,
       address: profileForm.address || null,
       commune: profileForm.commune || null,
+      coverageArea: profileForm.coverageArea || null,
+      coverageRegionId: profileForm.coverageRegionId || null,
+      preferredClinicIds: profileForm.preferredClinicIds,
+      anualidad: profileForm.anualidad,
+      anualidadComment: profileForm.anualidad
+        ? null
+        : profileForm.anualidadComment.trim() || null,
       dependents: profileForm.dependents,
       additionalTitulares: profileForm.additionalTitulares,
     };
@@ -1421,9 +1451,14 @@ export function ClientPipelineDrawer({
         onNotify("La fecha de atención solicitada no es válida.", "error");
         return;
       }
-      const targetLabel =
-        premiumExecutives.find((row) => row.id === redirectTargetId)?.fullName ??
-        "el ejecutivo seleccionado";
+      const target =
+        premiumExecutives.find((row) => row.id === redirectTargetId) ?? null;
+      const targetLabel = target
+        ? formatExecutiveOptionLabel({
+            fullName: target.fullName,
+            executiveKind: target.executiveKind,
+          })
+        : "el ejecutivo seleccionado";
       setPendingConfirm({
         kind: "redirect",
         targetLabel,
@@ -1440,9 +1475,14 @@ export function ClientPipelineDrawer({
         onNotify("Selecciona un Ejecutivo Zoom.", "error");
         return;
       }
-      const targetLabel =
-        zoomExecutives.find((row) => row.id === sendZoomTargetId)?.fullName ??
-        "el ejecutivo seleccionado";
+      const target =
+        zoomExecutives.find((row) => row.id === sendZoomTargetId) ?? null;
+      const targetLabel = target
+        ? formatExecutiveOptionLabel({
+            fullName: target.fullName,
+            executiveKind: target.executiveKind,
+          })
+        : "el ejecutivo seleccionado";
       setPendingConfirm({ kind: "send_zoom", targetLabel });
       return;
     }
@@ -1452,9 +1492,15 @@ export function ClientPipelineDrawer({
         onNotify("Selecciona un Ejecutivo Isapres.", "error");
         return;
       }
-      const targetLabel =
-        isapresExecutives.find((row) => row.id === sendIsapresTargetId)
-          ?.fullName ?? "el ejecutivo seleccionado";
+      const target =
+        isapresExecutives.find((row) => row.id === sendIsapresTargetId) ??
+        null;
+      const targetLabel = target
+        ? formatExecutiveOptionLabel({
+            fullName: target.fullName,
+            executiveKind: target.executiveKind,
+          })
+        : "el ejecutivo seleccionado";
       setPendingConfirm({ kind: "send_isapres", targetLabel });
       return;
     }
@@ -2107,7 +2153,10 @@ export function ClientPipelineDrawer({
                         placeholder="Selecciona un ejecutivo…"
                         options={premiumExecutives.map((executive) => ({
                           value: executive.id,
-                          label: `${executive.fullName} (${executive.email})`,
+                          label: `${formatExecutiveOptionLabel({
+                            fullName: executive.fullName,
+                            executiveKind: executive.executiveKind,
+                          })} (${executive.email})`,
                         }))}
                         onChange={(event) =>
                           setRedirectTargetId(event.target.value)
@@ -2288,7 +2337,10 @@ export function ClientPipelineDrawer({
                         placeholder="Selecciona un ejecutivo Zoom…"
                         options={zoomExecutives.map((executive) => ({
                           value: executive.id,
-                          label: `${executive.fullName} (${executive.email})`,
+                          label: `${formatExecutiveOptionLabel({
+                            fullName: executive.fullName,
+                            executiveKind: executive.executiveKind,
+                          })} (${executive.email})`,
                         }))}
                         onChange={(event) =>
                           setSendZoomTargetId(event.target.value)
@@ -2325,7 +2377,10 @@ export function ClientPipelineDrawer({
                         placeholder="Selecciona un ejecutivo Isapres…"
                         options={isapresExecutives.map((executive) => ({
                           value: executive.id,
-                          label: `${executive.fullName} (${executive.email})`,
+                          label: `${formatExecutiveOptionLabel({
+                            fullName: executive.fullName,
+                            executiveKind: executive.executiveKind,
+                          })} (${executive.email})`,
                         }))}
                         onChange={(event) =>
                           setSendIsapresTargetId(event.target.value)

@@ -51,6 +51,18 @@ export function getStaffRoleLabel(input: {
   }
 }
 
+/** Nombre + rol para selectores de asignación / redirección. */
+export function formatExecutiveOptionLabel(input: {
+  fullName: string;
+  executiveKind?: ExecutiveKind | null;
+}): string {
+  const name = input.fullName.trim() || "Ejecutivo";
+  return `${name} · ${getStaffRoleLabel({
+    realm: "executive",
+    executiveKind: input.executiveKind,
+  })}`;
+}
+
 /** Label en minúsculas para correos (“como X”). */
 export function getStaffRoleLabelLower(input: {
   realm: StaffRealm;

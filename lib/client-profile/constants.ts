@@ -1,5 +1,6 @@
 import type {
   ClientAdditionalTitularProfile,
+  ClientCoverageArea,
   ClientDependentProfile,
   ClientExecutiveProfile,
   ClientProfileInput,
@@ -10,6 +11,7 @@ import {
   type ClientManagementRutOptions,
 } from "@/lib/client-profile/validate-client-ruts";
 import { formatRut } from "@/lib/auth/rut";
+import { ZONE_FILTER_OPTIONS } from "@/lib/filter-options";
 
 export const MARITAL_STATUS_OPTIONS = [
   "Soltero/a",
@@ -20,6 +22,9 @@ export const MARITAL_STATUS_OPTIONS = [
   "Separado/a",
   "Otro",
 ] as const;
+
+/** Zonas / regiones de ubicación del beneficiario (incluye RM y sus sectores). */
+export const CLIENT_REGION_OPTIONS = ZONE_FILTER_OPTIONS;
 
 function createLocalId(prefix: string): string {
   return typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -63,6 +68,11 @@ export function buildEmptyClientProfile(): ClientExecutiveProfile {
     maritalStatus: "",
     address: "",
     commune: "",
+    coverageArea: "",
+    coverageRegionId: "",
+    preferredClinicIds: [],
+    anualidad: false,
+    anualidadComment: "",
     dependents: [],
     additionalTitulares: [],
     updatedAt: new Date().toISOString(),
@@ -115,6 +125,26 @@ function isAdditionalTitular(
   );
 }
 
+function resolveCoverageArea(value: unknown): ClientCoverageArea {
+  if (value === "region" || value === "santiago-centro") return value;
+  return "";
+}
+
+const VALID_REGION_IDS = new Set(CLIENT_REGION_OPTIONS.map((option) => option.id));
+
+function resolveCoverageRegionId(
+  regionId: unknown,
+  coverageArea: ClientCoverageArea,
+): string {
+  if (typeof regionId === "string") {
+    const trimmed = regionId.trim();
+    if (VALID_REGION_IDS.has(trimmed)) return trimmed;
+  }
+  // Compat: valor antiguo “Santiago Centro” → RM Centro
+  if (coverageArea === "santiago-centro") return "rm-centro";
+  return "";
+}
+
 export function resolveClientProfile(
   raw: unknown,
   fallback?: { fullName?: string | null },
@@ -131,6 +161,11 @@ export function resolveClientProfile(
   }
 
   const profile = raw as Record<string, unknown>;
+  const legacyArea = resolveCoverageArea(profile.coverageArea);
+  const coverageRegionId = resolveCoverageRegionId(
+    profile.coverageRegionId,
+    legacyArea,
+  );
 
   return {
     firstNames:
@@ -150,6 +185,18 @@ export function resolveClientProfile(
       typeof profile.maritalStatus === "string" ? profile.maritalStatus : "",
     address: typeof profile.address === "string" ? profile.address : "",
     commune: typeof profile.commune === "string" ? profile.commune : "",
+    coverageArea: coverageRegionId ? "region" : "",
+    coverageRegionId,
+    preferredClinicIds: Array.isArray(profile.preferredClinicIds)
+      ? profile.preferredClinicIds.filter(
+          (id): id is string => typeof id === "string" && id.trim().length > 0,
+        )
+      : [],
+    anualidad: profile.anualidad === true,
+    anualidadComment:
+      typeof profile.anualidadComment === "string"
+        ? profile.anualidadComment
+        : "",
     dependents: Array.isArray(profile.dependents)
       ? profile.dependents.filter(isDependent)
       : [],
@@ -167,6 +214,18 @@ export function buildFullName(firstNames: string, lastNames: string): string {
   return `${firstNames.trim()} ${lastNames.trim()}`.trim();
 }
 
+function buildPlaceholderEmail(fullName: string): string {
+  const slug =
+    fullName
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 36) || "cliente";
+  return `sin-correo+${slug}-${Date.now()}@clientes.isaprespremium.local`;
+}
+
 export function normalizeClientProfileInput(
   input: ClientProfileInput,
   options: ClientManagementRutOptions = { requireTitularRut: false },
@@ -178,17 +237,15 @@ export function normalizeClientProfileInput(
   profile: ClientExecutiveProfile;
 } {
   const firstNames = input.firstNames.trim();
-  const lastNames = input.lastNames.trim();
+  const lastNames = (input.lastNames ?? "").trim();
   const fullName = buildFullName(firstNames, lastNames);
 
-  if (!fullName) {
-    throw new Error("Indica nombres y apellidos del titular.");
+  if (!firstNames) {
+    throw new Error("Indica el nombre del titular.");
   }
 
-  const email = input.email.trim().toLowerCase();
-  if (!email) {
-    throw new Error("Indica el correo electrónico del titular.");
-  }
+  const emailRaw = (input.email ?? "").trim().toLowerCase();
+  const email = emailRaw || buildPlaceholderEmail(fullName || firstNames);
 
   assertClientManagementRuts(
     {
@@ -200,13 +257,30 @@ export function normalizeClientProfileInput(
   );
 
   for (const [index, titular] of (input.additionalTitulares ?? []).entries()) {
-    const names = buildFullName(titular.firstNames, titular.lastNames);
-    if (!names) {
+    if (!titular.firstNames.trim()) {
       throw new Error(
-        `Indica nombres y apellidos del titular adicional ${index + 2}.`,
+        `Indica el nombre del titular adicional ${index + 2}.`,
       );
     }
   }
+
+  const legacyArea = resolveCoverageArea(input.coverageArea);
+  const coverageRegionId = resolveCoverageRegionId(
+    input.coverageRegionId,
+    legacyArea,
+  );
+  const coverageArea: ClientCoverageArea = coverageRegionId ? "region" : "";
+  const preferredClinicIds = Array.from(
+    new Set(
+      (input.preferredClinicIds ?? [])
+        .map((id) => id.trim())
+        .filter(Boolean),
+    ),
+  );
+  const anualidad = input.anualidad === true;
+  const anualidadComment = anualidad
+    ? ""
+    : (input.anualidadComment ?? "").trim();
 
   const dependents = (input.dependents ?? []).map((dependent) => {
     const rutRaw = dependent.rut.trim();
@@ -241,7 +315,7 @@ export function normalizeClientProfileInput(
     email,
     phone: input.phone?.trim() || null,
     rut: formatOptionalClientRut(input.rut),
-    fullName,
+    fullName: fullName || firstNames,
     profile: {
       firstNames,
       lastNames,
@@ -252,6 +326,11 @@ export function normalizeClientProfileInput(
       maritalStatus: input.maritalStatus?.trim() || "",
       address: input.address?.trim() || "",
       commune: input.commune?.trim() || "",
+      coverageArea,
+      coverageRegionId,
+      preferredClinicIds,
+      anualidad,
+      anualidadComment,
       dependents,
       additionalTitulares,
       updatedAt: new Date().toISOString(),

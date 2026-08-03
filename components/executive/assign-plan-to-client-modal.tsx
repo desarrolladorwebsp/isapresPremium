@@ -181,7 +181,7 @@ export function AssignPlanToClientModal({
     if (mode === "new") {
       const errors = getClientManagementRutErrors(
         { rut: newClient.rut },
-        { requireTitularRut: true },
+        { requireTitularRut: false },
       );
       if (errors.firstMessage) {
         setRutError(errors.titular ?? errors.firstMessage);
@@ -198,7 +198,7 @@ export function AssignPlanToClientModal({
 
       if (mode === "new") {
         client = await createExecutiveClient({
-          email: newClient.email.trim(),
+          email: newClient.email.trim() || null,
           phone: newClient.phone.trim() || null,
           rut: newClient.rut.trim() || null,
           firstNames: newClient.firstNames.trim(),
@@ -239,12 +239,7 @@ export function AssignPlanToClientModal({
   const canSubmit =
     mode === "existing"
       ? Boolean(selectedClientId)
-      : Boolean(
-          newClient.firstNames.trim() &&
-            newClient.lastNames.trim() &&
-            newClient.email.trim() &&
-            newClient.rut.trim(),
-        );
+      : Boolean(newClient.firstNames.trim());
 
   return (
     <AdminFormModal
@@ -432,9 +427,8 @@ export function AssignPlanToClientModal({
               />
             </label>
             <label className="block space-y-1.5">
-              <span className="text-sm font-medium">Apellidos *</span>
+              <span className="text-sm font-medium">Apellidos</span>
               <Input
-                required
                 value={newClient.lastNames}
                 onChange={(event) =>
                   setNewClient((current) => ({
@@ -445,10 +439,9 @@ export function AssignPlanToClientModal({
               />
             </label>
             <label className="block space-y-1.5">
-              <span className="text-sm font-medium">Correo *</span>
+              <span className="text-sm font-medium">Correo</span>
               <Input
                 type="email"
-                required
                 value={newClient.email}
                 onChange={(event) =>
                   setNewClient((current) => ({
@@ -471,9 +464,8 @@ export function AssignPlanToClientModal({
               />
             </label>
             <label className="block space-y-1.5">
-              <span className="text-sm font-medium">RUT *</span>
+              <span className="text-sm font-medium">RUT</span>
               <Input
-                required
                 value={newClient.rut}
                 aria-invalid={Boolean(rutError)}
                 onChange={(event) => {
@@ -486,7 +478,7 @@ export function AssignPlanToClientModal({
                 onBlur={() => {
                   const errors = getClientManagementRutErrors(
                     { rut: newClient.rut },
-                    { requireTitularRut: true },
+                    { requireTitularRut: false },
                   );
                   const warnings = getClientManagementRutWarnings({
                     rut: newClient.rut,

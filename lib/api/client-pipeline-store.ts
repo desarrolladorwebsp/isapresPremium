@@ -524,14 +524,26 @@ export async function redirectClientToIsapresPremium(
 }
 
 export async function listPremiumExecutivesForRedirect(): Promise<
-  Array<{ id: string; fullName: string; email: string }>
+  Array<{
+    id: string;
+    fullName: string;
+    email: string;
+    executiveKind: ExecutiveKind;
+  }>
 > {
   return listExecutivesForRedirect("ISAPRES_PREMIUM");
 }
 
 export async function listExecutivesForRedirect(
   executiveKind: ExecutiveKind,
-): Promise<Array<{ id: string; fullName: string; email: string }>> {
+): Promise<
+  Array<{
+    id: string;
+    fullName: string;
+    email: string;
+    executiveKind: ExecutiveKind;
+  }>
+> {
   const rows = await listEligibleExecutivesForAssignment({
     executiveKind,
     withProfile: true,
@@ -541,6 +553,7 @@ export async function listExecutivesForRedirect(
     id: row.id,
     fullName: row.fullName ?? "Ejecutivo",
     email: row.email ?? "",
+    executiveKind,
   }));
 }
 

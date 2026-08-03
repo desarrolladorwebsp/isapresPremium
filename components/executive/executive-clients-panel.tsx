@@ -39,6 +39,7 @@ import {
   upsertExecutiveClientCache,
 } from "@/lib/query/executive-cache";
 import { isTrackingOnlyForExecutive } from "@/lib/client-pipeline/tracking";
+import { formatExecutiveOptionLabel } from "@/lib/auth/staff-role";
 import { ClientPipelineStatusBadge } from "@/components/executive/client-pipeline-status-badge";
 import { ClientPlanSummary } from "@/components/executive/client-plan-summary";
 import { ClientOriginBadge } from "@/components/executive/client-origin-badge";
@@ -265,10 +266,12 @@ export function ExecutiveClientsPanel({
 
   function resolveExecutiveLabel(executiveAccountId: string): string {
     if (!executiveAccountId) return "Sin asignar";
-    return (
-      executives.find((executive) => executive.id === executiveAccountId)?.fullName ??
-      "el ejecutivo seleccionado"
-    );
+    const executive = executives.find((row) => row.id === executiveAccountId);
+    if (!executive) return "el ejecutivo seleccionado";
+    return formatExecutiveOptionLabel({
+      fullName: executive.fullName,
+      executiveKind: executive.executiveKind,
+    });
   }
 
   async function handleDistributeUnassigned() {
@@ -517,7 +520,10 @@ export function ExecutiveClientsPanel({
                             <option value="">Sin asignar</option>
                             {executives.map((executive) => (
                               <option key={executive.id} value={executive.id}>
-                                {executive.fullName}
+                                {formatExecutiveOptionLabel({
+                                  fullName: executive.fullName,
+                                  executiveKind: executive.executiveKind,
+                                })}
                               </option>
                             ))}
                           </select>
