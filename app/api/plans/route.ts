@@ -23,6 +23,7 @@ const PLANS_READ_SECTIONS: StaffSection[] = [
   "clinicas",
   "reportes-pdf",
   "cotizador",
+  "clientes",
 ];
 
 export async function GET(request: Request) {

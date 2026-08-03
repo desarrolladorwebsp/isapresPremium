@@ -99,6 +99,8 @@ export function CreateClientModal({
         heightCm: profile.heightCm || null,
         weightKg: profile.weightKg || null,
         maritalStatus: profile.maritalStatus || null,
+        rentaImponible: profile.rentaImponible.trim() || null,
+        motivoCotizacion: profile.motivoCotizacion || null,
         address: profile.address || null,
         commune: profile.commune || null,
         coverageArea: profile.coverageArea || null,

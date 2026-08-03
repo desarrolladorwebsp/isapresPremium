@@ -381,6 +381,8 @@ function profileSnapshot(value: ClientProfileFormValue): string {
     heightCm: value.heightCm || "",
     weightKg: value.weightKg || "",
     maritalStatus: value.maritalStatus || "",
+    rentaImponible: value.rentaImponible || "",
+    motivoCotizacion: value.motivoCotizacion || "",
     address: value.address || "",
     commune: value.commune || "",
     coverageArea: value.coverageArea || "",
@@ -896,6 +898,8 @@ export function ClientPipelineDrawer({
       heightCm: profileForm.heightCm || null,
       weightKg: profileForm.weightKg || null,
       maritalStatus: profileForm.maritalStatus || null,
+      rentaImponible: profileForm.rentaImponible.trim() || null,
+      motivoCotizacion: profileForm.motivoCotizacion || null,
       address: profileForm.address || null,
       commune: profileForm.commune || null,
       coverageArea: profileForm.coverageArea || null,
@@ -1871,7 +1875,7 @@ export function ClientPipelineDrawer({
           </div>
         ) : null}
 
-        {!isZoom && !isTrackingOnly ? (
+        {!isTrackingOnly ? (
           <ClientAdvisedPlanSection
             client={client}
             onUpdated={onUpdated}

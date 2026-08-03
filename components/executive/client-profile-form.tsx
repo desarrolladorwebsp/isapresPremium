@@ -8,6 +8,7 @@ import {
   buildEmptyAdditionalTitular,
   buildEmptyDependent,
   calculateAgeFromBirthDate,
+  CLIENT_MOTIVO_COTIZACION_OPTIONS,
   CLIENT_REGION_OPTIONS,
   MARITAL_STATUS_OPTIONS,
   splitFullName,
@@ -43,6 +44,8 @@ export interface ClientProfileFormValue {
   heightCm: string;
   weightKg: string;
   maritalStatus: string;
+  rentaImponible: string;
+  motivoCotizacion: string;
   address: string;
   commune: string;
   coverageArea: ClientCoverageArea;
@@ -69,6 +72,8 @@ export function buildEmptyClientProfileFormValue(): ClientProfileFormValue {
     heightCm: "",
     weightKg: "",
     maritalStatus: "",
+    rentaImponible: "",
+    motivoCotizacion: "",
     address: "",
     commune: "",
     coverageArea: "",
@@ -336,18 +341,6 @@ export function ClientProfileForm({
             Titular 1 (principal)
           </p>
           <div className="grid gap-3 sm:grid-cols-2">
-            {showEmail ? (
-              <label className="block space-y-1.5 sm:col-span-2">
-                <span className="text-xs font-medium">Correo electrónico</span>
-                <Input
-                  type="email"
-                  value={value.email}
-                  onChange={(event) => updateField("email", event.target.value)}
-                  placeholder="cliente@gmail.com"
-                />
-              </label>
-            ) : null}
-
             <label className="block space-y-1.5">
               <span className="text-xs font-medium">Nombres *</span>
               <Input
@@ -370,6 +363,18 @@ export function ClientProfileForm({
                 placeholder="Pérez González"
               />
             </label>
+
+            {showEmail ? (
+              <label className="block space-y-1.5 sm:col-span-2">
+                <span className="text-xs font-medium">Correo electrónico</span>
+                <Input
+                  type="email"
+                  value={value.email}
+                  onChange={(event) => updateField("email", event.target.value)}
+                  placeholder="cliente@gmail.com"
+                />
+              </label>
+            ) : null}
 
             <label className="block space-y-1.5">
               <span className="text-xs font-medium">Celular</span>
@@ -491,6 +496,38 @@ export function ClientProfileForm({
                 {MARITAL_STATUS_OPTIONS.map((option) => (
                   <option key={option} value={option}>
                     {option}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block space-y-1.5">
+              <span className="text-xs font-medium">Renta imponible</span>
+              <Input
+                value={value.rentaImponible}
+                onChange={(event) =>
+                  updateField("rentaImponible", event.target.value)
+                }
+                placeholder="Ej. 1500000"
+              />
+            </label>
+
+            <label className="block space-y-1.5 sm:col-span-2">
+              <span className="text-xs font-medium">Motivo de cotización</span>
+              <select
+                value={value.motivoCotizacion}
+                onChange={(event) =>
+                  updateField("motivoCotizacion", event.target.value)
+                }
+                className={joinClasses(
+                  "h-10 w-full rounded-md px-3 text-sm",
+                  ui.input,
+                )}
+              >
+                <option value="">Seleccionar motivo…</option>
+                {CLIENT_MOTIVO_COTIZACION_OPTIONS.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
                   </option>
                 ))}
               </select>
@@ -799,7 +836,7 @@ export function ClientProfileForm({
                     />
                   </label>
 
-                  <label className="block space-y-1.5 sm:col-span-2">
+                  <label className="block space-y-1.5">
                     <span className="text-xs font-medium">
                       Estado civil legal
                     </span>
@@ -821,6 +858,48 @@ export function ClientProfileForm({
                       {MARITAL_STATUS_OPTIONS.map((option) => (
                         <option key={option} value={option}>
                           {option}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="block space-y-1.5">
+                    <span className="text-xs font-medium">Renta imponible</span>
+                    <Input
+                      value={titular.rentaImponible}
+                      onChange={(event) =>
+                        updateAdditionalTitular(
+                          titular.id,
+                          "rentaImponible",
+                          event.target.value,
+                        )
+                      }
+                      placeholder="Ej. 1500000"
+                    />
+                  </label>
+
+                  <label className="block space-y-1.5 sm:col-span-2">
+                    <span className="text-xs font-medium">
+                      Motivo de cotización
+                    </span>
+                    <select
+                      value={titular.motivoCotizacion}
+                      onChange={(event) =>
+                        updateAdditionalTitular(
+                          titular.id,
+                          "motivoCotizacion",
+                          event.target.value,
+                        )
+                      }
+                      className={joinClasses(
+                        "h-10 w-full rounded-md px-3 text-sm",
+                        ui.input,
+                      )}
+                    >
+                      <option value="">Seleccionar motivo…</option>
+                      {CLIENT_MOTIVO_COTIZACION_OPTIONS.map((option) => (
+                        <option key={option.id} value={option.id}>
+                          {option.label}
                         </option>
                       ))}
                     </select>
@@ -1004,6 +1083,8 @@ export function userRecordToProfileFormValue(
       heightCm?: string;
       weightKg?: string;
       maritalStatus?: string;
+      rentaImponible?: string;
+      motivoCotizacion?: string;
       address?: string;
       commune?: string;
       coverageArea?: ClientCoverageArea;
@@ -1038,6 +1119,8 @@ export function userRecordToProfileFormValue(
     heightCm: profile?.heightCm ?? "",
     weightKg: profile?.weightKg ?? "",
     maritalStatus: profile?.maritalStatus ?? "",
+    rentaImponible: profile?.rentaImponible ?? "",
+    motivoCotizacion: profile?.motivoCotizacion ?? "",
     address: profile?.address ?? "",
     commune: profile?.commune ?? "",
     coverageArea: profile?.coverageArea ?? "",

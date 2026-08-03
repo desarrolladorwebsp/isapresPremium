@@ -81,6 +81,14 @@ export function parseClientProfilePayload(payload: unknown): ClientProfileInput 
               typeof titular.currentIsapre === "string"
                 ? titular.currentIsapre
                 : "",
+            rentaImponible:
+              typeof titular.rentaImponible === "string"
+                ? titular.rentaImponible
+                : "",
+            motivoCotizacion:
+              typeof titular.motivoCotizacion === "string"
+                ? titular.motivoCotizacion
+                : "",
             preexistenciasMedicas:
               typeof titular.preexistenciasMedicas === "string"
                 ? titular.preexistenciasMedicas
@@ -103,6 +111,10 @@ export function parseClientProfilePayload(payload: unknown): ClientProfileInput 
     weightKg: typeof data.weightKg === "string" ? data.weightKg : null,
     maritalStatus:
       typeof data.maritalStatus === "string" ? data.maritalStatus : null,
+    rentaImponible:
+      typeof data.rentaImponible === "string" ? data.rentaImponible : null,
+    motivoCotizacion:
+      typeof data.motivoCotizacion === "string" ? data.motivoCotizacion : null,
     address: typeof data.address === "string" ? data.address : null,
     commune: typeof data.commune === "string" ? data.commune : null,
     coverageArea: (() => {

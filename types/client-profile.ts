@@ -24,6 +24,10 @@ export interface ClientAdditionalTitularProfile {
   maritalStatus: string;
   phone: string;
   currentIsapre: string;
+  /** Renta imponible (texto libre / monto). */
+  rentaImponible: string;
+  /** Motivo de cotización. */
+  motivoCotizacion: string;
   /** Preexistencias médicas (texto libre). */
   preexistenciasMedicas: string;
 }
@@ -44,6 +48,10 @@ export interface ClientExecutiveProfile {
   heightCm: string;
   weightKg: string;
   maritalStatus: string;
+  /** Renta imponible (texto libre / monto). */
+  rentaImponible: string;
+  /** Motivo de cotización. */
+  motivoCotizacion: string;
   address: string;
   commune: string;
   /** Derivado: "region" si hay coverageRegionId. */
@@ -77,6 +85,8 @@ export interface ClientProfileInput {
   heightCm?: string | null;
   weightKg?: string | null;
   maritalStatus?: string | null;
+  rentaImponible?: string | null;
+  motivoCotizacion?: string | null;
   address?: string | null;
   commune?: string | null;
   coverageArea?: ClientCoverageArea | null;

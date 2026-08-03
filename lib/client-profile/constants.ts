@@ -22,6 +22,24 @@ export const MARITAL_STATUS_OPTIONS = [
   "Otro",
 ] as const;
 
+export const CLIENT_MOTIVO_COTIZACION_OPTIONS = [
+  { id: "otro-plan", label: "Otro plan" },
+  { id: "bajar-costo", label: "Bajar costo" },
+  { id: "cobertura", label: "Cobertura" },
+  { id: "mala-experiencia", label: "Mala experiencia" },
+] as const;
+
+const VALID_MOTIVO_COTIZACION_IDS = new Set<string>(
+  CLIENT_MOTIVO_COTIZACION_OPTIONS.map((option) => option.id),
+);
+
+function resolveMotivoCotizacion(value: unknown): string {
+  if (typeof value === "string" && VALID_MOTIVO_COTIZACION_IDS.has(value.trim())) {
+    return value.trim();
+  }
+  return "";
+}
+
 /** Las 16 regiones de Chile (orden geográfico norte → sur). */
 export const CLIENT_REGION_OPTIONS = [
   { id: "arica-parinacota", label: "Arica y Parinacota" },
@@ -85,6 +103,8 @@ export function buildEmptyAdditionalTitular(): ClientAdditionalTitularProfile {
     maritalStatus: "",
     phone: "",
     currentIsapre: "",
+    rentaImponible: "",
+    motivoCotizacion: "",
     preexistenciasMedicas: "",
   };
 }
@@ -99,6 +119,8 @@ export function buildEmptyClientProfile(): ClientExecutiveProfile {
     heightCm: "",
     weightKg: "",
     maritalStatus: "",
+    rentaImponible: "",
+    motivoCotizacion: "",
     address: "",
     commune: "",
     coverageArea: "",
@@ -253,6 +275,9 @@ export function resolveClientProfile(
     weightKg: typeof profile.weightKg === "string" ? profile.weightKg : "",
     maritalStatus:
       typeof profile.maritalStatus === "string" ? profile.maritalStatus : "",
+    rentaImponible:
+      typeof profile.rentaImponible === "string" ? profile.rentaImponible : "",
+    motivoCotizacion: resolveMotivoCotizacion(profile.motivoCotizacion),
     address: typeof profile.address === "string" ? profile.address : "",
     commune: typeof profile.commune === "string" ? profile.commune : "",
     coverageArea: coverageRegionId ? "region" : "",
@@ -295,10 +320,17 @@ export function resolveClientProfile(
           const rawTitular = titular as ClientAdditionalTitularProfile & {
             age?: string;
             preexistenciasMedicas?: string;
+            rentaImponible?: string;
+            motivoCotizacion?: string;
           };
           return {
             ...titular,
             age: resolveAge(rawTitular.age, titular.birthDate),
+            rentaImponible:
+              typeof rawTitular.rentaImponible === "string"
+                ? rawTitular.rentaImponible
+                : "",
+            motivoCotizacion: resolveMotivoCotizacion(rawTitular.motivoCotizacion),
             preexistenciasMedicas:
               typeof rawTitular.preexistenciasMedicas === "string"
                 ? rawTitular.preexistenciasMedicas
@@ -413,6 +445,8 @@ export function normalizeClientProfileInput(
         maritalStatus: titular.maritalStatus.trim(),
         phone: titular.phone.trim(),
         currentIsapre: titular.currentIsapre.trim(),
+        rentaImponible: (titular.rentaImponible ?? "").trim(),
+        motivoCotizacion: resolveMotivoCotizacion(titular.motivoCotizacion),
         preexistenciasMedicas: (titular.preexistenciasMedicas ?? "").trim(),
       };
     },
@@ -435,6 +469,8 @@ export function normalizeClientProfileInput(
       heightCm: input.heightCm?.trim() || "",
       weightKg: input.weightKg?.trim() || "",
       maritalStatus: input.maritalStatus?.trim() || "",
+      rentaImponible: (input.rentaImponible ?? "").trim(),
+      motivoCotizacion: resolveMotivoCotizacion(input.motivoCotizacion),
       address: input.address?.trim() || "",
       commune: input.commune?.trim() || "",
       coverageArea,
