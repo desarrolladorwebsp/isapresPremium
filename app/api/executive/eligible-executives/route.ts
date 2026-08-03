@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { apiErrorResponse, ApiError } from "@/lib/api/api-error";
 import { listExecutivesForRedirect } from "@/lib/api/client-pipeline-store";
 import { requireExecutiveOrAdminSession } from "@/lib/auth/require-auth";
+import { canUseZoomExecutiveWorkflow } from "@/lib/auth/staff-role";
 import { AUTH_REALM } from "@/lib/auth/constants";
 import type { ExecutiveSessionUser } from "@/lib/auth/types";
 import type { ExecutiveKind } from "@/types/staff-account";
@@ -12,7 +13,7 @@ import { isExecutiveKind } from "@/types/staff-account";
  *
  * Acceso:
  * - Admin: cualquier kind
- * - Zoom: solo ISAPRES_PREMIUM
+ * - Flujo Zoom (Zoom o Premium): ISAPRES_PREMIUM
  * - Isapres Premium: ZOOM o ISAPRES
  */
 export async function GET(request: Request) {
@@ -37,7 +38,8 @@ export async function GET(request: Request) {
 
     const allowed =
       isAdmin ||
-      (executiveKind === "ZOOM" && kind === "ISAPRES_PREMIUM") ||
+      (canUseZoomExecutiveWorkflow(executiveKind) &&
+        kind === "ISAPRES_PREMIUM") ||
       (executiveKind === "ISAPRES_PREMIUM" &&
         (kind === "ZOOM" || kind === "ISAPRES"));
 

@@ -294,7 +294,7 @@ async function assertIsapresPremiumExecutive(
 
 /**
  * Redirige un cliente a un Ejecutivo Isapres Premium.
- * Solo Zoom (asignado) o Admin. Estado destino: NUEVO.
+ * Flujo Zoom (Zoom o Premium en adaptación) o Admin. Estado destino: NUEVO.
  * autoAssign usa round-robin solo entre Premium elegibles.
  */
 export async function redirectClientToIsapresPremium(
@@ -303,12 +303,13 @@ export async function redirectClientToIsapresPremium(
   actor: {
     executiveAccountId: string;
     isAdmin: boolean;
-    isZoom: boolean;
+    /** Actor autorizado al flujo Zoom (Zoom o Isapres Premium). */
+    canRunZoomWorkflow: boolean;
   },
 ): Promise<UserRecord> {
-  if (!actor.isAdmin && !actor.isZoom) {
+  if (!actor.isAdmin && !actor.canRunZoomWorkflow) {
     throw new ApiError(
-      "Solo un Ejecutivo Zoom o un administrador puede redirigir a Isapres Premium.",
+      "Solo un Ejecutivo Zoom, Isapres Premium o un administrador puede redirigir a Isapres Premium.",
       403,
       "FORBIDDEN",
     );

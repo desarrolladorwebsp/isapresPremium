@@ -2,22 +2,24 @@ import { NextResponse } from "next/server";
 import { apiErrorResponse, ApiError } from "@/lib/api/api-error";
 import { listPremiumExecutivesForRedirect } from "@/lib/api/client-pipeline-store";
 import { requireExecutiveOrAdminSession } from "@/lib/auth/require-auth";
+import { canUseZoomExecutiveWorkflow } from "@/lib/auth/staff-role";
 import { AUTH_REALM } from "@/lib/auth/constants";
 import type { ExecutiveSessionUser } from "@/lib/auth/types";
 
 /**
- * Lista ejecutivos Isapres Premium elegibles para redirección Zoom.
- * Acceso: Admin o Ejecutivo Zoom.
+ * Lista ejecutivos Isapres Premium elegibles para redirección del flujo Zoom.
+ * Acceso: Admin, Ejecutivo Zoom, o Ejecutivo Isapres Premium (adaptación).
  */
 export async function GET(request: Request) {
   try {
     const { realm, user } = await requireExecutiveOrAdminSession(request);
     const isAdmin = realm === AUTH_REALM.admin;
-    const isZoom =
-      realm === AUTH_REALM.executive &&
-      (user as ExecutiveSessionUser).executiveKind === "ZOOM";
+    const executiveKind =
+      realm === AUTH_REALM.executive
+        ? (user as ExecutiveSessionUser).executiveKind
+        : null;
 
-    if (!isAdmin && !isZoom) {
+    if (!isAdmin && !canUseZoomExecutiveWorkflow(executiveKind)) {
       throw new ApiError(
         "No tienes permiso para listar ejecutivos Isapres Premium.",
         403,

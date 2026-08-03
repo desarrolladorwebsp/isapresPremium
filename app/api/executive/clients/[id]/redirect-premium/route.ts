@@ -6,6 +6,7 @@ import {
 } from "@/lib/api/api-error";
 import { redirectClientToIsapresPremium } from "@/lib/api/client-pipeline-store";
 import { requireExecutiveOrAdminSession } from "@/lib/auth/require-auth";
+import { canUseZoomExecutiveWorkflow } from "@/lib/auth/staff-role";
 import { AUTH_REALM } from "@/lib/auth/constants";
 import type { ExecutiveSessionUser } from "@/lib/auth/types";
 import type { RedirectClientToPremiumInput } from "@/types/client-pipeline";
@@ -80,14 +81,17 @@ export async function POST(request: Request, context: RouteContext) {
     const input = parseRedirectPayload(payload);
 
     const isAdmin = realm === AUTH_REALM.admin;
-    const isZoom =
-      realm === AUTH_REALM.executive &&
-      (user as ExecutiveSessionUser).executiveKind === "ZOOM";
+    const executiveKind =
+      realm === AUTH_REALM.executive
+        ? (user as ExecutiveSessionUser).executiveKind
+        : null;
+    const canRunZoomWorkflow =
+      isAdmin || canUseZoomExecutiveWorkflow(executiveKind);
 
     const updated = await redirectClientToIsapresPremium(id, input, {
       executiveAccountId: user.id,
       isAdmin,
-      isZoom,
+      canRunZoomWorkflow,
     });
 
     return NextResponse.json(updated);

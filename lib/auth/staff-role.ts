@@ -112,3 +112,34 @@ export function assertStaffCanAccessSection(
     );
   }
 }
+
+const DEFAULT_ZOOM_WORKFLOW_KINDS: ExecutiveKind[] = [
+  "ZOOM",
+  "ISAPRES_PREMIUM",
+];
+
+/**
+ * Adaptación temporal: kinds que pueden correr el flujo Zoom
+ * (Gestión ejecutivo / redirect a Premium).
+ *
+ * Override opcional: env `ZOOM_WORKFLOW_KINDS=ZOOM,ISAPRES_PREMIUM`
+ * (CSV). Si no hay env, usa Zoom + Isapres Premium.
+ */
+export function canUseZoomExecutiveWorkflow(
+  kind: ExecutiveKind | null | undefined,
+): boolean {
+  if (!kind || !isExecutiveKind(kind)) return false;
+
+  const raw = process.env.ZOOM_WORKFLOW_KINDS?.trim();
+  if (raw) {
+    const allowed = raw
+      .split(",")
+      .map((part) => part.trim().toUpperCase())
+      .filter((part): part is ExecutiveKind => isExecutiveKind(part));
+    if (allowed.length > 0) {
+      return allowed.includes(kind);
+    }
+  }
+
+  return DEFAULT_ZOOM_WORKFLOW_KINDS.includes(kind);
+}

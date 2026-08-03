@@ -17,6 +17,7 @@ import {
   type ClientProfileFormValue,
 } from "@/components/executive/client-profile-form";
 import { useStaffSession } from "@/hooks/use-auth-session";
+import { canUseZoomExecutiveWorkflow } from "@/lib/auth/staff-role";
 import {
   fetchCalendlySchedulingLink,
   fetchEligibleExecutives,
@@ -392,7 +393,8 @@ export function ClientPipelineDrawer({
   const isZoom = executiveKind === "ZOOM";
   const isPremium = executiveKind === "ISAPRES_PREMIUM";
   const isIsapres = executiveKind === "ISAPRES";
-  const canManageZoom = isZoom || isAdmin;
+  const canManageZoom =
+    canUseZoomExecutiveWorkflow(executiveKind) || isAdmin;
   const canManagePremium = isPremium || isAdmin;
   const canManageIsapres = isIsapres || isAdmin;
   const canViewInternalNotes = canAccessInternalPipelineNotes({
@@ -1864,7 +1866,9 @@ export function ClientPipelineDrawer({
                 Gestión ejecutivo
               </h3>
               <p className="mt-1 text-xs text-muted">
-                Acciones rápidas de contacto y derivación a Ejecutivo Isapres Premium.
+                {isPremium && !isZoom
+                  ? "Flujo Zoom (adaptación): contacto, reagendar y derivación a otro Ejecutivo Isapres Premium."
+                  : "Acciones rápidas de contacto y derivación a Ejecutivo Isapres Premium."}
               </p>
             </div>
 
