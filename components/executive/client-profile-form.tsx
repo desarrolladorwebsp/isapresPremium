@@ -349,6 +349,29 @@ export function ClientProfileForm({
             ) : null}
 
             <label className="block space-y-1.5">
+              <span className="text-xs font-medium">Nombres *</span>
+              <Input
+                required
+                value={value.firstNames}
+                onChange={(event) =>
+                  updateField("firstNames", event.target.value)
+                }
+                placeholder="María"
+              />
+            </label>
+
+            <label className="block space-y-1.5">
+              <span className="text-xs font-medium">Apellidos</span>
+              <Input
+                value={value.lastNames}
+                onChange={(event) =>
+                  updateField("lastNames", event.target.value)
+                }
+                placeholder="Pérez González"
+              />
+            </label>
+
+            <label className="block space-y-1.5">
               <span className="text-xs font-medium">Celular</span>
               <Input
                 value={value.phone}
@@ -390,29 +413,6 @@ export function ClientProfileForm({
                     : titularRutError}
                 </p>
               ) : null}
-            </label>
-
-            <label className="block space-y-1.5">
-              <span className="text-xs font-medium">Nombres *</span>
-              <Input
-                required
-                value={value.firstNames}
-                onChange={(event) =>
-                  updateField("firstNames", event.target.value)
-                }
-                placeholder="María"
-              />
-            </label>
-
-            <label className="block space-y-1.5">
-              <span className="text-xs font-medium">Apellidos</span>
-              <Input
-                value={value.lastNames}
-                onChange={(event) =>
-                  updateField("lastNames", event.target.value)
-                }
-                placeholder="Pérez González"
-              />
             </label>
 
             <label className="block space-y-1.5">
