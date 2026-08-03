@@ -46,6 +46,8 @@ export interface ClientExecutiveProfile {
   anualidad: boolean;
   /** Comentario cuando no tiene anualidad. */
   anualidadComment: string;
+  /** Seguros complementarios (texto libre por ahora). */
+  segurosComplementarios: string;
   dependents: ClientDependentProfile[];
   additionalTitulares: ClientAdditionalTitularProfile[];
   updatedAt: string;
@@ -69,6 +71,7 @@ export interface ClientProfileInput {
   preferredClinicIds?: string[] | null;
   anualidad?: boolean | null;
   anualidadComment?: string | null;
+  segurosComplementarios?: string | null;
   dependents?: ClientDependentProfile[];
   additionalTitulares?: ClientAdditionalTitularProfile[];
 }

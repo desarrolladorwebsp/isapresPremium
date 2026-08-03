@@ -107,6 +107,7 @@ export function CreateClientModal({
         anualidadComment: profile.anualidad
           ? null
           : profile.anualidadComment.trim() || null,
+        segurosComplementarios: profile.segurosComplementarios.trim() || null,
         dependents: profile.dependents,
         additionalTitulares: profile.additionalTitulares,
         pipelineNotes: pipelineNotes.trim() || null,

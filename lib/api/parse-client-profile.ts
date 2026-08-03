@@ -113,6 +113,10 @@ export function parseClientProfilePayload(payload: unknown): ClientProfileInput 
     anualidad: data.anualidad === true,
     anualidadComment:
       typeof data.anualidadComment === "string" ? data.anualidadComment : "",
+    segurosComplementarios:
+      typeof data.segurosComplementarios === "string"
+        ? data.segurosComplementarios
+        : "",
     dependents,
     additionalTitulares,
   };

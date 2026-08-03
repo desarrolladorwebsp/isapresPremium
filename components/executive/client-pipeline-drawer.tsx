@@ -387,6 +387,7 @@ function profileSnapshot(value: ClientProfileFormValue): string {
     preferredClinicIds: value.preferredClinicIds,
     anualidad: value.anualidad === true,
     anualidadComment: value.anualidadComment || "",
+    segurosComplementarios: value.segurosComplementarios || "",
     dependents: value.dependents,
     additionalTitulares: value.additionalTitulares,
   });
@@ -901,6 +902,8 @@ export function ClientPipelineDrawer({
       anualidadComment: profileForm.anualidad
         ? null
         : profileForm.anualidadComment.trim() || null,
+      segurosComplementarios:
+        profileForm.segurosComplementarios.trim() || null,
       dependents: profileForm.dependents,
       additionalTitulares: profileForm.additionalTitulares,
     };

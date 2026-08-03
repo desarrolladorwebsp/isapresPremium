@@ -73,6 +73,7 @@ export function buildEmptyClientProfile(): ClientExecutiveProfile {
     preferredClinicIds: [],
     anualidad: false,
     anualidadComment: "",
+    segurosComplementarios: "",
     dependents: [],
     additionalTitulares: [],
     updatedAt: new Date().toISOString(),
@@ -197,6 +198,10 @@ export function resolveClientProfile(
       typeof profile.anualidadComment === "string"
         ? profile.anualidadComment
         : "",
+    segurosComplementarios:
+      typeof profile.segurosComplementarios === "string"
+        ? profile.segurosComplementarios
+        : "",
     dependents: Array.isArray(profile.dependents)
       ? profile.dependents.filter(isDependent)
       : [],
@@ -281,6 +286,7 @@ export function normalizeClientProfileInput(
   const anualidadComment = anualidad
     ? ""
     : (input.anualidadComment ?? "").trim();
+  const segurosComplementarios = (input.segurosComplementarios ?? "").trim();
 
   const dependents = (input.dependents ?? []).map((dependent) => {
     const rutRaw = dependent.rut.trim();
@@ -331,6 +337,7 @@ export function normalizeClientProfileInput(
       preferredClinicIds,
       anualidad,
       anualidadComment,
+      segurosComplementarios,
       dependents,
       additionalTitulares,
       updatedAt: new Date().toISOString(),

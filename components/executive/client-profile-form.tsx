@@ -50,6 +50,7 @@ export interface ClientProfileFormValue {
   preferredClinicIds: string[];
   anualidad: boolean;
   anualidadComment: string;
+  segurosComplementarios: string;
   dependents: ClientDependentProfile[];
   additionalTitulares: ClientAdditionalTitularProfile[];
 }
@@ -73,6 +74,7 @@ export function buildEmptyClientProfileFormValue(): ClientProfileFormValue {
     preferredClinicIds: [],
     anualidad: false,
     anualidadComment: "",
+    segurosComplementarios: "",
     dependents: [],
     additionalTitulares: [],
   };
@@ -604,6 +606,17 @@ export function ClientProfileForm({
                 </label>
               ) : null}
             </div>
+
+            <label className="block space-y-1.5 sm:col-span-2">
+              <span className="text-xs font-medium">Seguros complementarios</span>
+              <Input
+                value={value.segurosComplementarios}
+                onChange={(event) =>
+                  updateField("segurosComplementarios", event.target.value)
+                }
+                placeholder="Ej. dental, catastrófico…"
+              />
+            </label>
           </div>
         </div>
 
@@ -950,6 +963,7 @@ export function userRecordToProfileFormValue(
       preferredClinicIds?: string[];
       anualidad?: boolean;
       anualidadComment?: string;
+      segurosComplementarios?: string;
       dependents?: ClientDependentProfile[];
       additionalTitulares?: ClientAdditionalTitularProfile[];
     };
@@ -977,6 +991,7 @@ export function userRecordToProfileFormValue(
     preferredClinicIds: profile?.preferredClinicIds ?? [],
     anualidad: profile?.anualidad === true,
     anualidadComment: profile?.anualidadComment ?? "",
+    segurosComplementarios: profile?.segurosComplementarios ?? "",
     dependents: profile?.dependents ?? [],
     additionalTitulares: profile?.additionalTitulares ?? [],
   };
