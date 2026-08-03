@@ -45,6 +45,10 @@ export function parseClientProfilePayload(payload: unknown): ClientProfileInput 
               typeof dependent.heightCm === "string" ? dependent.heightCm : "",
             weightKg:
               typeof dependent.weightKg === "string" ? dependent.weightKg : "",
+            preexistenciasMedicas:
+              typeof dependent.preexistenciasMedicas === "string"
+                ? dependent.preexistenciasMedicas
+                : "",
           };
         })
     : [];
@@ -77,14 +81,12 @@ export function parseClientProfilePayload(payload: unknown): ClientProfileInput 
               typeof titular.currentIsapre === "string"
                 ? titular.currentIsapre
                 : "",
+            preexistenciasMedicas:
+              typeof titular.preexistenciasMedicas === "string"
+                ? titular.preexistenciasMedicas
+                : "",
           };
         })
-    : [];
-
-  const preferredClinicIds = Array.isArray(data.preferredClinicIds)
-    ? data.preferredClinicIds.filter(
-        (id): id is string => typeof id === "string" && id.trim().length > 0,
-      )
     : [];
 
   return {
@@ -112,13 +114,18 @@ export function parseClientProfilePayload(payload: unknown): ClientProfileInput 
       data.coverageRegionId,
       resolveCoverageArea(data.coverageArea),
     ),
-    preferredClinicIds,
+    preferredClinics:
+      typeof data.preferredClinics === "string" ? data.preferredClinics : "",
     anualidad: data.anualidad === true,
     anualidadComment:
       typeof data.anualidadComment === "string" ? data.anualidadComment : "",
     segurosComplementarios:
       typeof data.segurosComplementarios === "string"
         ? data.segurosComplementarios
+        : "",
+    preexistenciasMedicas:
+      typeof data.preexistenciasMedicas === "string"
+        ? data.preexistenciasMedicas
         : "",
     dependents,
     additionalTitulares,

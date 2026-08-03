@@ -103,12 +103,13 @@ export function CreateClientModal({
         commune: profile.commune || null,
         coverageArea: profile.coverageArea || null,
         coverageRegionId: profile.coverageRegionId || null,
-        preferredClinicIds: profile.preferredClinicIds,
+        preferredClinics: profile.preferredClinics.trim() || null,
         anualidad: profile.anualidad,
         anualidadComment: profile.anualidad
           ? null
           : profile.anualidadComment.trim() || null,
         segurosComplementarios: profile.segurosComplementarios.trim() || null,
+        preexistenciasMedicas: profile.preexistenciasMedicas.trim() || null,
         dependents: profile.dependents,
         additionalTitulares: profile.additionalTitulares,
         pipelineNotes: pipelineNotes.trim() || null,

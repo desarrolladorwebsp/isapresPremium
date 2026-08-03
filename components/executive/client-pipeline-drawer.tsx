@@ -385,10 +385,11 @@ function profileSnapshot(value: ClientProfileFormValue): string {
     commune: value.commune || "",
     coverageArea: value.coverageArea || "",
     coverageRegionId: value.coverageRegionId || "",
-    preferredClinicIds: value.preferredClinicIds,
+    preferredClinics: value.preferredClinics || "",
     anualidad: value.anualidad === true,
     anualidadComment: value.anualidadComment || "",
     segurosComplementarios: value.segurosComplementarios || "",
+    preexistenciasMedicas: value.preexistenciasMedicas || "",
     dependents: value.dependents,
     additionalTitulares: value.additionalTitulares,
   });
@@ -899,13 +900,15 @@ export function ClientPipelineDrawer({
       commune: profileForm.commune || null,
       coverageArea: profileForm.coverageArea || null,
       coverageRegionId: profileForm.coverageRegionId || null,
-      preferredClinicIds: profileForm.preferredClinicIds,
+      preferredClinics: profileForm.preferredClinics.trim() || null,
       anualidad: profileForm.anualidad,
       anualidadComment: profileForm.anualidad
         ? null
         : profileForm.anualidadComment.trim() || null,
       segurosComplementarios:
         profileForm.segurosComplementarios.trim() || null,
+      preexistenciasMedicas:
+        profileForm.preexistenciasMedicas.trim() || null,
       dependents: profileForm.dependents,
       additionalTitulares: profileForm.additionalTitulares,
     };

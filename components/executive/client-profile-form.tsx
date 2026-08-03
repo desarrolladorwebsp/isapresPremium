@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CollapsibleSection } from "@/components/executive/collapsible-section";
@@ -17,7 +17,6 @@ import {
   getClientManagementRutErrors,
   getClientManagementRutWarnings,
 } from "@/lib/client-profile/validate-client-ruts";
-import { fetchClinics } from "@/lib/api/admin-client";
 import { CURRENT_COVERAGE_OPTIONS } from "@/lib/filter-options";
 import { ui } from "@/lib/ui-tokens";
 import { joinClasses } from "@/lib/utils";
@@ -26,7 +25,6 @@ import type {
   ClientCoverageArea,
   ClientDependentProfile,
 } from "@/types/client-profile";
-import type { Clinic } from "@/types/clinic";
 
 const COVERAGE_SELECT_OPTIONS = CURRENT_COVERAGE_OPTIONS.map((option) => ({
   value: option.label,
@@ -49,10 +47,11 @@ export interface ClientProfileFormValue {
   commune: string;
   coverageArea: ClientCoverageArea;
   coverageRegionId: string;
-  preferredClinicIds: string[];
+  preferredClinics: string;
   anualidad: boolean;
   anualidadComment: string;
   segurosComplementarios: string;
+  preexistenciasMedicas: string;
   dependents: ClientDependentProfile[];
   additionalTitulares: ClientAdditionalTitularProfile[];
 }
@@ -74,10 +73,11 @@ export function buildEmptyClientProfileFormValue(): ClientProfileFormValue {
     commune: "",
     coverageArea: "",
     coverageRegionId: "",
-    preferredClinicIds: [],
+    preferredClinics: "",
     anualidad: false,
     anualidadComment: "",
     segurosComplementarios: "",
+    preexistenciasMedicas: "",
     dependents: [],
     additionalTitulares: [],
   };
@@ -108,30 +108,6 @@ export function ClientProfileForm({
     dependents: Record<string, string>;
     additionalTitulares: Record<string, string>;
   }>({ dependents: {}, additionalTitulares: {} });
-  const [clinics, setClinics] = useState<Clinic[]>([]);
-  const [clinicsLoading, setClinicsLoading] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    setClinicsLoading(true);
-    void fetchClinics()
-      .then((rows) => {
-        if (!cancelled) {
-          setClinics(
-            [...rows].sort((a, b) => a.name.localeCompare(b.name, "es")),
-          );
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setClinics([]);
-      })
-      .finally(() => {
-        if (!cancelled) setClinicsLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const titularRutError = rutErrors?.titular ?? blurRutErrors.titular;
   const titularRutIsSoftWarning = Boolean(
@@ -298,13 +274,6 @@ export function ClientProfileForm({
         (titular) => titular.id !== titularId,
       ),
     });
-  }
-
-  function togglePreferredClinic(clinicId: string) {
-    const selected = new Set(value.preferredClinicIds);
-    if (selected.has(clinicId)) selected.delete(clinicId);
-    else selected.add(clinicId);
-    updateField("preferredClinicIds", Array.from(selected));
   }
 
   function updateCoverageRegion(regionId: string) {
@@ -564,50 +533,16 @@ export function ClientProfileForm({
               </select>
             </label>
 
-            <fieldset className="space-y-2 sm:col-span-2">
-              <legend className="text-xs font-medium text-foreground">
-                Clínicas de preferencia
-              </legend>
-              <p className="text-[11px] text-muted">
-                Opcional. Puedes marcar una o varias clínicas preferidas del
-                beneficiario.
-              </p>
-              {clinicsLoading ? (
-                <p className="rounded-lg border border-dashed border-border px-3 py-3 text-sm text-muted">
-                  Cargando clínicas…
-                </p>
-              ) : clinics.length === 0 ? (
-                <p className="rounded-lg border border-dashed border-border px-3 py-3 text-sm text-muted">
-                  No hay clínicas disponibles para seleccionar.
-                </p>
-              ) : (
-                <div className="max-h-48 space-y-1 overflow-y-auto rounded-lg border border-border bg-white p-2">
-                  {clinics.map((clinic) => {
-                    const checked = value.preferredClinicIds.includes(clinic.id);
-                    return (
-                      <label
-                        key={clinic.id}
-                        className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-surface-hover"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() => togglePreferredClinic(clinic.id)}
-                        />
-                        <span className="min-w-0 truncate">{clinic.name}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-              )}
-              {value.preferredClinicIds.length > 0 ? (
-                <p className="text-[11px] text-muted">
-                  {value.preferredClinicIds.length} clínica
-                  {value.preferredClinicIds.length === 1 ? "" : "s"} seleccionada
-                  {value.preferredClinicIds.length === 1 ? "" : "s"}.
-                </p>
-              ) : null}
-            </fieldset>
+            <label className="block space-y-1.5 sm:col-span-2">
+              <span className="text-xs font-medium">Clínicas de preferencia</span>
+              <Input
+                value={value.preferredClinics}
+                onChange={(event) =>
+                  updateField("preferredClinics", event.target.value)
+                }
+                placeholder="Ej. Clínica Alemana, RedSalud…"
+              />
+            </label>
 
             <div className="flex flex-col gap-3 sm:col-span-2 sm:flex-row sm:items-end">
               <label className="flex h-10 shrink-0 cursor-pointer items-center gap-2 text-sm sm:pb-0">
@@ -642,7 +577,7 @@ export function ClientProfileForm({
               ) : null}
             </div>
 
-            <label className="block space-y-1.5 sm:col-span-2">
+            <label className="block space-y-1.5">
               <span className="text-xs font-medium">Seguros complementarios</span>
               <Input
                 value={value.segurosComplementarios}
@@ -650,6 +585,17 @@ export function ClientProfileForm({
                   updateField("segurosComplementarios", event.target.value)
                 }
                 placeholder="Ej. dental, catastrófico…"
+              />
+            </label>
+
+            <label className="block space-y-1.5">
+              <span className="text-xs font-medium">Preexistencias médicas</span>
+              <Input
+                value={value.preexistenciasMedicas}
+                onChange={(event) =>
+                  updateField("preexistenciasMedicas", event.target.value)
+                }
+                placeholder="Ej. hipertensión, diabetes…"
               />
             </label>
           </div>
@@ -836,6 +782,23 @@ export function ClientProfileForm({
                     />
                   </label>
 
+                  <label className="block space-y-1.5">
+                    <span className="text-xs font-medium">
+                      Preexistencias médicas
+                    </span>
+                    <Input
+                      value={titular.preexistenciasMedicas}
+                      onChange={(event) =>
+                        updateAdditionalTitular(
+                          titular.id,
+                          "preexistenciasMedicas",
+                          event.target.value,
+                        )
+                      }
+                      placeholder="Ej. hipertensión, diabetes…"
+                    />
+                  </label>
+
                   <label className="block space-y-1.5 sm:col-span-2">
                     <span className="text-xs font-medium">
                       Estado civil legal
@@ -999,6 +962,23 @@ export function ClientProfileForm({
                       placeholder="25"
                     />
                   </label>
+
+                  <label className="block space-y-1.5">
+                    <span className="text-xs font-medium">
+                      Preexistencias médicas
+                    </span>
+                    <Input
+                      value={dependent.preexistenciasMedicas}
+                      onChange={(event) =>
+                        updateDependent(
+                          dependent.id,
+                          "preexistenciasMedicas",
+                          event.target.value,
+                        )
+                      }
+                      placeholder="Ej. asma, alergias…"
+                    />
+                  </label>
                 </div>
               </div>
             ))}
@@ -1028,10 +1008,11 @@ export function userRecordToProfileFormValue(
       commune?: string;
       coverageArea?: ClientCoverageArea;
       coverageRegionId?: string;
-      preferredClinicIds?: string[];
+      preferredClinics?: string;
       anualidad?: boolean;
       anualidadComment?: string;
       segurosComplementarios?: string;
+      preexistenciasMedicas?: string;
       dependents?: ClientDependentProfile[];
       additionalTitulares?: ClientAdditionalTitularProfile[];
     };
@@ -1061,10 +1042,11 @@ export function userRecordToProfileFormValue(
     commune: profile?.commune ?? "",
     coverageArea: profile?.coverageArea ?? "",
     coverageRegionId: profile?.coverageRegionId ?? "",
-    preferredClinicIds: profile?.preferredClinicIds ?? [],
+    preferredClinics: profile?.preferredClinics ?? "",
     anualidad: profile?.anualidad === true,
     anualidadComment: profile?.anualidadComment ?? "",
     segurosComplementarios: profile?.segurosComplementarios ?? "",
+    preexistenciasMedicas: profile?.preexistenciasMedicas ?? "",
     dependents: profile?.dependents ?? [],
     additionalTitulares: profile?.additionalTitulares ?? [],
   };

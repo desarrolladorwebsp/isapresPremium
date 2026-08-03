@@ -68,6 +68,7 @@ export function buildEmptyDependent(): ClientDependentProfile {
     age: "",
     heightCm: "",
     weightKg: "",
+    preexistenciasMedicas: "",
   };
 }
 
@@ -84,6 +85,7 @@ export function buildEmptyAdditionalTitular(): ClientAdditionalTitularProfile {
     maritalStatus: "",
     phone: "",
     currentIsapre: "",
+    preexistenciasMedicas: "",
   };
 }
 
@@ -101,10 +103,11 @@ export function buildEmptyClientProfile(): ClientExecutiveProfile {
     commune: "",
     coverageArea: "",
     coverageRegionId: "",
-    preferredClinicIds: [],
+    preferredClinics: "",
     anualidad: false,
     anualidadComment: "",
     segurosComplementarios: "",
+    preexistenciasMedicas: "",
     dependents: [],
     additionalTitulares: [],
     updatedAt: new Date().toISOString(),
@@ -254,11 +257,10 @@ export function resolveClientProfile(
     commune: typeof profile.commune === "string" ? profile.commune : "",
     coverageArea: coverageRegionId ? "region" : "",
     coverageRegionId,
-    preferredClinicIds: Array.isArray(profile.preferredClinicIds)
-      ? profile.preferredClinicIds.filter(
-          (id): id is string => typeof id === "string" && id.trim().length > 0,
-        )
-      : [],
+    preferredClinics:
+      typeof profile.preferredClinics === "string"
+        ? profile.preferredClinics
+        : "",
     anualidad: profile.anualidad === true,
     anualidadComment:
       typeof profile.anualidadComment === "string"
@@ -268,14 +270,23 @@ export function resolveClientProfile(
       typeof profile.segurosComplementarios === "string"
         ? profile.segurosComplementarios
         : "",
+    preexistenciasMedicas:
+      typeof profile.preexistenciasMedicas === "string"
+        ? profile.preexistenciasMedicas
+        : "",
     dependents: Array.isArray(profile.dependents)
       ? profile.dependents.filter(isDependent).map((dependent) => {
           const rawDependent = dependent as ClientDependentProfile & {
             age?: string;
+            preexistenciasMedicas?: string;
           };
           return {
             ...dependent,
             age: resolveAge(rawDependent.age, dependent.birthDate),
+            preexistenciasMedicas:
+              typeof rawDependent.preexistenciasMedicas === "string"
+                ? rawDependent.preexistenciasMedicas
+                : "",
           };
         })
       : [],
@@ -283,10 +294,15 @@ export function resolveClientProfile(
       ? profile.additionalTitulares.filter(isAdditionalTitular).map((titular) => {
           const rawTitular = titular as ClientAdditionalTitularProfile & {
             age?: string;
+            preexistenciasMedicas?: string;
           };
           return {
             ...titular,
             age: resolveAge(rawTitular.age, titular.birthDate),
+            preexistenciasMedicas:
+              typeof rawTitular.preexistenciasMedicas === "string"
+                ? rawTitular.preexistenciasMedicas
+                : "",
           };
         })
       : [],
@@ -357,18 +373,13 @@ export function normalizeClientProfileInput(
     legacyArea,
   );
   const coverageArea: ClientCoverageArea = coverageRegionId ? "region" : "";
-  const preferredClinicIds = Array.from(
-    new Set(
-      (input.preferredClinicIds ?? [])
-        .map((id) => id.trim())
-        .filter(Boolean),
-    ),
-  );
+  const preferredClinics = (input.preferredClinics ?? "").trim();
   const anualidad = input.anualidad === true;
   const anualidadComment = anualidad
     ? ""
     : (input.anualidadComment ?? "").trim();
   const segurosComplementarios = (input.segurosComplementarios ?? "").trim();
+  const preexistenciasMedicas = (input.preexistenciasMedicas ?? "").trim();
 
   const dependents = (input.dependents ?? []).map((dependent) => {
     const rutRaw = dependent.rut.trim();
@@ -381,6 +392,7 @@ export function normalizeClientProfileInput(
       age: ageRaw || calculateAgeFromBirthDate(birthDate),
       heightCm: dependent.heightCm.trim(),
       weightKg: dependent.weightKg.trim(),
+      preexistenciasMedicas: (dependent.preexistenciasMedicas ?? "").trim(),
     };
   });
 
@@ -401,6 +413,7 @@ export function normalizeClientProfileInput(
         maritalStatus: titular.maritalStatus.trim(),
         phone: titular.phone.trim(),
         currentIsapre: titular.currentIsapre.trim(),
+        preexistenciasMedicas: (titular.preexistenciasMedicas ?? "").trim(),
       };
     },
   );
@@ -426,10 +439,11 @@ export function normalizeClientProfileInput(
       commune: input.commune?.trim() || "",
       coverageArea,
       coverageRegionId,
-      preferredClinicIds,
+      preferredClinics,
       anualidad,
       anualidadComment,
       segurosComplementarios,
+      preexistenciasMedicas,
       dependents,
       additionalTitulares,
       updatedAt: new Date().toISOString(),

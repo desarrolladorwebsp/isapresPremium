@@ -6,6 +6,8 @@ export interface ClientDependentProfile {
   age: string;
   heightCm: string;
   weightKg: string;
+  /** Preexistencias médicas (texto libre). */
+  preexistenciasMedicas: string;
 }
 
 /** Titulares adicionales del grupo familiar (además del titular de la cuenta). */
@@ -22,6 +24,8 @@ export interface ClientAdditionalTitularProfile {
   maritalStatus: string;
   phone: string;
   currentIsapre: string;
+  /** Preexistencias médicas (texto libre). */
+  preexistenciasMedicas: string;
 }
 
 /**
@@ -46,14 +50,16 @@ export interface ClientExecutiveProfile {
   coverageArea: ClientCoverageArea;
   /** Id de región de Chile (catálogo CLIENT_REGION_OPTIONS). */
   coverageRegionId: string;
-  /** Clínicas de preferencia (una o varias). */
-  preferredClinicIds: string[];
+  /** Clínicas de preferencia (texto libre). */
+  preferredClinics: string;
   /** Si el beneficiario tiene anualidad. */
   anualidad: boolean;
   /** Comentario cuando no tiene anualidad. */
   anualidadComment: string;
   /** Seguros complementarios (texto libre por ahora). */
   segurosComplementarios: string;
+  /** Preexistencias médicas (texto libre). */
+  preexistenciasMedicas: string;
   dependents: ClientDependentProfile[];
   additionalTitulares: ClientAdditionalTitularProfile[];
   updatedAt: string;
@@ -75,10 +81,11 @@ export interface ClientProfileInput {
   commune?: string | null;
   coverageArea?: ClientCoverageArea | null;
   coverageRegionId?: string | null;
-  preferredClinicIds?: string[] | null;
+  preferredClinics?: string | null;
   anualidad?: boolean | null;
   anualidadComment?: string | null;
   segurosComplementarios?: string | null;
+  preexistenciasMedicas?: string | null;
   dependents?: ClientDependentProfile[];
   additionalTitulares?: ClientAdditionalTitularProfile[];
 }
