@@ -55,7 +55,9 @@ export const publicRegisterClientSchema = z
     preferenciaContacto: optionalTrimmed(40),
     metadata: z.record(z.string().max(40), metadataValueSchema).optional(),
     executiveKind: executiveKindSchema.optional().default("ISAPRES_PREMIUM"),
-    autoAssign: z.boolean().optional().default(true),
+    autoAssign: z.boolean().optional().default(false),
+    /** Si true, envía aviso interno (Resend) con CC a premiumisapres@gmail.com. */
+    notifyAdmin: z.boolean().optional().default(false),
   })
   .superRefine((data, ctx) => {
     if (data.metadata && Object.keys(data.metadata).length > 20) {

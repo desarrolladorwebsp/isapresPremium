@@ -57,7 +57,8 @@ Campos **obligatorios**: `fullName`, `email`, `phone`.
 | `preferenciaContacto` | string | — | `whatsapp` \| `telefono` \| `email` \| `video-llamada` |
 | `metadata` | object | — | Máx. 20 claves; valores string/number/boolean/null |
 | `executiveKind` | string | `ISAPRES_PREMIUM` | `ISAPRES_PREMIUM` \| `ISAPRES` \| `ZOOM` |
-| `autoAssign` | boolean | `true` | Round-robin a ejecutivo elegible del kind |
+| `autoAssign` | boolean | `false` | Round-robin a ejecutivo elegible del kind |
+| `notifyAdmin` | boolean | `false` | Aviso interno Resend (TO cotizaciones + CC `premiumisapres@gmail.com`) |
 
 ### Ejemplo curl
 
@@ -78,7 +79,8 @@ curl -sS -X POST "https://isaprespremium.cl/api/public/v1/clients" \
       "renta imponible": "1500000"
     },
     "executiveKind": "ISAPRES_PREMIUM",
-    "autoAssign": true
+    "autoAssign": false,
+    "notifyAdmin": true
   }'
 ```
 
@@ -121,6 +123,7 @@ curl -sS -X POST "https://isaprespremium.cl/api/public/v1/clients" \
 - Notas van a `pipelineNotes` (sanitizadas y con tope de tamaño)
 - `preferenciaContacto=whatsapp` → `preferredContactMethod=WHATSAPP`; `video-llamada` → `ZOOM`
 - Con `autoAssign: true` se asigna ejecutivo elegible del `executiveKind` (round-robin)
+- Con `notifyAdmin: true` se envía correo interno (Resend) al buzón de cotizaciones con **CC fijo** a `premiumisapres@gmail.com`
 
 ## Formulario Isapres Premium (interno)
 

@@ -67,15 +67,21 @@ function isLikelyEmailAddress(value: string): boolean {
 }
 
 /**
- * Destinos CC del aviso interno de cotización.
- * Env `COTIZACION_NOTIFY_CC`: lista separada por coma.
- * Fallback: premiumisapres@gmail.com. Excluye el TO principal si coincide.
+ * Destinos CC del aviso interno de cotización / leads.
+ * Siempre incluye premiumisapres@gmail.com.
+ * Env `COTIZACION_NOTIFY_CC`: correos extra separados por coma.
+ * Excluye el TO principal si coincide.
  */
 export function getCotizacionNotifyCcEmails(): string[] {
   const raw = process.env.COTIZACION_NOTIFY_CC?.trim();
-  const candidates = raw
+  const fromEnv = raw
     ? raw.split(",").map((part) => part.trim().toLowerCase())
-    : [...DEFAULT_COTIZACION_NOTIFY_CC_EMAILS];
+    : [];
+
+  const candidates = [
+    ...DEFAULT_COTIZACION_NOTIFY_CC_EMAILS.map((email) => email.toLowerCase()),
+    ...fromEnv,
+  ];
 
   const primary = getCotizacionNotifyEmail().trim().toLowerCase();
   const seen = new Set<string>();

@@ -132,8 +132,19 @@ export async function POST(request: Request) {
       "Isapres Premium <contacto@isaprespremium.cl>";
     const adminEmail =
       process.env.ADMIN_EMAIL ?? "contacto@isaprespremium.cl";
-    const adminCcEmail =
-      process.env.ADMIN_CC_EMAIL ?? "premiumisapres@gmail.com";
+    const adminCcEmails = Array.from(
+      new Set(
+        [
+          "premiumisapres@gmail.com",
+          ...(process.env.ADMIN_CC_EMAIL ?? "")
+            .split(",")
+            .map((part) => part.trim().toLowerCase())
+            .filter(Boolean),
+        ].filter(
+          (email) => email && email !== adminEmail.trim().toLowerCase(),
+        ),
+      ),
+    );
 
     const resend = getResendClient();
     const adminEmailContent = buildAdminLeadEmail(data);
@@ -143,7 +154,7 @@ export async function POST(request: Request) {
       resend.emails.send({
         from,
         to: [adminEmail],
-        cc: adminCcEmail ? [adminCcEmail] : undefined,
+        cc: adminCcEmails.length > 0 ? adminCcEmails : undefined,
         replyTo: data.email,
         subject: adminEmailContent.subject,
         html: adminEmailContent.html,

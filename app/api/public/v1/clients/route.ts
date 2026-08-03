@@ -1,5 +1,6 @@
 import { registerLeadClient } from "@/lib/clients/register-lead-client";
 import { ApiError } from "@/lib/api/api-error";
+import { sendPublicLeadNotifyEmail } from "@/lib/email/send-public-lead-notify";
 import { PUBLIC_API_VERSION } from "@/lib/public-api/constants";
 import { publicApiOptionsResponse } from "@/lib/public-api/cors";
 import {
@@ -68,6 +69,29 @@ export async function POST(request: Request) {
       clientOrigin: "FORMULARIO_WEB",
     });
 
+    let notified = false;
+    if (data.notifyAdmin) {
+      try {
+        const notify = await sendPublicLeadNotifyEmail({
+          fullName: data.fullName,
+          email: data.email,
+          phone: data.phone,
+          rut: data.rut,
+          source: data.source,
+          preferenciaContacto: data.preferenciaContacto,
+          notes: data.notes,
+          metadata: data.metadata,
+        });
+        notified = !notify.adminEmailFailed;
+      } catch (notifyError) {
+        // No tumbar el registro CRM si falla el correo interno.
+        console.error(
+          "POST /api/public/v1/clients notifyAdmin failed",
+          notifyError,
+        );
+      }
+    }
+
     return publicApiJsonResponse(
       request,
       {
@@ -77,6 +101,7 @@ export async function POST(request: Request) {
           created: result.created,
           // No exponer IDs internos de ejecutivos en la API pública.
           assigned: Boolean(result.assignedExecutiveId),
+          notified,
         },
         meta: {
           version: PUBLIC_API_VERSION,
