@@ -28,6 +28,8 @@ export interface ClientAdditionalTitularProfile {
   rentaImponible: string;
   /** Motivo de cotización. */
   motivoCotizacion: string;
+  /** Detalle cuando motivoCotizacion = otros. */
+  motivoCotizacionOther: string;
   /** Preexistencias médicas (texto libre). */
   preexistenciasMedicas: string;
 }
@@ -52,6 +54,8 @@ export interface ClientExecutiveProfile {
   rentaImponible: string;
   /** Motivo de cotización. */
   motivoCotizacion: string;
+  /** Detalle cuando motivoCotizacion = otros. */
+  motivoCotizacionOther: string;
   address: string;
   commune: string;
   /** Derivado: "region" si hay coverageRegionId. */
@@ -87,6 +91,7 @@ export interface ClientProfileInput {
   maritalStatus?: string | null;
   rentaImponible?: string | null;
   motivoCotizacion?: string | null;
+  motivoCotizacionOther?: string | null;
   address?: string | null;
   commune?: string | null;
   coverageArea?: ClientCoverageArea | null;

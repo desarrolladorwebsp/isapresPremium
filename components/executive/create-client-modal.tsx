@@ -101,6 +101,10 @@ export function CreateClientModal({
         maritalStatus: profile.maritalStatus || null,
         rentaImponible: profile.rentaImponible.trim() || null,
         motivoCotizacion: profile.motivoCotizacion || null,
+        motivoCotizacionOther:
+          profile.motivoCotizacion === "otros"
+            ? profile.motivoCotizacionOther.trim() || null
+            : null,
         address: profile.address || null,
         commune: profile.commune || null,
         coverageArea: profile.coverageArea || null,

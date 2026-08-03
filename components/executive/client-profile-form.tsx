@@ -46,6 +46,7 @@ export interface ClientProfileFormValue {
   maritalStatus: string;
   rentaImponible: string;
   motivoCotizacion: string;
+  motivoCotizacionOther: string;
   address: string;
   commune: string;
   coverageArea: ClientCoverageArea;
@@ -74,6 +75,7 @@ export function buildEmptyClientProfileFormValue(): ClientProfileFormValue {
     maritalStatus: "",
     rentaImponible: "",
     motivoCotizacion: "",
+    motivoCotizacionOther: "",
     address: "",
     commune: "",
     coverageArea: "",
@@ -92,6 +94,8 @@ export interface ClientProfileFormProps {
   value: ClientProfileFormValue;
   onChange: (value: ClientProfileFormValue) => void;
   showEmail?: boolean;
+  /** Solo lectura: todos los roles pueden ver; edición según permiso del drawer. */
+  readOnly?: boolean;
   /** @deprecated RUT ya no es obligatorio; se mantiene por compatibilidad. */
   requireTitularRut?: boolean;
   rutErrors?: {
@@ -105,6 +109,7 @@ export function ClientProfileForm({
   value,
   onChange,
   showEmail = true,
+  readOnly = false,
   requireTitularRut = false,
   rutErrors,
 }: ClientProfileFormProps) {
@@ -241,6 +246,14 @@ export function ClientProfileForm({
             age: calculateAgeFromBirthDate(fieldValue),
           };
         }
+        if (field === "motivoCotizacion") {
+          return {
+            ...titular,
+            motivoCotizacion: fieldValue,
+            motivoCotizacionOther:
+              fieldValue === "otros" ? titular.motivoCotizacionOther : "",
+          };
+        }
         return { ...titular, [field]: fieldValue };
       }),
     });
@@ -319,13 +332,26 @@ export function ClientProfileForm({
   }
 
   return (
-    <div className="space-y-6">
+    <fieldset
+      disabled={readOnly}
+      className={joinClasses(
+        "min-w-0 space-y-6 border-0 p-0",
+        readOnly ? "opacity-95" : undefined,
+      )}
+    >
+      {readOnly ? (
+        <p className="rounded-lg border border-amber-200 bg-amber-50/70 px-3 py-2 text-xs text-amber-950">
+          Datos del cliente en solo lectura. Estás en seguimiento; el ejecutivo
+          asignado puede editarlos.
+        </p>
+      ) : null}
       <CollapsibleSection
         title="Datos de titulares"
         description="Puedes registrar el titular principal y agregar titulares adicionales del grupo familiar."
         className="rounded-xl border border-border bg-bg-layout/30 p-4"
         bodyClassName="space-y-4"
         headerRight={
+          readOnly ? undefined : (
           <Button
             type="button"
             variant="info"
@@ -334,6 +360,7 @@ export function ClientProfileForm({
           >
             Agregar titular
           </Button>
+          )
         }
       >
         <div className="rounded-xl border border-border bg-white p-3 shadow-sm">
@@ -512,13 +539,19 @@ export function ClientProfileForm({
               />
             </label>
 
-            <label className="block space-y-1.5 sm:col-span-2">
+            <label className="block space-y-1.5">
               <span className="text-xs font-medium">Motivo de cotización</span>
               <select
                 value={value.motivoCotizacion}
-                onChange={(event) =>
-                  updateField("motivoCotizacion", event.target.value)
-                }
+                onChange={(event) => {
+                  const next = event.target.value;
+                  onChange({
+                    ...value,
+                    motivoCotizacion: next,
+                    motivoCotizacionOther:
+                      next === "otros" ? value.motivoCotizacionOther : "",
+                  });
+                }}
                 className={joinClasses(
                   "h-10 w-full rounded-md px-3 text-sm",
                   ui.input,
@@ -532,6 +565,21 @@ export function ClientProfileForm({
                 ))}
               </select>
             </label>
+
+            {value.motivoCotizacion === "otros" ? (
+              <label className="block space-y-1.5 sm:col-span-2">
+                <span className="text-xs font-medium">
+                  Detalle del motivo *
+                </span>
+                <Input
+                  value={value.motivoCotizacionOther}
+                  onChange={(event) =>
+                    updateField("motivoCotizacionOther", event.target.value)
+                  }
+                  placeholder="Describe el motivo de cotización…"
+                />
+              </label>
+            ) : null}
 
             <label className="block space-y-1.5 sm:col-span-2">
               <span className="text-xs font-medium">Dirección particular</span>
@@ -878,7 +926,7 @@ export function ClientProfileForm({
                     />
                   </label>
 
-                  <label className="block space-y-1.5 sm:col-span-2">
+                  <label className="block space-y-1.5">
                     <span className="text-xs font-medium">
                       Motivo de cotización
                     </span>
@@ -904,6 +952,25 @@ export function ClientProfileForm({
                       ))}
                     </select>
                   </label>
+
+                  {titular.motivoCotizacion === "otros" ? (
+                    <label className="block space-y-1.5 sm:col-span-2">
+                      <span className="text-xs font-medium">
+                        Detalle del motivo *
+                      </span>
+                      <Input
+                        value={titular.motivoCotizacionOther}
+                        onChange={(event) =>
+                          updateAdditionalTitular(
+                            titular.id,
+                            "motivoCotizacionOther",
+                            event.target.value,
+                          )
+                        }
+                        placeholder="Describe el motivo de cotización…"
+                      />
+                    </label>
+                  ) : null}
                 </div>
               </div>
             ))}
@@ -917,9 +984,11 @@ export function ClientProfileForm({
         className="rounded-xl border border-border bg-bg-layout/30 p-4"
         bodyClassName="space-y-4"
         headerRight={
+          readOnly ? undefined : (
           <Button type="button" variant="info" size="sm" onClick={addDependent}>
             Agregar carga
           </Button>
+          )
         }
       >
         {value.dependents.length === 0 ? (
@@ -1064,7 +1133,7 @@ export function ClientProfileForm({
           </div>
         )}
       </CollapsibleSection>
-    </div>
+    </fieldset>
   );
 }
 
@@ -1085,6 +1154,7 @@ export function userRecordToProfileFormValue(
       maritalStatus?: string;
       rentaImponible?: string;
       motivoCotizacion?: string;
+      motivoCotizacionOther?: string;
       address?: string;
       commune?: string;
       coverageArea?: ClientCoverageArea;
@@ -1121,6 +1191,7 @@ export function userRecordToProfileFormValue(
     maritalStatus: profile?.maritalStatus ?? "",
     rentaImponible: profile?.rentaImponible ?? "",
     motivoCotizacion: profile?.motivoCotizacion ?? "",
+    motivoCotizacionOther: profile?.motivoCotizacionOther ?? "",
     address: profile?.address ?? "",
     commune: profile?.commune ?? "",
     coverageArea: profile?.coverageArea ?? "",

@@ -9,6 +9,7 @@ import { AdminFormModal } from "@/components/admin/admin-data-table";
 import { ClientPipelineStatusBadge } from "@/components/executive/client-pipeline-status-badge";
 import { ClientContactMethodBadge } from "@/components/executive/client-contact-method-badge";
 import { ClientAdvisedPlanSection } from "@/components/executive/client-advised-plan-section";
+import { ClientPlanSummary } from "@/components/executive/client-plan-summary";
 import { CalendlyInlineEmbed } from "@/components/executive/calendly-inline-embed";
 import { RescheduleDayAgenda } from "@/components/executive/reschedule-day-agenda";
 import {
@@ -159,12 +160,20 @@ const PROFILE_FIELD_LABELS: Array<{
   { key: "firstNames", label: "Nombres" },
   { key: "lastNames", label: "Apellidos" },
   { key: "birthDate", label: "Fecha de nacimiento" },
+  { key: "age", label: "Edad" },
   { key: "currentIsapre", label: "Isapre / previsión actual" },
   { key: "heightCm", label: "Estatura" },
   { key: "weightKg", label: "Peso" },
   { key: "maritalStatus", label: "Estado civil" },
+  { key: "rentaImponible", label: "Renta imponible" },
+  { key: "motivoCotizacion", label: "Motivo de cotización" },
+  { key: "motivoCotizacionOther", label: "Detalle del motivo" },
   { key: "address", label: "Dirección" },
   { key: "commune", label: "Comuna" },
+  { key: "coverageRegionId", label: "Región" },
+  { key: "preferredClinics", label: "Clínicas de preferencia" },
+  { key: "segurosComplementarios", label: "Seguros complementarios" },
+  { key: "preexistenciasMedicas", label: "Preexistencias médicas" },
 ];
 
 function LostReasonFields({
@@ -383,6 +392,7 @@ function profileSnapshot(value: ClientProfileFormValue): string {
     maritalStatus: value.maritalStatus || "",
     rentaImponible: value.rentaImponible || "",
     motivoCotizacion: value.motivoCotizacion || "",
+    motivoCotizacionOther: value.motivoCotizacionOther || "",
     address: value.address || "",
     commune: value.commune || "",
     coverageArea: value.coverageArea || "",
@@ -900,6 +910,10 @@ export function ClientPipelineDrawer({
       maritalStatus: profileForm.maritalStatus || null,
       rentaImponible: profileForm.rentaImponible.trim() || null,
       motivoCotizacion: profileForm.motivoCotizacion || null,
+      motivoCotizacionOther:
+        profileForm.motivoCotizacion === "otros"
+          ? profileForm.motivoCotizacionOther.trim() || null
+          : null,
       address: profileForm.address || null,
       commune: profileForm.commune || null,
       coverageArea: profileForm.coverageArea || null,
@@ -1881,12 +1895,30 @@ export function ClientPipelineDrawer({
             onUpdated={onUpdated}
             onNotify={onNotify}
           />
-        ) : null}
+        ) : (
+          <div className="rounded-xl border border-border bg-bg-layout/30 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+              Plan asesorado
+            </p>
+            <div className="mt-2">
+              {client.advisedPlan || client.requestedPlan ? (
+                <ClientPlanSummary
+                  requestedPlan={client.requestedPlan}
+                  advisedPlan={client.advisedPlan}
+                  compact
+                />
+              ) : (
+                <p className="text-sm text-muted">Sin plan registrado.</p>
+              )}
+            </div>
+          </div>
+        )}
 
-        {!isTrackingOnly ? (
         <ClientProfileForm
           value={profileForm}
+          readOnly={isTrackingOnly}
           onChange={(next) => {
+            if (isTrackingOnly) return;
             setProfileForm(next);
             if (
               rutErrors.titular ||
@@ -1898,7 +1930,6 @@ export function ClientPipelineDrawer({
           }}
           rutErrors={rutErrors}
         />
-        ) : null}
 
         <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-2">

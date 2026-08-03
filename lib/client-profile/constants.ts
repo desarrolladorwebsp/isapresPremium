@@ -27,6 +27,7 @@ export const CLIENT_MOTIVO_COTIZACION_OPTIONS = [
   { id: "bajar-costo", label: "Bajar costo" },
   { id: "cobertura", label: "Cobertura" },
   { id: "mala-experiencia", label: "Mala experiencia" },
+  { id: "otros", label: "Otros" },
 ] as const;
 
 const VALID_MOTIVO_COTIZACION_IDS = new Set<string>(
@@ -38,6 +39,14 @@ function resolveMotivoCotizacion(value: unknown): string {
     return value.trim();
   }
   return "";
+}
+
+function resolveMotivoCotizacionOther(
+  motivo: string,
+  otherValue: unknown,
+): string {
+  if (motivo !== "otros") return "";
+  return typeof otherValue === "string" ? otherValue.trim() : "";
 }
 
 /** Las 16 regiones de Chile (orden geográfico norte → sur). */
@@ -105,6 +114,7 @@ export function buildEmptyAdditionalTitular(): ClientAdditionalTitularProfile {
     currentIsapre: "",
     rentaImponible: "",
     motivoCotizacion: "",
+    motivoCotizacionOther: "",
     preexistenciasMedicas: "",
   };
 }
@@ -121,6 +131,7 @@ export function buildEmptyClientProfile(): ClientExecutiveProfile {
     maritalStatus: "",
     rentaImponible: "",
     motivoCotizacion: "",
+    motivoCotizacionOther: "",
     address: "",
     commune: "",
     coverageArea: "",
@@ -278,6 +289,10 @@ export function resolveClientProfile(
     rentaImponible:
       typeof profile.rentaImponible === "string" ? profile.rentaImponible : "",
     motivoCotizacion: resolveMotivoCotizacion(profile.motivoCotizacion),
+    motivoCotizacionOther: resolveMotivoCotizacionOther(
+      resolveMotivoCotizacion(profile.motivoCotizacion),
+      profile.motivoCotizacionOther,
+    ),
     address: typeof profile.address === "string" ? profile.address : "",
     commune: typeof profile.commune === "string" ? profile.commune : "",
     coverageArea: coverageRegionId ? "region" : "",
@@ -322,7 +337,11 @@ export function resolveClientProfile(
             preexistenciasMedicas?: string;
             rentaImponible?: string;
             motivoCotizacion?: string;
+            motivoCotizacionOther?: string;
           };
+          const motivoCotizacion = resolveMotivoCotizacion(
+            rawTitular.motivoCotizacion,
+          );
           return {
             ...titular,
             age: resolveAge(rawTitular.age, titular.birthDate),
@@ -330,7 +349,11 @@ export function resolveClientProfile(
               typeof rawTitular.rentaImponible === "string"
                 ? rawTitular.rentaImponible
                 : "",
-            motivoCotizacion: resolveMotivoCotizacion(rawTitular.motivoCotizacion),
+            motivoCotizacion,
+            motivoCotizacionOther: resolveMotivoCotizacionOther(
+              motivoCotizacion,
+              rawTitular.motivoCotizacionOther,
+            ),
             preexistenciasMedicas:
               typeof rawTitular.preexistenciasMedicas === "string"
                 ? rawTitular.preexistenciasMedicas
@@ -447,6 +470,10 @@ export function normalizeClientProfileInput(
         currentIsapre: titular.currentIsapre.trim(),
         rentaImponible: (titular.rentaImponible ?? "").trim(),
         motivoCotizacion: resolveMotivoCotizacion(titular.motivoCotizacion),
+        motivoCotizacionOther: resolveMotivoCotizacionOther(
+          resolveMotivoCotizacion(titular.motivoCotizacion),
+          titular.motivoCotizacionOther,
+        ),
         preexistenciasMedicas: (titular.preexistenciasMedicas ?? "").trim(),
       };
     },
@@ -471,6 +498,10 @@ export function normalizeClientProfileInput(
       maritalStatus: input.maritalStatus?.trim() || "",
       rentaImponible: (input.rentaImponible ?? "").trim(),
       motivoCotizacion: resolveMotivoCotizacion(input.motivoCotizacion),
+      motivoCotizacionOther: resolveMotivoCotizacionOther(
+        resolveMotivoCotizacion(input.motivoCotizacion),
+        input.motivoCotizacionOther,
+      ),
       address: input.address?.trim() || "",
       commune: input.commune?.trim() || "",
       coverageArea,

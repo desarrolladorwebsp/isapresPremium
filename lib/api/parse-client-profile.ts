@@ -89,6 +89,10 @@ export function parseClientProfilePayload(payload: unknown): ClientProfileInput 
               typeof titular.motivoCotizacion === "string"
                 ? titular.motivoCotizacion
                 : "",
+            motivoCotizacionOther:
+              typeof titular.motivoCotizacionOther === "string"
+                ? titular.motivoCotizacionOther
+                : "",
             preexistenciasMedicas:
               typeof titular.preexistenciasMedicas === "string"
                 ? titular.preexistenciasMedicas
@@ -115,6 +119,10 @@ export function parseClientProfilePayload(payload: unknown): ClientProfileInput 
       typeof data.rentaImponible === "string" ? data.rentaImponible : null,
     motivoCotizacion:
       typeof data.motivoCotizacion === "string" ? data.motivoCotizacion : null,
+    motivoCotizacionOther:
+      typeof data.motivoCotizacionOther === "string"
+        ? data.motivoCotizacionOther
+        : null,
     address: typeof data.address === "string" ? data.address : null,
     commune: typeof data.commune === "string" ? data.commune : null,
     coverageArea: (() => {
