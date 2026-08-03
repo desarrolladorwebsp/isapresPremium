@@ -289,7 +289,7 @@ export function PublicPlanCard({
               disabled={!hasPdf}
             />
             <PlanCardActionButton
-              label="Solicitar asesoría"
+              label="Solicitar"
               icon={<ChatIcon />}
               variant="primary"
               onClick={onRequest}
