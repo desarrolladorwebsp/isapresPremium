@@ -15,7 +15,7 @@ function resolveCoverageRegionId(
   if (typeof regionId === "string" && regionId.trim()) {
     return regionId.trim();
   }
-  if (coverageArea === "santiago-centro") return "rm-centro";
+  if (coverageArea === "santiago-centro") return "metropolitana";
   return "";
 }
 
@@ -40,6 +40,7 @@ export function parseClientProfilePayload(payload: unknown): ClientProfileInput 
             rut: typeof dependent.rut === "string" ? dependent.rut : "",
             birthDate:
               typeof dependent.birthDate === "string" ? dependent.birthDate : "",
+            age: typeof dependent.age === "string" ? dependent.age : "",
             heightCm:
               typeof dependent.heightCm === "string" ? dependent.heightCm : "",
             weightKg:
@@ -62,6 +63,7 @@ export function parseClientProfilePayload(payload: unknown): ClientProfileInput 
             rut: typeof titular.rut === "string" ? titular.rut : "",
             birthDate:
               typeof titular.birthDate === "string" ? titular.birthDate : "",
+            age: typeof titular.age === "string" ? titular.age : "",
             heightCm:
               typeof titular.heightCm === "string" ? titular.heightCm : "",
             weightKg:
@@ -92,6 +94,7 @@ export function parseClientProfilePayload(payload: unknown): ClientProfileInput 
     firstNames: data.firstNames,
     lastNames: typeof data.lastNames === "string" ? data.lastNames : "",
     birthDate: typeof data.birthDate === "string" ? data.birthDate : null,
+    age: typeof data.age === "string" ? data.age : null,
     currentIsapre:
       typeof data.currentIsapre === "string" ? data.currentIsapre : null,
     heightCm: typeof data.heightCm === "string" ? data.heightCm : null,

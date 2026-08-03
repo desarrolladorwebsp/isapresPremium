@@ -7,6 +7,7 @@ import { CollapsibleSection } from "@/components/executive/collapsible-section";
 import {
   buildEmptyAdditionalTitular,
   buildEmptyDependent,
+  calculateAgeFromBirthDate,
   CLIENT_REGION_OPTIONS,
   MARITAL_STATUS_OPTIONS,
   splitFullName,
@@ -39,6 +40,7 @@ export interface ClientProfileFormValue {
   firstNames: string;
   lastNames: string;
   birthDate: string;
+  age: string;
   currentIsapre: string;
   heightCm: string;
   weightKg: string;
@@ -63,6 +65,7 @@ export function buildEmptyClientProfileFormValue(): ClientProfileFormValue {
     firstNames: "",
     lastNames: "",
     birthDate: "",
+    age: "",
     currentIsapre: "",
     heightCm: "",
     weightKg: "",
@@ -220,11 +223,17 @@ export function ClientProfileForm({
     }
     onChange({
       ...value,
-      dependents: value.dependents.map((dependent) =>
-        dependent.id === dependentId
-          ? { ...dependent, [field]: fieldValue }
-          : dependent,
-      ),
+      dependents: value.dependents.map((dependent) => {
+        if (dependent.id !== dependentId) return dependent;
+        if (field === "birthDate") {
+          return {
+            ...dependent,
+            birthDate: fieldValue,
+            age: calculateAgeFromBirthDate(fieldValue),
+          };
+        }
+        return { ...dependent, [field]: fieldValue };
+      }),
     });
   }
 
@@ -242,11 +251,17 @@ export function ClientProfileForm({
     }
     onChange({
       ...value,
-      additionalTitulares: value.additionalTitulares.map((titular) =>
-        titular.id === titularId
-          ? { ...titular, [field]: fieldValue }
-          : titular,
-      ),
+      additionalTitulares: value.additionalTitulares.map((titular) => {
+        if (titular.id !== titularId) return titular;
+        if (field === "birthDate") {
+          return {
+            ...titular,
+            birthDate: fieldValue,
+            age: calculateAgeFromBirthDate(fieldValue),
+          };
+        }
+        return { ...titular, [field]: fieldValue };
+      }),
     });
   }
 
@@ -436,9 +451,29 @@ export function ClientProfileForm({
               <Input
                 type="date"
                 value={value.birthDate}
+                onChange={(event) => {
+                  const nextBirthDate = event.target.value;
+                  onChange({
+                    ...value,
+                    birthDate: nextBirthDate,
+                    age: calculateAgeFromBirthDate(nextBirthDate),
+                  });
+                }}
+              />
+            </label>
+
+            <label className="block space-y-1.5">
+              <span className="text-xs font-medium">Edad</span>
+              <Input
+                inputMode="numeric"
+                value={value.age}
                 onChange={(event) =>
-                  updateField("birthDate", event.target.value)
+                  updateField(
+                    "age",
+                    event.target.value.replace(/[^\d]/g, "").slice(0, 3),
+                  )
                 }
+                placeholder="Ej. 35"
               />
             </label>
 
@@ -511,7 +546,7 @@ export function ClientProfileForm({
             </label>
 
             <label className="block space-y-1.5">
-              <span className="text-xs font-medium">Región / zona</span>
+              <span className="text-xs font-medium">Región</span>
               <select
                 value={value.coverageRegionId}
                 onChange={(event) => updateCoverageRegion(event.target.value)}
@@ -743,6 +778,22 @@ export function ClientProfileForm({
                   </label>
 
                   <label className="block space-y-1.5">
+                    <span className="text-xs font-medium">Edad</span>
+                    <Input
+                      inputMode="numeric"
+                      value={titular.age}
+                      onChange={(event) =>
+                        updateAdditionalTitular(
+                          titular.id,
+                          "age",
+                          event.target.value.replace(/[^\d]/g, "").slice(0, 3),
+                        )
+                      }
+                      placeholder="Ej. 35"
+                    />
+                  </label>
+
+                  <label className="block space-y-1.5">
                     <span className="text-xs font-medium">
                       Isapre / previsión actual
                     </span>
@@ -904,6 +955,22 @@ export function ClientProfileForm({
                   </label>
 
                   <label className="block space-y-1.5">
+                    <span className="text-xs font-medium">Edad</span>
+                    <Input
+                      inputMode="numeric"
+                      value={dependent.age}
+                      onChange={(event) =>
+                        updateDependent(
+                          dependent.id,
+                          "age",
+                          event.target.value.replace(/[^\d]/g, "").slice(0, 3),
+                        )
+                      }
+                      placeholder="Ej. 12"
+                    />
+                  </label>
+
+                  <label className="block space-y-1.5">
                     <span className="text-xs font-medium">Estatura (cm)</span>
                     <Input
                       value={dependent.heightCm}
@@ -952,6 +1019,7 @@ export function userRecordToProfileFormValue(
       firstNames?: string;
       lastNames?: string;
       birthDate?: string;
+      age?: string;
       currentIsapre?: string;
       heightCm?: string;
       weightKg?: string;
@@ -980,6 +1048,11 @@ export function userRecordToProfileFormValue(
     firstNames: profile?.firstNames || fromName.firstNames,
     lastNames: profile?.lastNames || fromName.lastNames,
     birthDate: profile?.birthDate ?? "",
+    age:
+      profile?.age ??
+      (profile?.birthDate
+        ? calculateAgeFromBirthDate(profile.birthDate)
+        : ""),
     currentIsapre: profile?.currentIsapre ?? "",
     heightCm: profile?.heightCm ?? "",
     weightKg: profile?.weightKg ?? "",

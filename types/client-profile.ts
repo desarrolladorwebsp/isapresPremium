@@ -2,6 +2,8 @@ export interface ClientDependentProfile {
   id: string;
   rut: string;
   birthDate: string;
+  /** Edad; se puede recalcular desde birthDate, pero es editable. */
+  age: string;
   heightCm: string;
   weightKg: string;
 }
@@ -13,6 +15,8 @@ export interface ClientAdditionalTitularProfile {
   lastNames: string;
   rut: string;
   birthDate: string;
+  /** Edad; se puede recalcular desde birthDate, pero es editable. */
+  age: string;
   heightCm: string;
   weightKg: string;
   maritalStatus: string;
@@ -30,6 +34,8 @@ export interface ClientExecutiveProfile {
   firstNames: string;
   lastNames: string;
   birthDate: string;
+  /** Edad; se puede recalcular desde birthDate, pero es editable. */
+  age: string;
   currentIsapre: string;
   heightCm: string;
   weightKg: string;
@@ -38,7 +44,7 @@ export interface ClientExecutiveProfile {
   commune: string;
   /** Derivado: "region" si hay coverageRegionId. */
   coverageArea: ClientCoverageArea;
-  /** Id de zona / región (catálogo ZONE_FILTER_OPTIONS). */
+  /** Id de región de Chile (catálogo CLIENT_REGION_OPTIONS). */
   coverageRegionId: string;
   /** Clínicas de preferencia (una o varias). */
   preferredClinicIds: string[];
@@ -60,6 +66,7 @@ export interface ClientProfileInput {
   firstNames: string;
   lastNames?: string | null;
   birthDate?: string | null;
+  age?: string | null;
   currentIsapre?: string | null;
   heightCm?: string | null;
   weightKg?: string | null;

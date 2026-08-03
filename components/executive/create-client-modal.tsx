@@ -94,6 +94,7 @@ export function CreateClientModal({
         firstNames: profile.firstNames.trim(),
         lastNames: profile.lastNames.trim(),
         birthDate: profile.birthDate || null,
+        age: profile.age.trim() || null,
         currentIsapre: profile.currentIsapre || null,
         heightCm: profile.heightCm || null,
         weightKg: profile.weightKg || null,

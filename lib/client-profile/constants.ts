@@ -11,7 +11,6 @@ import {
   type ClientManagementRutOptions,
 } from "@/lib/client-profile/validate-client-ruts";
 import { formatRut } from "@/lib/auth/rut";
-import { ZONE_FILTER_OPTIONS } from "@/lib/filter-options";
 
 export const MARITAL_STATUS_OPTIONS = [
   "Soltero/a",
@@ -23,8 +22,37 @@ export const MARITAL_STATUS_OPTIONS = [
   "Otro",
 ] as const;
 
-/** Zonas / regiones de ubicación del beneficiario (incluye RM y sus sectores). */
-export const CLIENT_REGION_OPTIONS = ZONE_FILTER_OPTIONS;
+/** Las 16 regiones de Chile (orden geográfico norte → sur). */
+export const CLIENT_REGION_OPTIONS = [
+  { id: "arica-parinacota", label: "Arica y Parinacota" },
+  { id: "tarapaca", label: "Tarapacá" },
+  { id: "antofagasta", label: "Antofagasta" },
+  { id: "atacama", label: "Atacama" },
+  { id: "coquimbo", label: "Coquimbo" },
+  { id: "valparaiso", label: "Valparaíso" },
+  { id: "metropolitana", label: "Metropolitana de Santiago" },
+  { id: "ohiggins", label: "O'Higgins" },
+  { id: "maule", label: "Maule" },
+  { id: "nuble", label: "Ñuble" },
+  { id: "biobio", label: "Biobío" },
+  { id: "araucania", label: "La Araucanía" },
+  { id: "los-rios", label: "Los Ríos" },
+  { id: "los-lagos", label: "Los Lagos" },
+  { id: "aysen", label: "Aysén" },
+  { id: "magallanes", label: "Magallanes" },
+] as const;
+
+/** Compatibilidad con zonas antiguas del cotizador. */
+const LEGACY_REGION_ID_MAP: Record<string, string> = {
+  "rm-metropolitana": "metropolitana",
+  "rm-norte": "metropolitana",
+  "rm-sur": "metropolitana",
+  "rm-oriente": "metropolitana",
+  "rm-poniente": "metropolitana",
+  "rm-centro": "metropolitana",
+  "santiago-centro": "metropolitana",
+  octava: "biobio",
+};
 
 function createLocalId(prefix: string): string {
   return typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -37,6 +65,7 @@ export function buildEmptyDependent(): ClientDependentProfile {
     id: createLocalId("dep"),
     rut: "",
     birthDate: "",
+    age: "",
     heightCm: "",
     weightKg: "",
   };
@@ -49,6 +78,7 @@ export function buildEmptyAdditionalTitular(): ClientAdditionalTitularProfile {
     lastNames: "",
     rut: "",
     birthDate: "",
+    age: "",
     heightCm: "",
     weightKg: "",
     maritalStatus: "",
@@ -62,6 +92,7 @@ export function buildEmptyClientProfile(): ClientExecutiveProfile {
     firstNames: "",
     lastNames: "",
     birthDate: "",
+    age: "",
     currentIsapre: "",
     heightCm: "",
     weightKg: "",
@@ -78,6 +109,35 @@ export function buildEmptyClientProfile(): ClientExecutiveProfile {
     additionalTitulares: [],
     updatedAt: new Date().toISOString(),
   };
+}
+
+/** Calcula edad en años desde YYYY-MM-DD. Editable aparte; solo sugiere. */
+export function calculateAgeFromBirthDate(birthDate: string): string {
+  const raw = birthDate.trim();
+  if (!raw) return "";
+  const birth = new Date(`${raw}T00:00:00`);
+  if (Number.isNaN(birth.getTime())) return "";
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const monthDiff = today.getMonth() - birth.getMonth();
+  if (
+    monthDiff < 0 ||
+    (monthDiff === 0 && today.getDate() < birth.getDate())
+  ) {
+    age -= 1;
+  }
+  if (age < 0 || age > 130) return "";
+  return String(age);
+}
+
+function resolveAge(ageValue: unknown, birthDate: string): string {
+  if (typeof ageValue === "string" && ageValue.trim()) {
+    return ageValue.trim();
+  }
+  if (typeof ageValue === "number" && Number.isFinite(ageValue)) {
+    return String(Math.trunc(ageValue));
+  }
+  return calculateAgeFromBirthDate(birthDate);
 }
 
 export function splitFullName(fullName?: string | null): {
@@ -131,7 +191,9 @@ function resolveCoverageArea(value: unknown): ClientCoverageArea {
   return "";
 }
 
-const VALID_REGION_IDS = new Set(CLIENT_REGION_OPTIONS.map((option) => option.id));
+const VALID_REGION_IDS = new Set<string>(
+  CLIENT_REGION_OPTIONS.map((option) => option.id),
+);
 
 function resolveCoverageRegionId(
   regionId: unknown,
@@ -140,9 +202,11 @@ function resolveCoverageRegionId(
   if (typeof regionId === "string") {
     const trimmed = regionId.trim();
     if (VALID_REGION_IDS.has(trimmed)) return trimmed;
+    const mapped = LEGACY_REGION_ID_MAP[trimmed];
+    if (mapped) return mapped;
   }
-  // Compat: valor antiguo “Santiago Centro” → RM Centro
-  if (coverageArea === "santiago-centro") return "rm-centro";
+  // Compat: valor antiguo “Santiago Centro” → Metropolitana
+  if (coverageArea === "santiago-centro") return "metropolitana";
   return "";
 }
 
@@ -167,6 +231,7 @@ export function resolveClientProfile(
     profile.coverageRegionId,
     legacyArea,
   );
+  const birthDate = typeof profile.birthDate === "string" ? profile.birthDate : "";
 
   return {
     firstNames:
@@ -177,7 +242,8 @@ export function resolveClientProfile(
       typeof profile.lastNames === "string"
         ? profile.lastNames
         : fromName.lastNames,
-    birthDate: typeof profile.birthDate === "string" ? profile.birthDate : "",
+    birthDate,
+    age: resolveAge(profile.age, birthDate),
     currentIsapre:
       typeof profile.currentIsapre === "string" ? profile.currentIsapre : "",
     heightCm: typeof profile.heightCm === "string" ? profile.heightCm : "",
@@ -203,10 +269,26 @@ export function resolveClientProfile(
         ? profile.segurosComplementarios
         : "",
     dependents: Array.isArray(profile.dependents)
-      ? profile.dependents.filter(isDependent)
+      ? profile.dependents.filter(isDependent).map((dependent) => {
+          const rawDependent = dependent as ClientDependentProfile & {
+            age?: string;
+          };
+          return {
+            ...dependent,
+            age: resolveAge(rawDependent.age, dependent.birthDate),
+          };
+        })
       : [],
     additionalTitulares: Array.isArray(profile.additionalTitulares)
-      ? profile.additionalTitulares.filter(isAdditionalTitular)
+      ? profile.additionalTitulares.filter(isAdditionalTitular).map((titular) => {
+          const rawTitular = titular as ClientAdditionalTitularProfile & {
+            age?: string;
+          };
+          return {
+            ...titular,
+            age: resolveAge(rawTitular.age, titular.birthDate),
+          };
+        })
       : [],
     updatedAt:
       typeof profile.updatedAt === "string"
@@ -290,10 +372,13 @@ export function normalizeClientProfileInput(
 
   const dependents = (input.dependents ?? []).map((dependent) => {
     const rutRaw = dependent.rut.trim();
+    const birthDate = dependent.birthDate.trim();
+    const ageRaw = (dependent.age ?? "").trim();
     return {
       id: dependent.id || buildEmptyDependent().id,
       rut: rutRaw ? formatRut(rutRaw) : "",
-      birthDate: dependent.birthDate.trim(),
+      birthDate,
+      age: ageRaw || calculateAgeFromBirthDate(birthDate),
       heightCm: dependent.heightCm.trim(),
       weightKg: dependent.weightKg.trim(),
     };
@@ -302,12 +387,15 @@ export function normalizeClientProfileInput(
   const additionalTitulares = (input.additionalTitulares ?? []).map(
     (titular) => {
       const rutRaw = titular.rut.trim();
+      const birthDate = titular.birthDate.trim();
+      const ageRaw = (titular.age ?? "").trim();
       return {
         id: titular.id || buildEmptyAdditionalTitular().id,
         firstNames: titular.firstNames.trim(),
         lastNames: titular.lastNames.trim(),
         rut: rutRaw ? formatRut(rutRaw) : "",
-        birthDate: titular.birthDate.trim(),
+        birthDate,
+        age: ageRaw || calculateAgeFromBirthDate(birthDate),
         heightCm: titular.heightCm.trim(),
         weightKg: titular.weightKg.trim(),
         maritalStatus: titular.maritalStatus.trim(),
@@ -317,6 +405,9 @@ export function normalizeClientProfileInput(
     },
   );
 
+  const birthDate = input.birthDate?.trim() || "";
+  const ageRaw = (input.age ?? "").trim();
+
   return {
     email,
     phone: input.phone?.trim() || null,
@@ -325,7 +416,8 @@ export function normalizeClientProfileInput(
     profile: {
       firstNames,
       lastNames,
-      birthDate: input.birthDate?.trim() || "",
+      birthDate,
+      age: ageRaw || calculateAgeFromBirthDate(birthDate),
       currentIsapre: input.currentIsapre?.trim() || "",
       heightCm: input.heightCm?.trim() || "",
       weightKg: input.weightKg?.trim() || "",
