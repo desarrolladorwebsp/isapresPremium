@@ -43,19 +43,28 @@ type InviteRoleValue =
   | "admin"
   | "isapres_premium"
   | "zoom"
-  | "isapres";
+  | "isapres"
+  | "membresia_isapres_premium";
 
 const INVITE_ROLE_OPTIONS: Array<{ value: InviteRoleValue; label: string }> = [
   { value: "admin", label: "Administrador" },
   { value: "isapres_premium", label: "Ejecutivo Isapres Premium" },
   { value: "zoom", label: "Ejecutivo Zoom" },
   { value: "isapres", label: "Ejecutivo Isapres" },
+  {
+    value: "membresia_isapres_premium",
+    label: "Membresía Isapres Premium",
+  },
 ];
 
 const EXECUTIVE_KIND_OPTIONS: Array<{ value: ExecutiveKind; label: string }> = [
   { value: "ISAPRES_PREMIUM", label: "Ejecutivo Isapres Premium" },
   { value: "ZOOM", label: "Ejecutivo Zoom" },
   { value: "ISAPRES", label: "Ejecutivo Isapres" },
+  {
+    value: "MEMBRESIA_ISAPRES_PREMIUM",
+    label: "Membresía Isapres Premium",
+  },
 ];
 
 function inviteRoleToCreateInput(value: InviteRoleValue): {
@@ -69,6 +78,11 @@ function inviteRoleToCreateInput(value: InviteRoleValue): {
       return { realm: "executive", executiveKind: "ZOOM" };
     case "isapres":
       return { realm: "executive", executiveKind: "ISAPRES" };
+    case "membresia_isapres_premium":
+      return {
+        realm: "executive",
+        executiveKind: "MEMBRESIA_ISAPRES_PREMIUM",
+      };
     case "isapres_premium":
     default:
       return { realm: "executive", executiveKind: "ISAPRES_PREMIUM" };
@@ -81,6 +95,8 @@ function inviteRoleDescription(value: InviteRoleValue): string {
       return "Acceso completo al panel, incluyendo configuración y usuarios.";
     case "isapres_premium":
       return "Dashboard, clientes asignados, cotizador y mapa de clínicas.";
+    case "membresia_isapres_premium":
+      return "Solo cotizador. Sin acceso a clientes ni otras vistas del panel.";
     case "zoom":
     case "isapres":
       return "Solo dashboard y clientes asignados.";

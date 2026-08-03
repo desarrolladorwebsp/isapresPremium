@@ -391,12 +391,21 @@ export async function fetchExecutiveAssignmentStats(): Promise<
 
 export async function fetchExecutiveAccounts(): Promise<StaffAccountRecord[]> {
   const { accounts } = await fetchStaffAccounts();
-  return accounts.filter(
-    (account) =>
-      account.realm === "executive" &&
-      account.active &&
-      account.onboardingCompleted !== false,
-  );
+  return accounts
+    .filter((account) => {
+      if (!account.active) return false;
+      if (account.realm === "admin") return true;
+      if (account.executiveKind === "MEMBRESIA_ISAPRES_PREMIUM") return false;
+      return (
+        account.realm === "executive" && account.onboardingCompleted !== false
+      );
+    })
+    .sort((a, b) => {
+      if (a.realm !== b.realm) {
+        return a.realm === "admin" ? -1 : 1;
+      }
+      return a.fullName.localeCompare(b.fullName, "es");
+    });
 }
 
 export async function deleteStaffAccount(

@@ -9,7 +9,7 @@ import {
 } from "@/components/admin/admin-data-table";
 import { Button } from "@/components/ui/button";
 import { ClientPipelineDrawer } from "@/components/executive/client-pipeline-drawer";
-import { ClientOriginBadge } from "@/components/executive/client-origin-badge";
+import { ClientOriginEditor } from "@/components/executive/client-origin-editor";
 import { ClientPipelineStatusBadge } from "@/components/executive/client-pipeline-status-badge";
 import { ClientContactMethodBadge } from "@/components/executive/client-contact-method-badge";
 import { ClientRutCell } from "@/components/executive/client-rut-cell";
@@ -165,6 +165,11 @@ export function ExecutiveClientDetailView({
 
   const pipelineStatus = (client.pipelineStatus ??
     "NUEVO") as ClientPipelineStatus;
+  const isTrackingOnly = Boolean(
+    user?.id &&
+      !isAdmin &&
+      isTrackingOnlyForExecutive(client, user.id),
+  );
   const executiveRoleLabel = client.assignedExecutiveName
     ? getStaffRoleLabel({
         realm: "executive",
@@ -249,10 +254,11 @@ export function ExecutiveClientDetailView({
 
         <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
           <ClientContactMethodBadge method={client.preferredContactMethod} />
-          <ClientOriginBadge
-            origin={client.clientOrigin}
-            cotizadorSource={client.cotizadorSource}
-            webFormSource={client.webFormSource}
+          <ClientOriginEditor
+            client={client}
+            onUpdated={handleUpdated}
+            onNotify={onNotify}
+            readOnly={isTrackingOnly}
           />
           <span className="text-xs text-muted">
             Registro: {formatDate(client.createdAt)}

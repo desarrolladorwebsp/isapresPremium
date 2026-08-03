@@ -8,11 +8,15 @@ export const EXECUTIVE_KINDS = [
   "ISAPRES_PREMIUM",
   "ZOOM",
   "ISAPRES",
+  "MEMBRESIA_ISAPRES_PREMIUM",
 ] as const satisfies readonly ExecutiveKind[];
 
 export function isExecutiveKind(value: unknown): value is ExecutiveKind {
   return (
-    value === "ISAPRES_PREMIUM" || value === "ZOOM" || value === "ISAPRES"
+    value === "ISAPRES_PREMIUM" ||
+    value === "ZOOM" ||
+    value === "ISAPRES" ||
+    value === "MEMBRESIA_ISAPRES_PREMIUM"
   );
 }
 

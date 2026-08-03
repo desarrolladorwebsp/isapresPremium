@@ -27,6 +27,7 @@ import { useExecutiveClinicsQuery } from "@/hooks/query/use-executive-clinics-qu
 import { useExecutivePlansQuery } from "@/hooks/query/use-executive-plans-query";
 import { executiveKeys } from "@/lib/query/executive-keys";
 import {
+  defaultStaffHomeSection,
   isStaffSection,
   STAFF_SECTION_QUERY,
   staffSectionHref,
@@ -74,11 +75,12 @@ function ExecutiveDashboardContent() {
   useEffect(() => {
     if (sessionLoading || allowedSections.length === 0) return;
 
+    const homeSection = defaultStaffHomeSection(allowedSections);
     const querySection = searchParams.get(STAFF_SECTION_QUERY);
     if (isStaffSection(querySection)) {
       if (!canAccessSection(querySection)) {
-        setSection("inicio");
-        router.replace(staffSectionHref("inicio"));
+        setSection(homeSection);
+        router.replace(staffSectionHref(homeSection));
         return;
       }
       setSection(querySection);
@@ -86,8 +88,8 @@ function ExecutiveDashboardContent() {
     }
 
     if (!canAccessSection(section)) {
-      setSection("inicio");
-      router.replace(staffSectionHref("inicio"));
+      setSection(homeSection);
+      router.replace(staffSectionHref(homeSection));
     }
   }, [
     searchParams,
@@ -95,7 +97,7 @@ function ExecutiveDashboardContent() {
     router,
     sessionLoading,
     section,
-    allowedSections.length,
+    allowedSections,
   ]);
 
   useEffect(() => {

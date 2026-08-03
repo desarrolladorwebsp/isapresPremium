@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { readClientActivities } from "@/lib/api/client-activity-store";
 import { apiErrorResponse } from "@/lib/api/api-error";
 import { readClientOrThrow } from "@/lib/api/user-store";
-import { requireExecutiveOrAdminSession } from "@/lib/auth/require-auth";
+import { requireExecutiveOrAdminSession, assertSessionStaffSection } from "@/lib/auth/require-auth";
 import { AUTH_REALM } from "@/lib/auth/constants";
 import { ApiError } from "@/lib/api/api-error";
 import { canViewClientAsExecutive } from "@/lib/client-pipeline/tracking";
@@ -14,6 +14,7 @@ interface RouteContext {
 export async function GET(request: Request, context: RouteContext) {
   try {
     const { realm, user } = await requireExecutiveOrAdminSession(request);
+    assertSessionStaffSection(realm, user, "clientes");
     const { id } = await context.params;
     const client = await readClientOrThrow(id);
 

@@ -14,7 +14,10 @@ export function formatClientPlanPrice(
 ): string | null {
   if (!plan) return null;
   if (plan.finalPriceUf != null) {
-    return `${plan.finalPriceUf.toFixed(2)} UF`;
+    return `${plan.finalPriceUf.toLocaleString("es-CL", {
+      minimumFractionDigits: 3,
+      maximumFractionDigits: 3,
+    })} UF`;
   }
   if (plan.finalPriceClp != null) {
     return new Intl.NumberFormat("es-CL", {
@@ -24,4 +27,16 @@ export function formatClientPlanPrice(
     }).format(plan.finalPriceClp);
   }
   return null;
+}
+
+export function formatClientPlanBasePrice(
+  plan: ClientPlanSnapshot | null | undefined,
+): string | null {
+  if (plan?.basePriceUf == null || !Number.isFinite(plan.basePriceUf)) {
+    return null;
+  }
+  return `${plan.basePriceUf.toLocaleString("es-CL", {
+    minimumFractionDigits: 3,
+    maximumFractionDigits: 3,
+  })} UF`;
 }

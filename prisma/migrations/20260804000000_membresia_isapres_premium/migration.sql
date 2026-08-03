@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "ExecutiveKind" ADD VALUE 'MEMBRESIA_ISAPRES_PREMIUM';

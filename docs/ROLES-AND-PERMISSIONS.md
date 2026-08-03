@@ -1,33 +1,51 @@
 # Roles y permisos — Cotizador Premium
 
-El sistema distingue **dos roles de staff** con tablas y sesiones separadas. Los **clientes** del cotizador público no tienen login.
+El acceso de staff usa `StaffAccount` con `role` (`ADMIN` | `EXECUTIVE`) y, en ejecutivos, `executiveKind`.
 
 ## Resumen
 
-| Rol | Acceso | Tabla | Ruta panel |
-|-----|--------|-------|------------|
-| **Administrativo** | Catálogo global, usuarios, asignaciones | `AdminAccount` | `/cotizador/admin` |
-| **Ejecutivo** | Planes, cotizaciones, PDFs, clientes asignados | `ExecutiveAccount` | `/cotizador/ejecutivos` |
-| **Cliente** | Solo cotiza en web (sin cuenta) | `User` | — |
+| Rol / kind | Acceso | Ruta panel |
+|------------|--------|------------|
+| **Administrador** | Panel completo | `/cotizador/ejecutivos` |
+| **Ejecutivo Isapres Premium** | Inicio, clientes, calendario, cotizador, mapa | `/cotizador/ejecutivos` |
+| **Ejecutivo Zoom / Isapres** | Inicio, clientes, calendario | `/cotizador/ejecutivos` |
+| **Membresía Isapres Premium** | Solo cotizador (sin clientes ni otras vistas) | `/cotizador/ejecutivos?section=cotizador` |
+| **Cliente** | Solo cotiza en web (sin cuenta) | — |
+
+La membresía es para usuarios externos: no reciben asignación de clientes ni aparecen en selectores de cartera.
 
 ---
 
-## Rol Ejecutivo
+## Rol Ejecutivo (operativo)
 
 ### Puede
 
 - Ver **todos los planes** con filtros (mismo catálogo que el cotizador público).
 - **Descargar y ver PDF** de cada plan (`/api/plans/{code}/pdf`).
-- Ver **cotizaciones** asignadas a su cuenta y las **sin asignar** (para tomarlas).
-- **Asignarse** cotizaciones y clientes que cotizaron.
-- Generar / registrar cotizaciones (vía flujo público + seguimiento en su bandeja).
+- Ver **cotizaciones** / clientes según su `executiveKind` y secciones permitidas.
+- **Asignarse** cotizaciones y clientes que cotizaron (excepto membresía).
 
 ### No puede
 
-- Crear, editar o eliminar planes, clínicas o coberturas.
+- Crear, editar o eliminar planes, clínicas o coberturas (salvo admin).
 - Gestionar valores GES globales.
 - Crear otros usuarios staff.
 - Asignar clientes a otro ejecutivo (solo admin).
+
+---
+
+## Membresía Isapres Premium
+
+### Puede
+
+- Usar el **cotizador** del panel (`section=cotizador`).
+- Leer el catálogo de planes necesario para cotizar.
+
+### No puede
+
+- Ver ni gestionar **clientes**, calendario, mapa u otras secciones.
+- Recibir clientes por asignación automática o manual.
+- Usar APIs de CRM (`/api/executive/clients*`) — responden 403.
 
 ---
 
@@ -37,20 +55,16 @@ El sistema distingue **dos roles de staff** con tablas y sesiones separadas. Los
 
 - **Todo lo del catálogo**: planes, clínicas, coberturas, GES.
 - Ver **todas las cotizaciones** del sistema.
-- **Asignar un cliente** (`User`) a un ejecutivo.
+- **Asignar un cliente** (`User`) a un ejecutivo operativo (no a membresía).
 - **Asignar una cotización** (`Quote`) a un ejecutivo.
-- **Invitar usuarios** admin o ejecutivo desde `/cotizador/admin/usuarios`.
+- **Invitar usuarios** admin, ejecutivo o membresía desde Usuarios.
 
 ### Flujo de alta de usuarios (solo admin)
 
-1. Admin ingresa **correo**, **rol** (admin/ejecutivo) y opcionalmente **RUT**.
+1. Admin ingresa **correo**, **rol** (admin / ejecutivo / membresía) y opcionalmente **RUT**.
 2. El sistema envía un **correo con enlace único** (válido 7 días).
 3. Solo quien recibe ese correo puede activar la cuenta.
-4. En la activación la persona define:
-   - **Nombre**
-   - **Apellido**
-   - **RUT** (debe coincidir si el admin lo registró en la invitación)
-   - **Contraseña** (solo la conoce ella; mín. 8 caracteres)
+4. En la activación la persona define nombre, apellido, RUT y contraseña.
 5. Tras activar, puede iniciar sesión normalmente.
 
 **Endpoints:**
@@ -61,7 +75,7 @@ El sistema distingue **dos roles de staff** con tablas y sesiones separadas. Los
 **Páginas de activación:**
 
 - Admin: `/cotizador/admin/activar-cuenta?token=...`
-- Ejecutivo: `/cotizador/ejecutivos/activar-cuenta?token=...`
+- Ejecutivo / membresía: `/cotizador/ejecutivos/activar-cuenta?token=...`
 
 ---
 
@@ -69,8 +83,8 @@ El sistema distingue **dos roles de staff** con tablas y sesiones separadas. Los
 
 | Entidad | Campo | Quién asigna |
 |---------|-------|--------------|
-| Cliente (`User`) | `assignedExecutiveId` | Solo admin |
-| Cotización (`Quote`) | `executiveAccountId` | Admin (cualquier ejecutivo) o ejecutivo (solo a sí mismo) |
+| Cliente (`User`) | `assignedExecutiveId` | Solo admin (ejecutivos operativos o admin; no membresía) |
+| Cotización (`Quote`) | `executiveAccountId` | Admin o ejecutivo operativo |
 
 Cuando un cliente cotiza en la web, se crea/actualiza un `User` y un `Quote`. El admin puede asignar ese cliente a un ejecutivo; el ejecutivo ve las cotizaciones en su panel.
 

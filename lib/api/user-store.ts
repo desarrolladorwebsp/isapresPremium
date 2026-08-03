@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { ApiError } from "@/lib/api/api-error";
+import { isClientAssignableExecutiveKind } from "@/lib/auth/staff-role";
 import { queueExecutiveClientAssignmentEmail } from "@/lib/email/notify-executive-client-assignment";
 import {
   parseClientClosedRecord,
@@ -33,7 +34,7 @@ export type UserWithExecutive = DbUser & {
   trackingExecutive?: Pick<StaffAccount, "id" | "fullName"> | null;
 };
 
-type PlanSummary = Pick<Plan, "uniqueCode" | "planName"> & {
+type PlanSummary = Pick<Plan, "uniqueCode" | "planName" | "basePriceUf"> & {
   isapreRef: Pick<Isapre, "name">;
 };
 
@@ -66,6 +67,7 @@ export const clientRecordInclude = {
         select: {
           uniqueCode: true,
           planName: true,
+          basePriceUf: true,
           isapreRef: { select: { name: true } },
         },
       },
@@ -75,6 +77,7 @@ export const clientRecordInclude = {
     select: {
       uniqueCode: true,
       planName: true,
+      basePriceUf: true,
       isapreRef: { select: { name: true } },
     },
   },
@@ -86,6 +89,7 @@ function mapPlanSummary(plan: PlanSummary | null | undefined): ClientPlanSnapsho
     planCode: plan.uniqueCode,
     planName: plan.planName,
     isapre: plan.isapreRef.name,
+    basePriceUf: plan.basePriceUf,
   };
 }
 
@@ -96,6 +100,7 @@ function mapRequestedPlan(quote: QuoteWithPlan | undefined): ClientPlanSnapshot 
     planCode: quote.planCode ?? quote.plan?.uniqueCode ?? "",
     planName: quote.plan?.planName ?? "",
     isapre: quote.plan?.isapreRef?.name ?? "",
+    basePriceUf: quote.plan?.basePriceUf ?? null,
     finalPriceUf: quote.finalPriceUf,
     finalPriceClp: quote.finalPriceClp,
     quotedAt: quote.createdAt.toISOString(),
@@ -386,15 +391,26 @@ async function assertAssignableExecutive(
   const executive = await prisma.staffAccount.findFirst({
     where: {
       id: executiveAccountId,
-      role: "EXECUTIVE",
+      role: { in: ["EXECUTIVE", "ADMIN"] },
       active: true,
     },
-    select: { id: true },
+    select: { id: true, role: true, executiveKind: true },
   });
 
   if (!executive) {
     throw new ApiError(
-      "El ejecutivo seleccionado no existe o no está activo.",
+      "La cuenta seleccionada no existe o no está activa.",
+      400,
+      "INVALID_EXECUTIVE",
+    );
+  }
+
+  if (
+    executive.role === "EXECUTIVE" &&
+    !isClientAssignableExecutiveKind(executive.executiveKind)
+  ) {
+    throw new ApiError(
+      "Las cuentas de membresía no pueden recibir clientes asignados.",
       400,
       "INVALID_EXECUTIVE",
     );

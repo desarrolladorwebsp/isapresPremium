@@ -1,14 +1,13 @@
 import type { ClientOrigin } from "@/types/user";
+import { CLIENT_ORIGIN_OPTIONS } from "@/types/user";
 import type { CotizadorSourceInfo } from "@/lib/partner-entity/source-label";
 import { getCotizadorSourceBadgeClass } from "@/lib/partner-entity/source-label";
 import { AdminBadge } from "@/components/admin/admin-data-table";
 
-export const CLIENT_ORIGIN_LABELS: Record<ClientOrigin, string> = {
-  COTIZADOR: "Lead cotizador",
-  MANUAL: "Registro propio",
-  CAMPANA_LEAD_WHATSAPP: "Campaña lead WhatsApp",
-  FORMULARIO_WEB: "Formulario web",
-};
+export const CLIENT_ORIGIN_LABELS: Record<ClientOrigin, string> =
+  Object.fromEntries(
+    CLIENT_ORIGIN_OPTIONS.map((option) => [option.value, option.label]),
+  ) as Record<ClientOrigin, string>;
 
 export interface ClientOriginBadgeProps {
   origin?: ClientOrigin;

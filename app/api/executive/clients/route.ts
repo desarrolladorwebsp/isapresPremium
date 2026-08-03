@@ -6,7 +6,7 @@ import {
 } from "@/lib/api/user-store";
 import { parseClientProfilePayload } from "@/lib/api/parse-client-profile";
 import { apiErrorResponse, parseJsonBody } from "@/lib/api/api-error";
-import { requireExecutiveOrAdminSession } from "@/lib/auth/require-auth";
+import { requireExecutiveOrAdminSession, assertSessionStaffSection } from "@/lib/auth/require-auth";
 import { AUTH_REALM } from "@/lib/auth/constants";
 import type { ExecutiveSessionUser } from "@/lib/auth/types";
 import { canAccessInternalPipelineNotes } from "@/lib/client-pipeline/note-stamp";
@@ -59,6 +59,7 @@ function parseCreateClientPayload(payload: unknown): CreateManualClientInput {
 export async function GET(request: Request) {
   try {
     const { realm, user } = await requireExecutiveOrAdminSession(request);
+    assertSessionStaffSection(realm, user, "clientes");
 
     const clients =
       realm === AUTH_REALM.admin
@@ -86,6 +87,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const { realm, user } = await requireExecutiveOrAdminSession(request);
+    assertSessionStaffSection(realm, user, "clientes");
     const payload = await parseJsonBody(request);
     const input = parseCreateClientPayload(payload);
 

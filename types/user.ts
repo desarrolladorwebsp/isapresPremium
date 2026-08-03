@@ -14,6 +14,16 @@ export type ClientOrigin =
   | "CAMPANA_LEAD_WHATSAPP"
   | "FORMULARIO_WEB";
 
+export const CLIENT_ORIGIN_OPTIONS: Array<{
+  value: ClientOrigin;
+  label: string;
+}> = [
+  { value: "MANUAL", label: "Registro propio" },
+  { value: "CAMPANA_LEAD_WHATSAPP", label: "Campaña lead WhatsApp" },
+  { value: "COTIZADOR", label: "Lead cotizador" },
+  { value: "FORMULARIO_WEB", label: "Formulario web" },
+];
+
 /** Orígenes seleccionables al registrar un cliente desde el panel. */
 export const MANUAL_CLIENT_ORIGIN_OPTIONS: Array<{
   value: Exclude<ClientOrigin, "COTIZADOR" | "FORMULARIO_WEB">;
@@ -22,6 +32,10 @@ export const MANUAL_CLIENT_ORIGIN_OPTIONS: Array<{
   { value: "MANUAL", label: "Registro propio" },
   { value: "CAMPANA_LEAD_WHATSAPP", label: "Campaña lead WhatsApp" },
 ];
+
+export function isClientOrigin(value: string): value is ClientOrigin {
+  return CLIENT_ORIGIN_OPTIONS.some((option) => option.value === value);
+}
 
 export function isManualSelectableClientOrigin(
   value: string,

@@ -43,6 +43,7 @@ enum ExecutiveKind {
   ISAPRES_PREMIUM
   ZOOM
   ISAPRES
+  MEMBRESIA_ISAPRES_PREMIUM
 }
 
 enum SubscriptionStatus {

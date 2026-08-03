@@ -466,15 +466,9 @@ export function ClientProfileForm({
             <label className="block space-y-1.5">
               <span className="text-xs font-medium">Edad</span>
               <Input
-                inputMode="numeric"
                 value={value.age}
-                onChange={(event) =>
-                  updateField(
-                    "age",
-                    event.target.value.replace(/[^\d]/g, "").slice(0, 3),
-                  )
-                }
-                placeholder="Ej. 35"
+                onChange={(event) => updateField("age", event.target.value)}
+                placeholder="Ej. 35 o nota"
               />
             </label>
 
@@ -811,16 +805,15 @@ export function ClientProfileForm({
                   <label className="block space-y-1.5">
                     <span className="text-xs font-medium">Edad</span>
                     <Input
-                      inputMode="numeric"
                       value={titular.age}
                       onChange={(event) =>
                         updateAdditionalTitular(
                           titular.id,
                           "age",
-                          event.target.value.replace(/[^\d]/g, "").slice(0, 3),
+                          event.target.value,
                         )
                       }
-                      placeholder="Ej. 35"
+                      placeholder="Ej. 35 o nota"
                     />
                   </label>
 
@@ -1068,16 +1061,15 @@ export function ClientProfileForm({
                   <label className="block space-y-1.5">
                     <span className="text-xs font-medium">Edad</span>
                     <Input
-                      inputMode="numeric"
                       value={dependent.age}
                       onChange={(event) =>
                         updateDependent(
                           dependent.id,
                           "age",
-                          event.target.value.replace(/[^\d]/g, "").slice(0, 3),
+                          event.target.value,
                         )
                       }
-                      placeholder="Ej. 12"
+                      placeholder="Ej. 12 o nota"
                     />
                   </label>
 

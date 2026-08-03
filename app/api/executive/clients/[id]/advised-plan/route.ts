@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { updateClientAdvisedPlan } from "@/lib/api/client-plan-store";
 import { apiErrorResponse, parseJsonBody } from "@/lib/api/api-error";
-import { requireExecutiveOrAdminSession } from "@/lib/auth/require-auth";
+import { requireExecutiveOrAdminSession, assertSessionStaffSection } from "@/lib/auth/require-auth";
 import { AUTH_REALM } from "@/lib/auth/constants";
 import type { UpdateClientAdvisedPlanInput } from "@/types/client-plan";
 
@@ -30,6 +30,7 @@ function parseAdvisedPlanPayload(payload: unknown): UpdateClientAdvisedPlanInput
 export async function PATCH(request: Request, context: RouteContext) {
   try {
     const { realm, user } = await requireExecutiveOrAdminSession(request);
+    assertSessionStaffSection(realm, user, "clientes");
     const { id } = await context.params;
     const payload = await parseJsonBody(request);
     const input = parseAdvisedPlanPayload(payload);

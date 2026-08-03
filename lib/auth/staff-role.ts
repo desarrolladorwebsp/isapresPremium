@@ -5,12 +5,21 @@ import {
   STAFF_ADMIN_SECTIONS,
   STAFF_BASE_SECTIONS,
   STAFF_LIMITED_EXECUTIVE_SECTIONS,
+  STAFF_MEMBERSHIP_SECTIONS,
   STAFF_PREMIUM_SECTIONS,
   type StaffSection,
 } from "@/lib/staff/staff-sections";
 import { ApiError } from "@/lib/api/api-error";
 
 export const DEFAULT_EXECUTIVE_KIND: ExecutiveKind = "ISAPRES_PREMIUM";
+
+/** Kinds que pueden recibir clientes / leads (excluye membresía). */
+export function isClientAssignableExecutiveKind(
+  kind: ExecutiveKind | null | undefined,
+): boolean {
+  if (!kind || !isExecutiveKind(kind)) return false;
+  return kind !== "MEMBRESIA_ISAPRES_PREMIUM";
+}
 
 export function staffRoleToRealm(role: StaffRole): StaffRealm {
   return role === "ADMIN" ? "admin" : "executive";
@@ -45,6 +54,8 @@ export function getStaffRoleLabel(input: {
       return "Ejecutivo Zoom";
     case "ISAPRES":
       return "Ejecutivo Isapres";
+    case "MEMBRESIA_ISAPRES_PREMIUM":
+      return "Membresía Isapres Premium";
     case "ISAPRES_PREMIUM":
     default:
       return "Ejecutivo Isapres Premium";
@@ -55,10 +66,14 @@ export function getStaffRoleLabel(input: {
 export function formatExecutiveOptionLabel(input: {
   fullName: string;
   executiveKind?: ExecutiveKind | null;
+  realm?: StaffRealm;
 }): string {
-  const name = input.fullName.trim() || "Ejecutivo";
+  const realm = input.realm ?? "executive";
+  const name =
+    input.fullName.trim() ||
+    (realm === "admin" ? "Administrador" : "Ejecutivo");
   return `${name} · ${getStaffRoleLabel({
-    realm: "executive",
+    realm,
     executiveKind: input.executiveKind,
   })}`;
 }
@@ -75,6 +90,8 @@ export function getStaffRoleLabelLower(input: {
       return "ejecutivo Zoom";
     case "ISAPRES":
       return "ejecutivo Isapres";
+    case "MEMBRESIA_ISAPRES_PREMIUM":
+      return "membresía Isapres Premium";
     case "ISAPRES_PREMIUM":
     default:
       return "ejecutivo Isapres Premium";
@@ -93,6 +110,8 @@ export function getStaffSectionsForAccount(input: {
     case "ZOOM":
     case "ISAPRES":
       return [...STAFF_LIMITED_EXECUTIVE_SECTIONS];
+    case "MEMBRESIA_ISAPRES_PREMIUM":
+      return [...STAFF_MEMBERSHIP_SECTIONS];
     case "ISAPRES_PREMIUM":
     default:
       return [...STAFF_PREMIUM_SECTIONS];

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { markClientConfirmationCall } from "@/lib/api/client-pipeline-store";
 import { apiErrorResponse } from "@/lib/api/api-error";
-import { requireExecutiveOrAdminSession } from "@/lib/auth/require-auth";
+import { requireExecutiveOrAdminSession, assertSessionStaffSection } from "@/lib/auth/require-auth";
 import { AUTH_REALM } from "@/lib/auth/constants";
 
 interface RouteContext {
@@ -15,6 +15,7 @@ interface RouteContext {
 export async function POST(request: Request, context: RouteContext) {
   try {
     const { realm, user } = await requireExecutiveOrAdminSession(request);
+    assertSessionStaffSection(realm, user, "clientes");
     const { id } = await context.params;
     const payload = (await request.json().catch(() => ({}))) as {
       outcome?: string | null;

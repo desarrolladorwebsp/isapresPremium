@@ -11,10 +11,10 @@ import {
   fetchPlans,
   updateClientAdvisedPlan,
 } from "@/lib/api/admin-client";
-import { formatClientPlanLabel } from "@/lib/client-plan/format";
 import { ui } from "@/lib/ui-tokens";
 import { joinClasses } from "@/lib/utils";
 import type { ClientActivityRecord } from "@/types/client-activity";
+import type { ClientPlanSnapshot } from "@/types/client-plan";
 import type { UserRecord } from "@/types/user";
 import type { HealthPlan } from "@/types/plan";
 
@@ -94,6 +94,24 @@ export function ClientAdvisedPlanSection({
     [plans, selectedPlanCode],
   );
 
+  const selectedPlanSnapshot = useMemo((): ClientPlanSnapshot | null => {
+    if (!selectedPlan) return null;
+    return {
+      planCode: selectedPlan.unique_code,
+      planName: selectedPlan.plan_name,
+      isapre: selectedPlan.isapre,
+      basePriceUf: selectedPlan.base_price_uf,
+      finalPriceUf:
+        client.requestedPlan?.planCode === selectedPlan.unique_code
+          ? client.requestedPlan.finalPriceUf
+          : null,
+      finalPriceClp:
+        client.requestedPlan?.planCode === selectedPlan.unique_code
+          ? client.requestedPlan.finalPriceClp
+          : null,
+    };
+  }, [selectedPlan, client.requestedPlan]);
+
   const hasChanges =
     selectedPlanCode !== (client.advisedPlan?.planCode ?? null);
 
@@ -142,17 +160,12 @@ export function ClientAdvisedPlanSection({
             Plan asesorado
           </p>
           <div className="mt-2">
-            {selectedPlan ? (
-              <div>
-                <p className="text-sm font-medium text-foreground">
-                  {formatClientPlanLabel({
-                    planCode: selectedPlan.unique_code,
-                    planName: selectedPlan.plan_name,
-                    isapre: selectedPlan.isapre,
-                  })}
-                </p>
-                <p className="text-xs text-muted">{selectedPlan.unique_code}</p>
-              </div>
+            {selectedPlanSnapshot ? (
+              <ClientPlanSummary
+                requestedPlan={client.requestedPlan}
+                advisedPlan={selectedPlanSnapshot}
+                compact
+              />
             ) : client.advisedPlan ? (
               <ClientPlanSummary
                 requestedPlan={client.requestedPlan}
@@ -202,6 +215,12 @@ export function ClientAdvisedPlanSection({
                     </span>
                     <span className="mt-0.5 block text-xs text-muted">
                       {plan.unique_code}
+                      {Number.isFinite(plan.base_price_uf)
+                        ? ` · Base ${plan.base_price_uf.toLocaleString("es-CL", {
+                            minimumFractionDigits: 3,
+                            maximumFractionDigits: 3,
+                          })} UF`
+                        : ""}
                     </span>
                   </button>
                 </li>

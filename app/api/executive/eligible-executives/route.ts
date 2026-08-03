@@ -21,7 +21,7 @@ export async function GET(request: Request) {
     const { realm, user } = await requireExecutiveOrAdminSession(request);
     const kindParam = new URL(request.url).searchParams.get("kind");
 
-    if (!kindParam || !isExecutiveKind(kindParam)) {
+    if (!kindParam || !isExecutiveKind(kindParam) || kindParam === "MEMBRESIA_ISAPRES_PREMIUM") {
       throw new ApiError(
         "Indica un kind válido: ZOOM, ISAPRES_PREMIUM o ISAPRES.",
         400,

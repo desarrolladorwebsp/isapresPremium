@@ -109,6 +109,7 @@ export async function updateClientAdvisedPlan(
             select: {
               uniqueCode: true,
               planName: true,
+              basePriceUf: true,
               isapreRef: { select: { name: true } },
             },
           },
@@ -118,6 +119,7 @@ export async function updateClientAdvisedPlan(
         select: {
           uniqueCode: true,
           planName: true,
+          basePriceUf: true,
           isapreRef: { select: { name: true } },
         },
       },

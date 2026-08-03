@@ -44,6 +44,8 @@ export interface UpdateClientPipelineInput {
   lastCallOutcome?: string | null;
   /** Canal preferido de la reunión/llamado (calendario). */
   preferredContactMethod?: ClientContactMethod | null;
+  /** Origen del cliente (deja registro en notas al cambiar). */
+  clientOrigin?: import("@/types/user").ClientOrigin;
 }
 
 export interface RedirectClientToPremiumInput {

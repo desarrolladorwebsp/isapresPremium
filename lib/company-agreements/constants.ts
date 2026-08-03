@@ -9,7 +9,7 @@ export const COMPANY_AGREEMENT_DISCOUNT_BY_ISAPRE: Readonly<
   Record<string, number>
 > = {
   [COLMENA_HOLDING_AGREEMENT_ISAPRE_ID]: 10,
-  [CONSALUD_HOLDING_AGREEMENT_ISAPRE_ID]: 6,
+  [CONSALUD_HOLDING_AGREEMENT_ISAPRE_ID]: 5,
 };
 
 export function resolveCompanyAgreementDiscountPercent(

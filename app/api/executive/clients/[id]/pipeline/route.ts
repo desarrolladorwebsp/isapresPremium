@@ -2,9 +2,10 @@ import { NextResponse } from "next/server";
 import { updateClientPipeline } from "@/lib/api/client-pipeline-store";
 import { parseClientProfilePayload } from "@/lib/api/parse-client-profile";
 import { apiErrorResponse, parseJsonBody } from "@/lib/api/api-error";
-import { requireExecutiveOrAdminSession } from "@/lib/auth/require-auth";
+import { requireExecutiveOrAdminSession, assertSessionStaffSection } from "@/lib/auth/require-auth";
 import { AUTH_REALM } from "@/lib/auth/constants";
 import type { UpdateClientPipelineInput } from "@/types/client-pipeline";
+import { isClientOrigin } from "@/types/user";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -78,12 +79,20 @@ function parsePipelinePayload(payload: unknown): UpdateClientPipelineInput {
     input.clientProfile = parseClientProfilePayload(data.clientProfile);
   }
 
+  if (data.clientOrigin !== undefined) {
+    if (typeof data.clientOrigin !== "string" || !isClientOrigin(data.clientOrigin)) {
+      throw new Error("Origen de cliente inválido.");
+    }
+    input.clientOrigin = data.clientOrigin;
+  }
+
   return input;
 }
 
 export async function PATCH(request: Request, context: RouteContext) {
   try {
     const { realm, user } = await requireExecutiveOrAdminSession(request);
+    assertSessionStaffSection(realm, user, "clientes");
     const { id } = await context.params;
     const payload = await parseJsonBody(request);
     const input = parsePipelinePayload(payload);

@@ -1,10 +1,10 @@
 "use client";
 
 import {
+  formatClientPlanBasePrice,
   formatClientPlanLabel,
   formatClientPlanPrice,
 } from "@/lib/client-plan/format";
-import { joinClasses } from "@/lib/utils";
 import type { ClientPlanSnapshot } from "@/types/client-plan";
 
 export interface ClientPlanSummaryProps {
@@ -29,12 +29,19 @@ export function ClientPlanSummary({
     return <span className="text-sm text-muted">Sin plan registrado</span>;
   }
 
-  const price = formatClientPlanPrice(requestedPlan);
+  const pricePlan =
+    advisedPlan &&
+    requestedPlan &&
+    advisedPlan.planCode === requestedPlan.planCode
+      ? requestedPlan
+      : advisedPlan ?? requestedPlan;
+  const price = formatClientPlanPrice(pricePlan);
+  const basePrice = formatClientPlanBasePrice(activePlan);
   const planLabel = formatClientPlanLabel(activePlan);
 
   if (compact) {
     return (
-      <div className="flex min-h-[3rem] max-w-[16rem] flex-col justify-center gap-1">
+      <div className="flex min-h-[3rem] max-w-[18rem] flex-col justify-center gap-1">
         <p className="truncate text-sm font-medium leading-tight text-foreground">
           {planLabel}
         </p>
@@ -42,7 +49,8 @@ export function ClientPlanSummary({
           {activePlan.planCode ? (
             <span className="font-mono">{activePlan.planCode}</span>
           ) : null}
-          {price ? <span>{price}</span> : null}
+          {basePrice ? <span>Base {basePrice}</span> : null}
+          {price ? <span>Precio {price}</span> : null}
         </div>
         {hasDifferentAdvisedPlan ? (
           <p className="truncate text-[11px] leading-tight text-primary">
@@ -64,7 +72,10 @@ export function ClientPlanSummary({
         {activePlan.planCode ? (
           <p className="text-xs text-muted">{activePlan.planCode}</p>
         ) : null}
-        {price ? <p className="text-xs text-muted">Cotizado: {price}</p> : null}
+        <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted">
+          {basePrice ? <span>Base: {basePrice}</span> : null}
+          {price ? <span>Precio: {price}</span> : null}
+        </div>
       </div>
 
       {hasDifferentAdvisedPlan ? (

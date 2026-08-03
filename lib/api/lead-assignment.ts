@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { isSubscriptionActive } from "@/lib/auth/subscription";
+import { isClientAssignableExecutiveKind } from "@/lib/auth/staff-role";
 import { queueExecutiveClientAssignmentEmail } from "@/lib/email/notify-executive-client-assignment";
 import type { ExecutiveKind } from "@prisma/client";
 
@@ -19,19 +20,27 @@ export interface ListEligibleExecutivesOptions {
 /**
  * Ejecutivos elegibles para recibir nuevos clientes:
  * activos, onboarding completo, sin suspensión de asignaciones y suscripción vigente.
+ * Excluye membresía (no reciben cartera).
  */
 export async function listEligibleExecutivesForAssignment(
   options?: ListEligibleExecutivesOptions,
 ): Promise<EligibleExecutiveRow[]> {
+  if (
+    options?.executiveKind &&
+    !isClientAssignableExecutiveKind(options.executiveKind)
+  ) {
+    return [];
+  }
+
   const executives = await prisma.staffAccount.findMany({
     where: {
       role: "EXECUTIVE",
       active: true,
       onboardingCompleted: true,
       assignmentsSuspended: false,
-      ...(options?.executiveKind
-        ? { executiveKind: options.executiveKind }
-        : {}),
+      executiveKind: options?.executiveKind
+        ? options.executiveKind
+        : { not: "MEMBRESIA_ISAPRES_PREMIUM" },
     },
     select: {
       id: true,

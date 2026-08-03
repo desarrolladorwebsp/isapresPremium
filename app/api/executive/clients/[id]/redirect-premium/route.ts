@@ -5,7 +5,7 @@ import {
   ApiError,
 } from "@/lib/api/api-error";
 import { redirectClientToIsapresPremium } from "@/lib/api/client-pipeline-store";
-import { requireExecutiveOrAdminSession } from "@/lib/auth/require-auth";
+import { requireExecutiveOrAdminSession, assertSessionStaffSection } from "@/lib/auth/require-auth";
 import { canUseZoomExecutiveWorkflow } from "@/lib/auth/staff-role";
 import { AUTH_REALM } from "@/lib/auth/constants";
 import type { ExecutiveSessionUser } from "@/lib/auth/types";
@@ -76,6 +76,7 @@ function parseRedirectPayload(payload: unknown): RedirectClientToPremiumInput {
 export async function POST(request: Request, context: RouteContext) {
   try {
     const { realm, user } = await requireExecutiveOrAdminSession(request);
+    assertSessionStaffSection(realm, user, "clientes");
     const { id } = await context.params;
     const payload = await parseJsonBody(request);
     const input = parseRedirectPayload(payload);

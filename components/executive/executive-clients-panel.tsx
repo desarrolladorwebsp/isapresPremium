@@ -267,10 +267,11 @@ export function ExecutiveClientsPanel({
   function resolveExecutiveLabel(executiveAccountId: string): string {
     if (!executiveAccountId) return "Sin asignar";
     const executive = executives.find((row) => row.id === executiveAccountId);
-    if (!executive) return "el ejecutivo seleccionado";
+    if (!executive) return "la cuenta seleccionada";
     return formatExecutiveOptionLabel({
       fullName: executive.fullName,
       executiveKind: executive.executiveKind,
+      realm: executive.realm,
     });
   }
 
@@ -523,6 +524,7 @@ export function ExecutiveClientsPanel({
                                 {formatExecutiveOptionLabel({
                                   fullName: executive.fullName,
                                   executiveKind: executive.executiveKind,
+                                  realm: executive.realm,
                                 })}
                               </option>
                             ))}
@@ -532,7 +534,7 @@ export function ExecutiveClientsPanel({
                             <div className="space-y-2 rounded-lg border border-primary/20 bg-primary/5 p-2.5">
                               <p className="text-[11px] leading-snug text-muted">
                                 {selectedExecutiveId
-                                  ? `¿Confirmas asignar a ${client.fullName} al ejecutivo ${resolveExecutiveLabel(selectedExecutiveId)}?`
+                                  ? `¿Confirmas asignar a ${client.fullName} a ${resolveExecutiveLabel(selectedExecutiveId)}?`
                                   : `¿Confirmas dejar a ${client.fullName} sin ejecutivo asignado?`}
                               </p>
                               <div className="flex flex-wrap gap-2">

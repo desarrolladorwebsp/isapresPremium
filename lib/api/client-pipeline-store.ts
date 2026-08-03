@@ -33,11 +33,19 @@ import type {
 } from "@/types/client-pipeline";
 import { CLIENT_CONTACT_METHOD_LABELS } from "@/types/client-pipeline";
 import type { UserRecord } from "@/types/user";
+import { CLIENT_ORIGIN_OPTIONS, isClientOrigin } from "@/types/user";
 import type { ExecutiveKind, Prisma } from "@prisma/client";
 import {
   appendPipelineNoteLine,
   canAccessInternalPipelineNotes,
 } from "@/lib/client-pipeline/note-stamp";
+
+function clientOriginLabel(origin: string): string {
+  return (
+    CLIENT_ORIGIN_OPTIONS.find((option) => option.value === origin)?.label ??
+    origin
+  );
+}
 
 async function resolveActorDisplayName(
   executiveAccountId: string,
@@ -195,6 +203,30 @@ export async function updateClientPipeline(
       );
     }
     data.preferredContactMethod = input.preferredContactMethod;
+  }
+
+  if (input.clientOrigin !== undefined) {
+    if (!isClientOrigin(input.clientOrigin)) {
+      throw new ApiError("Origen de cliente inválido.", 400, "INVALID_ORIGIN");
+    }
+    const previousOrigin = existing.clientOrigin;
+    if (input.clientOrigin !== previousOrigin) {
+      data.clientOrigin = input.clientOrigin;
+      const actorName = await resolveActorDisplayName(
+        actor.executiveAccountId,
+        actor.isAdmin,
+      );
+      const noteBody = `Origen cambiado de "${clientOriginLabel(previousOrigin)}" a "${clientOriginLabel(input.clientOrigin)}".`;
+      const notesBase =
+        input.pipelineNotes !== undefined
+          ? input.pipelineNotes
+          : existing.pipelineNotes;
+      data.pipelineNotes = appendPipelineNoteLine(
+        notesBase,
+        noteBody,
+        actorName,
+      );
+    }
   }
 
   if (input.clientProfile !== undefined) {

@@ -51,15 +51,30 @@ export const STAFF_LIMITED_EXECUTIVE_SECTIONS: StaffSection[] = [
   "calendario",
 ];
 
+/**
+ * Membresía Isapres Premium: solo cotizador (usuarios externos, no staff operativo).
+ */
+export const STAFF_MEMBERSHIP_SECTIONS: StaffSection[] = ["cotizador"];
+
 const ALL_SECTIONS = new Set<StaffSection>([
   ...STAFF_BASE_SECTIONS,
   ...STAFF_ADMIN_SECTIONS,
   ...STAFF_PREMIUM_SECTIONS,
   ...STAFF_LIMITED_EXECUTIVE_SECTIONS,
+  ...STAFF_MEMBERSHIP_SECTIONS,
 ]);
 
 export function isStaffSection(value: string | null | undefined): value is StaffSection {
   return Boolean(value && ALL_SECTIONS.has(value as StaffSection));
+}
+
+/** Primera sección permitida (home segura cuando no hay `inicio`). */
+export function defaultStaffHomeSection(
+  sections: readonly StaffSection[],
+): StaffSection {
+  if (sections.includes("inicio")) return "inicio";
+  if (sections.includes("cotizador")) return "cotizador";
+  return sections[0] ?? "inicio";
 }
 
 export function staffSectionHref(section: StaffSection): string {

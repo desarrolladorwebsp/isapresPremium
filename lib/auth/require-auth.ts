@@ -14,7 +14,7 @@ import {
   readStaffSessionFromCookies,
   readStaffSessionFromRequest,
 } from "@/lib/auth/session";
-import { getStaffSectionsForAccount } from "@/lib/auth/staff-role";
+import { getStaffSectionsForAccount, assertStaffCanAccessSection } from "@/lib/auth/staff-role";
 import type {
   AdminSessionUser,
   ExecutiveSessionUser,
@@ -22,6 +22,7 @@ import type {
   StaffMeResponse,
 } from "@/lib/auth/types";
 import { ApiError } from "@/lib/api/api-error";
+import type { StaffSection } from "@/lib/staff/staff-sections";
 
 export interface StaffSessionOptions {
   /** Permite sesión de ejecutivo con perfil pendiente (onboarding o cambio de clave). */
@@ -205,6 +206,24 @@ export async function requireExecutiveOrAdminSession(
   }
 
   return staff;
+}
+
+/** Bloquea APIs CRM a roles sin la sección (p. ej. membresía sin clientes). */
+export function assertSessionStaffSection(
+  realm: AuthRealm,
+  user: AdminSessionUser | ExecutiveSessionUser,
+  section: StaffSection,
+): void {
+  assertStaffCanAccessSection(
+    {
+      realm,
+      executiveKind:
+        realm === AUTH_REALM.executive
+          ? (user as ExecutiveSessionUser).executiveKind
+          : null,
+    },
+    section,
+  );
 }
 
 export async function buildStaffMeResponse(
