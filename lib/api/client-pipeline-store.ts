@@ -17,6 +17,13 @@ import {
 } from "@/lib/api/lead-assignment";
 import { queueExecutiveClientAssignmentEmail } from "@/lib/email/notify-executive-client-assignment";
 import { isSubscriptionActive } from "@/lib/auth/subscription";
+import {
+  canManageClientAsExecutive,
+  canViewClientAsExecutive,
+  computeConfirmationCallAt,
+  CONFIRMATION_CALL_LEAD_MINUTES,
+  isClientTrackedBy,
+} from "@/lib/client-pipeline/tracking";
 import type {
   ClientClosedRecord,
   PremiumRedirectTargetKind,
@@ -48,14 +55,34 @@ function assertExecutiveAccess(
   executiveAccountId: string,
   isAdmin: boolean,
 ): void {
-  if (isAdmin) return;
-  if (user.assignedExecutiveId !== executiveAccountId) {
+  if (!canManageClientAsExecutive(user, executiveAccountId, isAdmin)) {
     throw new ApiError(
       "No tienes permiso para gestionar este cliente.",
       403,
       "FORBIDDEN",
     );
   }
+}
+
+function assertExecutiveCanView(
+  user: ClientRecordWithPlans,
+  executiveAccountId: string,
+  isAdmin: boolean,
+): void {
+  if (!canViewClientAsExecutive(user, executiveAccountId, isAdmin)) {
+    throw new ApiError(
+      "No tienes permiso para ver este cliente.",
+      403,
+      "FORBIDDEN",
+    );
+  }
+}
+
+function clearTrackingFields(): Prisma.UserUpdateInput {
+  return {
+    trackingExecutive: { disconnect: true },
+    confirmationCallAt: null,
+  };
 }
 
 function validateClosedRecord(
@@ -242,9 +269,71 @@ export async function updateClientPipeline(
     data.pipelineClosedRecord = closed as unknown as Prisma.InputJsonValue;
   }
 
+  if (nextStatus === "CERRADO" || nextStatus === "PERDIDO") {
+    Object.assign(data, clearTrackingFields());
+  }
+
   const user = await prisma.user.update({
     where: { id: userId },
     data,
+    include: clientRecordInclude,
+  });
+
+  return mapDbClientRecord(user);
+}
+
+/**
+ * Marca el llamado de confirmación Zoom (5–10 min antes) como realizado.
+ * Disponible para el ejecutivo en seguimiento (tracker) o el asignado.
+ */
+export async function markClientConfirmationCall(
+  userId: string,
+  input: { outcome?: string | null },
+  actor: {
+    executiveAccountId: string;
+    isAdmin: boolean;
+  },
+): Promise<UserRecord> {
+  const existing = await readClientOrThrow(userId);
+  assertExecutiveCanView(existing, actor.executiveAccountId, actor.isAdmin);
+
+  if (
+    !actor.isAdmin &&
+    !canManageClientAsExecutive(
+      existing,
+      actor.executiveAccountId,
+      false,
+    ) &&
+    !isClientTrackedBy(existing, actor.executiveAccountId)
+  ) {
+    throw new ApiError(
+      "No tienes permiso para registrar la confirmación de este cliente.",
+      403,
+      "FORBIDDEN",
+    );
+  }
+
+  const actorName = await resolveActorDisplayName(
+    actor.executiveAccountId,
+    actor.isAdmin,
+  );
+  const outcome =
+    input.outcome?.trim() ||
+    "Confirmación Zoom realizada (recordatorio previo a reunión Premium).";
+
+  const nextNotes = appendPipelineNoteLine(
+    existing.pipelineNotes,
+    outcome,
+    actorName,
+  );
+
+  const user = await prisma.user.update({
+    where: { id: userId },
+    data: {
+      confirmationCallAt: null,
+      lastCallOutcome: outcome,
+      pipelineNotes: nextNotes,
+    },
     include: clientRecordInclude,
   });
 
@@ -383,21 +472,37 @@ export async function redirectClientToIsapresPremium(
     existing.pipelineNotes,
     `Redirigido a Ejecutivo Isapres Premium. Contacto: ${
       CLIENT_CONTACT_METHOD_LABELS[input.contactMethod]
-    }. Atención solicitada: ${whenLabel}.`,
+    }. Atención solicitada: ${whenLabel}. Confirmación Zoom ~${CONFIRMATION_CALL_LEAD_MINUTES} min antes.`,
     actorName,
   );
 
   const previousAssignedId = existing.assignedExecutiveId;
+  /** Quien tenía el cliente (o el actor Zoom) sigue en seguimiento hasta el cierre. */
+  const trackerId =
+    previousAssignedId && previousAssignedId !== targetId
+      ? previousAssignedId
+      : !actor.isAdmin && actor.executiveAccountId !== targetId
+        ? actor.executiveAccountId
+        : existing.trackingExecutiveId &&
+            existing.trackingExecutiveId !== targetId
+          ? existing.trackingExecutiveId
+          : null;
+
+  const confirmationCallAt = computeConfirmationCallAt(appointmentAt);
 
   const user = await prisma.user.update({
     where: { id: userId },
     data: {
       assignedExecutive: { connect: { id: targetId } },
+      ...(trackerId
+        ? { trackingExecutive: { connect: { id: trackerId } } }
+        : {}),
       pipelineStatus: "NUEVO",
       pipelineNotes: nextNotes,
       lastCallOutcome: `Redirigido a Isapres Premium · ${CLIENT_CONTACT_METHOD_LABELS[input.contactMethod]} · ${whenLabel}`,
       preferredContactMethod: input.contactMethod,
       nextCallAt: appointmentAt,
+      confirmationCallAt,
     },
     include: clientRecordInclude,
   });
@@ -570,6 +675,20 @@ export async function redirectClientFromIsapresPremium(
   );
 
   const previousAssignedId = existing.assignedExecutiveId;
+  /** Si vuelve a Zoom, el assignee recupera la cartera activa (sin tracking). */
+  const clearTracking = targetKind === "ZOOM";
+  /**
+   * Si va a Isapres: conserva el tracker Zoom existente; si no hay, deja a
+   * Premium en seguimiento hasta el cierre.
+   */
+  const trackerId = !clearTracking
+    ? existing.trackingExecutiveId &&
+      existing.trackingExecutiveId !== targetId
+      ? existing.trackingExecutiveId
+      : previousAssignedId && previousAssignedId !== targetId
+        ? previousAssignedId
+        : null
+    : null;
 
   const user = await prisma.user.update({
     where: { id: userId },
@@ -578,6 +697,14 @@ export async function redirectClientFromIsapresPremium(
       pipelineStatus: nextStatus,
       pipelineNotes: nextNotes,
       lastCallOutcome: `Enviado a ${kindLabelShort} · ${reasonNote}`,
+      ...(clearTracking
+        ? clearTrackingFields()
+        : trackerId
+          ? {
+              trackingExecutive: { connect: { id: trackerId } },
+              confirmationCallAt: null,
+            }
+          : { confirmationCallAt: null }),
     },
     include: clientRecordInclude,
   });

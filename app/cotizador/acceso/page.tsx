@@ -4,7 +4,8 @@ import { buildPageMetadata } from "@/lib/seo/build-page-metadata";
 
 export const metadata: Metadata = buildPageMetadata({
   title: "Acceso staff",
-  description: "Inicio de sesión para ejecutivos y administradores de Cotizador Premium.",
+  description:
+    "Inicio de sesión para ejecutivos y administradores de Isapres Premium.",
   path: "/cotizador/acceso",
   noIndex: true,
 });

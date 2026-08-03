@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { LandingBrandThemeEffect } from "@/components/platform/landing/landing-brand-theme-effect";
-import { LandingLogo } from "@/components/platform/landing/landing-logo";
+import { StaffAccessBrandThemeEffect } from "@/components/auth/staff-access-brand-theme-effect";
+import { StaffBrandLogo } from "@/components/auth/staff-brand-logo";
 import { landing } from "@/components/platform/landing/landing-tokens";
+import { siteConfig } from "@/constants/site";
 import "@/components/platform/landing/landing.css";
 
 interface StaffAccessLayoutProps {
@@ -12,20 +13,30 @@ interface StaffAccessLayoutProps {
 
 export function StaffAccessLayout({ children }: StaffAccessLayoutProps) {
   return (
-    <div data-landing data-brand="premium" className={landing.pageRoot}>
-      <LandingBrandThemeEffect />
+    <div
+      data-landing
+      data-brand="isapre-premium"
+      className={landing.pageRoot}
+    >
+      <StaffAccessBrandThemeEffect />
 
-      <div className="landing-page-backdrop-gradient pointer-events-none fixed inset-0 -z-10" aria-hidden />
-      <div className="landing-grid-pattern pointer-events-none fixed inset-0 -z-10 opacity-25" aria-hidden />
+      <div
+        className="landing-page-backdrop-gradient pointer-events-none fixed inset-0 -z-10"
+        aria-hidden
+      />
+      <div
+        className="landing-grid-pattern pointer-events-none fixed inset-0 -z-10 opacity-25"
+        aria-hidden
+      />
 
       <div className="relative flex min-h-screen flex-col">
         <header className={`${landing.header} border-b border-border/60`}>
           <div className={`${landing.headerInner} py-3.5`}>
             <Link href="/" className="flex items-center gap-3">
-              <LandingLogo size="md" transparent />
+              <StaffBrandLogo size="md" transparent />
               <div className="min-w-0">
                 <p className="text-sm font-semibold tracking-tight text-foreground sm:text-base">
-                  Cotizador Premium
+                  {siteConfig.name}
                 </p>
                 <p className="text-xs text-muted">Acceso staff</p>
               </div>

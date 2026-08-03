@@ -12,6 +12,13 @@ export const ISAPRE_PREMIUM_WEBSITE = "https://isaprespremium.cl";
 
 export const ISAPRE_PREMIUM_LOGO_PATH = "/images/partners/logo-isapre-premium.png";
 
+/** Isotipo compacto — headers y menús staff. */
+export const ISAPRE_PREMIUM_ICON_PATH =
+  "/images/logo-icono-isapres-premium.png";
+
+/** Wordmark oficial (navbar / acceso staff). */
+export const ISAPRE_PREMIUM_WORDMARK_PATH = "/logo-isapres-premium.png";
+
 /**
  * Paleta oficial Isapres Premium (turquesa + verde manzana solo en CTAs).
  * - Brand / primary / criteria: #0F8D8E

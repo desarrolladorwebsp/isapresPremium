@@ -30,6 +30,7 @@ export type UserWithExecutive = DbUser & {
     StaffAccount,
     "id" | "fullName" | "email" | "executiveKind"
   > | null;
+  trackingExecutive?: Pick<StaffAccount, "id" | "fullName"> | null;
 };
 
 type PlanSummary = Pick<Plan, "uniqueCode" | "planName"> & {
@@ -45,6 +46,7 @@ export type ClientRecordWithPlans = DbUser & {
     StaffAccount,
     "id" | "fullName" | "email" | "executiveKind"
   > | null;
+  trackingExecutive?: Pick<StaffAccount, "id" | "fullName"> | null;
   quotes?: QuoteWithPlan[];
   advisedPlan?: PlanSummary | null;
 };
@@ -52,6 +54,9 @@ export type ClientRecordWithPlans = DbUser & {
 export const clientRecordInclude = {
   assignedExecutive: {
     select: { id: true, fullName: true, email: true, executiveKind: true },
+  },
+  trackingExecutive: {
+    select: { id: true, fullName: true },
   },
   quotes: {
     orderBy: { createdAt: "desc" as const },
@@ -109,11 +114,14 @@ export function mapDbUser(user: UserWithExecutive): UserRecord {
     assignedExecutiveId: user.assignedExecutiveId,
     assignedExecutiveName: user.assignedExecutive?.fullName ?? null,
     assignedExecutiveKind: user.assignedExecutive?.executiveKind ?? null,
+    trackingExecutiveId: user.trackingExecutiveId,
+    trackingExecutiveName: user.trackingExecutive?.fullName ?? null,
     pipelineStatus: user.pipelineStatus as ClientPipelineStatus,
     checklist: resolveClientChecklist(user.pipelineChecklist),
     closedRecord: parseClientClosedRecord(user.pipelineClosedRecord),
     pipelineNotes: user.pipelineNotes,
     nextCallAt: user.nextCallAt?.toISOString() ?? null,
+    confirmationCallAt: user.confirmationCallAt?.toISOString() ?? null,
     lastCallOutcome: user.lastCallOutcome,
     preferredContactMethod:
       (user.preferredContactMethod as import("@/types/client-pipeline").ClientContactMethod | null) ??
@@ -283,7 +291,10 @@ export async function readClientsForExecutive(
   const users = await prisma.user.findMany({
     where: {
       role: "CLIENT",
-      assignedExecutiveId: executiveAccountId,
+      OR: [
+        { assignedExecutiveId: executiveAccountId },
+        { trackingExecutiveId: executiveAccountId },
+      ],
     },
     orderBy: [
       { clientOrigin: "asc" },

@@ -1,4 +1,5 @@
 import type {
+  ClientAdditionalTitularProfile,
   ClientDependentProfile,
   ClientExecutiveProfile,
   ClientProfileInput,
@@ -20,16 +21,34 @@ export const MARITAL_STATUS_OPTIONS = [
   "Otro",
 ] as const;
 
+function createLocalId(prefix: string): string {
+  return typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
 export function buildEmptyDependent(): ClientDependentProfile {
   return {
-    id:
-      typeof crypto !== "undefined" && "randomUUID" in crypto
-        ? crypto.randomUUID()
-        : `dep-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    id: createLocalId("dep"),
     rut: "",
     birthDate: "",
     heightCm: "",
     weightKg: "",
+  };
+}
+
+export function buildEmptyAdditionalTitular(): ClientAdditionalTitularProfile {
+  return {
+    id: createLocalId("tit"),
+    firstNames: "",
+    lastNames: "",
+    rut: "",
+    birthDate: "",
+    heightCm: "",
+    weightKg: "",
+    maritalStatus: "",
+    phone: "",
+    currentIsapre: "",
   };
 }
 
@@ -45,6 +64,7 @@ export function buildEmptyClientProfile(): ClientExecutiveProfile {
     address: "",
     commune: "",
     dependents: [],
+    additionalTitulares: [],
     updatedAt: new Date().toISOString(),
   };
 }
@@ -73,6 +93,25 @@ function isDependent(value: unknown): value is ClientDependentProfile {
     typeof item.birthDate === "string" &&
     typeof item.heightCm === "string" &&
     typeof item.weightKg === "string"
+  );
+}
+
+function isAdditionalTitular(
+  value: unknown,
+): value is ClientAdditionalTitularProfile {
+  if (!value || typeof value !== "object") return false;
+  const item = value as Record<string, unknown>;
+  return (
+    typeof item.id === "string" &&
+    typeof item.firstNames === "string" &&
+    typeof item.lastNames === "string" &&
+    typeof item.rut === "string" &&
+    typeof item.birthDate === "string" &&
+    typeof item.heightCm === "string" &&
+    typeof item.weightKg === "string" &&
+    typeof item.maritalStatus === "string" &&
+    typeof item.phone === "string" &&
+    typeof item.currentIsapre === "string"
   );
 }
 
@@ -114,6 +153,9 @@ export function resolveClientProfile(
     dependents: Array.isArray(profile.dependents)
       ? profile.dependents.filter(isDependent)
       : [],
+    additionalTitulares: Array.isArray(profile.additionalTitulares)
+      ? profile.additionalTitulares.filter(isAdditionalTitular)
+      : [],
     updatedAt:
       typeof profile.updatedAt === "string"
         ? profile.updatedAt
@@ -152,9 +194,19 @@ export function normalizeClientProfileInput(
     {
       rut: input.rut,
       dependents: input.dependents,
+      additionalTitulares: input.additionalTitulares,
     },
     options,
   );
+
+  for (const [index, titular] of (input.additionalTitulares ?? []).entries()) {
+    const names = buildFullName(titular.firstNames, titular.lastNames);
+    if (!names) {
+      throw new Error(
+        `Indica nombres y apellidos del titular adicional ${index + 2}.`,
+      );
+    }
+  }
 
   const dependents = (input.dependents ?? []).map((dependent) => {
     const rutRaw = dependent.rut.trim();
@@ -166,6 +218,24 @@ export function normalizeClientProfileInput(
       weightKg: dependent.weightKg.trim(),
     };
   });
+
+  const additionalTitulares = (input.additionalTitulares ?? []).map(
+    (titular) => {
+      const rutRaw = titular.rut.trim();
+      return {
+        id: titular.id || buildEmptyAdditionalTitular().id,
+        firstNames: titular.firstNames.trim(),
+        lastNames: titular.lastNames.trim(),
+        rut: rutRaw ? formatRut(rutRaw) : "",
+        birthDate: titular.birthDate.trim(),
+        heightCm: titular.heightCm.trim(),
+        weightKg: titular.weightKg.trim(),
+        maritalStatus: titular.maritalStatus.trim(),
+        phone: titular.phone.trim(),
+        currentIsapre: titular.currentIsapre.trim(),
+      };
+    },
+  );
 
   return {
     email,
@@ -183,6 +253,7 @@ export function normalizeClientProfileInput(
       address: input.address?.trim() || "",
       commune: input.commune?.trim() || "",
       dependents,
+      additionalTitulares,
       updatedAt: new Date().toISOString(),
     },
   };

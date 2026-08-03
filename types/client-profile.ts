@@ -6,6 +6,20 @@ export interface ClientDependentProfile {
   weightKg: string;
 }
 
+/** Titulares adicionales del grupo familiar (además del titular de la cuenta). */
+export interface ClientAdditionalTitularProfile {
+  id: string;
+  firstNames: string;
+  lastNames: string;
+  rut: string;
+  birthDate: string;
+  heightCm: string;
+  weightKg: string;
+  maritalStatus: string;
+  phone: string;
+  currentIsapre: string;
+}
+
 export interface ClientExecutiveProfile {
   firstNames: string;
   lastNames: string;
@@ -17,6 +31,7 @@ export interface ClientExecutiveProfile {
   address: string;
   commune: string;
   dependents: ClientDependentProfile[];
+  additionalTitulares: ClientAdditionalTitularProfile[];
   updatedAt: string;
 }
 
@@ -34,4 +49,5 @@ export interface ClientProfileInput {
   address?: string | null;
   commune?: string | null;
   dependents?: ClientDependentProfile[];
+  additionalTitulares?: ClientAdditionalTitularProfile[];
 }

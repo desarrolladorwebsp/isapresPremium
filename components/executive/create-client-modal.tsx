@@ -42,6 +42,7 @@ export function CreateClientModal({
   const [rutErrors, setRutErrors] = useState<{
     titular?: string;
     dependents?: Record<string, string>;
+    additionalTitulares?: Record<string, string>;
   }>({});
 
   function handleClose() {
@@ -54,7 +55,11 @@ export function CreateClientModal({
 
   function handleProfileChange(next: ClientProfileFormValue) {
     setProfile(next);
-    if (rutErrors.titular || rutErrors.dependents) {
+    if (
+      rutErrors.titular ||
+      rutErrors.dependents ||
+      rutErrors.additionalTitulares
+    ) {
       setRutErrors({});
     }
   }
@@ -63,13 +68,18 @@ export function CreateClientModal({
     event.preventDefault();
 
     const errors = getClientManagementRutErrors(
-      { rut: profile.rut, dependents: profile.dependents },
+      {
+        rut: profile.rut,
+        dependents: profile.dependents,
+        additionalTitulares: profile.additionalTitulares,
+      },
       { requireTitularRut: true },
     );
     if (errors.firstMessage) {
       setRutErrors({
         titular: errors.titular,
         dependents: errors.dependents,
+        additionalTitulares: errors.additionalTitulares,
       });
       onNotify(errors.firstMessage, "error");
       return;
@@ -91,6 +101,7 @@ export function CreateClientModal({
         address: profile.address || null,
         commune: profile.commune || null,
         dependents: profile.dependents,
+        additionalTitulares: profile.additionalTitulares,
         pipelineNotes: pipelineNotes.trim() || null,
         clientOrigin,
       });

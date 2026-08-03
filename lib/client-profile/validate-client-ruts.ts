@@ -3,6 +3,7 @@ import { formatRut, isValidRut } from "@/lib/auth/rut";
 export interface ClientManagementRutInput {
   rut?: string | null;
   dependents?: Array<{ id?: string; rut?: string | null }>;
+  additionalTitulares?: Array<{ id?: string; rut?: string | null }>;
 }
 
 export interface ClientManagementRutOptions {
@@ -17,6 +18,7 @@ export interface ClientManagementRutOptions {
 export interface ClientManagementRutErrors {
   titular?: string;
   dependents: Record<string, string>;
+  additionalTitulares: Record<string, string>;
   firstMessage: string | null;
 }
 
@@ -40,6 +42,7 @@ export function getClientManagementRutErrors(
   return {
     titular,
     dependents: {},
+    additionalTitulares: {},
     firstMessage: titular ?? null,
   };
 }
@@ -51,6 +54,7 @@ export function getClientManagementRutWarnings(
   input: ClientManagementRutInput,
 ): ClientManagementRutErrors {
   const dependents: Record<string, string> = {};
+  const additionalTitulares: Record<string, string> = {};
   let titular: string | undefined;
 
   const titularRut = input.rut?.trim() ?? "";
@@ -67,11 +71,23 @@ export function getClientManagementRutWarnings(
     }
   }
 
+  for (const [index, extra] of (input.additionalTitulares ?? []).entries()) {
+    const rut = extra.rut?.trim() ?? "";
+    if (!rut) continue;
+    if (!isValidRut(rut)) {
+      const key = extra.id?.trim() || String(index);
+      additionalTitulares[key] = INVALID_RUT_MESSAGE;
+    }
+  }
+
+  const firstExtraMessage = Object.values(additionalTitulares)[0];
   const firstDependentMessage = Object.values(dependents)[0];
   return {
     titular,
     dependents,
-    firstMessage: titular ?? firstDependentMessage ?? null,
+    additionalTitulares,
+    firstMessage:
+      titular ?? firstExtraMessage ?? firstDependentMessage ?? null,
   };
 }
 

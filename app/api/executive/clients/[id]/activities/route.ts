@@ -5,6 +5,7 @@ import { readClientOrThrow } from "@/lib/api/user-store";
 import { requireExecutiveOrAdminSession } from "@/lib/auth/require-auth";
 import { AUTH_REALM } from "@/lib/auth/constants";
 import { ApiError } from "@/lib/api/api-error";
+import { canViewClientAsExecutive } from "@/lib/client-pipeline/tracking";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -17,8 +18,11 @@ export async function GET(request: Request, context: RouteContext) {
     const client = await readClientOrThrow(id);
 
     if (
-      realm !== AUTH_REALM.admin &&
-      client.assignedExecutiveId !== user.id
+      !canViewClientAsExecutive(
+        client,
+        user.id,
+        realm === AUTH_REALM.admin,
+      )
     ) {
       throw new ApiError(
         "No tienes permiso para ver este cliente.",

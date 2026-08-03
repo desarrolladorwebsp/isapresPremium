@@ -22,6 +22,7 @@ import {
   fetchCalendlySchedulingLink,
   fetchEligibleExecutives,
   fetchPremiumExecutives,
+  markClientConfirmationCall,
   redirectClientToIsapres,
   redirectClientToPremium,
   redirectClientToZoom,
@@ -37,6 +38,10 @@ import {
   appendPipelineNoteLine,
   canAccessInternalPipelineNotes,
 } from "@/lib/client-pipeline/note-stamp";
+import {
+  CONFIRMATION_CALL_LEAD_MINUTES,
+  isTrackingOnlyForExecutive,
+} from "@/lib/client-pipeline/tracking";
 import { getClientManagementRutErrors } from "@/lib/client-profile/validate-client-ruts";
 import { ISAPRE_FILTER_OPTIONS } from "@/lib/filter-options";
 import { buildWhatsAppUrl } from "@/lib/partner-entity/theme";
@@ -98,10 +103,10 @@ function getManagementDescription(input: {
   isPremium: boolean;
 }): string | undefined {
   if (input.isZoom) {
-    return "Gestión ejecutivo: contacto, reagendar, redirigir a Premium y datos del cliente.";
+    return "Gestión ejecutivo Zoom: contacto, reagendar, redirigir a Premium y datos del cliente.";
   }
   if (input.isIsapres) {
-    return "Gestión Isapres: revisa los datos del cliente y cierra el contrato cuando corresponda.";
+    return "Gestión ejecutivo Isapres: revisa los datos del cliente y cierra el contrato cuando corresponda.";
   }
   if (input.isPremium) return undefined;
   return "Datos del titular, cargas, documentos solicitados y seguimiento comercial.";
@@ -151,7 +156,7 @@ const PROFILE_FIELD_LABELS: Array<{
   { key: "firstNames", label: "Nombres" },
   { key: "lastNames", label: "Apellidos" },
   { key: "birthDate", label: "Fecha de nacimiento" },
-  { key: "currentIsapre", label: "Isapre actual" },
+  { key: "currentIsapre", label: "Isapre / previsión actual" },
   { key: "heightCm", label: "Estatura" },
   { key: "weightKg", label: "Peso" },
   { key: "maritalStatus", label: "Estado civil" },
@@ -375,6 +380,7 @@ function profileSnapshot(value: ClientProfileFormValue): string {
     address: value.address || "",
     commune: value.commune || "",
     dependents: value.dependents,
+    additionalTitulares: value.additionalTitulares,
   });
 }
 
@@ -393,10 +399,15 @@ export function ClientPipelineDrawer({
   const isZoom = executiveKind === "ZOOM";
   const isPremium = executiveKind === "ISAPRES_PREMIUM";
   const isIsapres = executiveKind === "ISAPRES";
+  const isTrackingOnly =
+    Boolean(sessionUser?.id) &&
+    Boolean(client) &&
+    !isAdmin &&
+    isTrackingOnlyForExecutive(client!, sessionUser!.id);
   const canManageZoom =
-    canUseZoomExecutiveWorkflow(executiveKind) || isAdmin;
-  const canManagePremium = isPremium || isAdmin;
-  const canManageIsapres = isIsapres || isAdmin;
+    (canUseZoomExecutiveWorkflow(executiveKind) || isAdmin) && !isTrackingOnly;
+  const canManagePremium = (isPremium || isAdmin) && !isTrackingOnly;
+  const canManageIsapres = (isIsapres || isAdmin) && !isTrackingOnly;
   const canViewInternalNotes = canAccessInternalPipelineNotes({
     isAdmin,
     executiveKind,
@@ -464,6 +475,7 @@ export function ClientPipelineDrawer({
   const [rutErrors, setRutErrors] = useState<{
     titular?: string;
     dependents?: Record<string, string>;
+    additionalTitulares?: Record<string, string>;
   }>({});
 
   const isTerminalStatus =
@@ -667,6 +679,7 @@ export function ClientPipelineDrawer({
   }, [checklist]);
 
   const nextCallLabel = formatNextCallAt(client?.nextCallAt);
+  const confirmationCallLabel = formatNextCallAt(client?.confirmationCallAt);
 
   const confirmCopy = useMemo(() => {
     if (!pendingConfirm || !client) return null;
@@ -771,7 +784,8 @@ export function ClientPipelineDrawer({
             `Contacto preferido: ${pendingConfirm.contactMethodLabel}`,
             `Atención solicitada: ${pendingConfirm.appointmentLabel}`,
             "Estado → Nuevo en la cartera Premium",
-            "Saldrá de tu cartera Zoom",
+            "Queda en Derivados (seguimiento hasta el cierre)",
+            `Confirmación Zoom ~${CONFIRMATION_CALL_LEAD_MINUTES} min antes de la reunión`,
           ],
         };
       case "send_zoom":
@@ -781,7 +795,7 @@ export function ClientPipelineDrawer({
           changes: [
             `Ejecutivo Zoom destino: ${pendingConfirm.targetLabel}`,
             "Estado → No contesta",
-            "Saldrá de tu cartera Premium",
+            "Saldrá de tu cartera activa (Zoom lo retoma)",
           ],
         };
       case "send_isapres":
@@ -791,7 +805,7 @@ export function ClientPipelineDrawer({
           changes: [
             `Ejecutivo Isapres destino: ${pendingConfirm.targetLabel}`,
             "Estado → Documentación (listo para cierre)",
-            "Saldrá de tu cartera Premium",
+            "Queda en Derivados (seguimiento hasta el cierre)",
           ],
         };
     }
@@ -858,6 +872,7 @@ export function ClientPipelineDrawer({
       address: profileForm.address || null,
       commune: profileForm.commune || null,
       dependents: profileForm.dependents,
+      additionalTitulares: profileForm.additionalTitulares,
     };
   }
 
@@ -1136,6 +1151,28 @@ export function ClientPipelineDrawer({
     }
   }
 
+  async function handleMarkConfirmationCall() {
+    if (!client) return;
+    setActionBusy(true);
+    try {
+      const updated = await markClientConfirmationCall(client.id, {
+        outcome:
+          "Confirmación Zoom realizada: cliente recordado de la reunión Premium.",
+      });
+      onUpdated(updated);
+      onNotify("Confirmación Zoom registrada.");
+    } catch (error) {
+      onNotify(
+        error instanceof Error
+          ? error.message
+          : "No se pudo registrar la confirmación.",
+        "error",
+      );
+    } finally {
+      setActionBusy(false);
+    }
+  }
+
   async function handleMarkContacted() {
     if (!client) return;
     setActionBusy(true);
@@ -1341,13 +1378,18 @@ export function ClientPipelineDrawer({
 
   function validateProfileRutsBeforeCommit(): boolean {
     const errors = getClientManagementRutErrors(
-      { rut: profileForm.rut, dependents: profileForm.dependents },
+      {
+        rut: profileForm.rut,
+        dependents: profileForm.dependents,
+        additionalTitulares: profileForm.additionalTitulares,
+      },
       { requireTitularRut: false },
     );
     if (errors.firstMessage) {
       setRutErrors({
         titular: errors.titular,
         dependents: errors.dependents,
+        additionalTitulares: errors.additionalTitulares,
       });
       onNotify(errors.firstMessage, "error");
       return false;
@@ -1724,7 +1766,58 @@ export function ClientPipelineDrawer({
 
     return (
       <div className="space-y-6">
-        {!isZoom ? (
+        {isTrackingOnly || confirmationCallLabel ? (
+          <div className="space-y-3 rounded-xl border border-amber-200/80 bg-amber-50/60 p-4">
+            <div>
+              <h3 className="text-sm font-semibold text-amber-950">
+                {isTrackingOnly
+                  ? "Seguimiento post-derivación"
+                  : "Confirmación Zoom"}
+              </h3>
+              <p className="mt-1 text-xs text-amber-900/80">
+                {isTrackingOnly
+                  ? "Este cliente está a cargo de otro ejecutivo. Mantén el seguimiento hasta el cierre y confirma la reunión ~10 min antes."
+                  : `Llama al cliente ~${CONFIRMATION_CALL_LEAD_MINUTES} minutos antes de la reunión Premium para recordarle.`}
+              </p>
+            </div>
+            {client.assignedExecutiveName ? (
+              <p className="text-xs text-amber-950/90">
+                Ejecutivo a cargo:{" "}
+                <span className="font-semibold">
+                  {client.assignedExecutiveName}
+                </span>
+              </p>
+            ) : null}
+            {confirmationCallLabel ? (
+              <p className="text-xs font-medium text-amber-950">
+                Confirmación agendada: {confirmationCallLabel}
+              </p>
+            ) : null}
+            {nextCallLabel ? (
+              <p className="text-xs text-amber-900/80">
+                Reunión Premium: {nextCallLabel}
+              </p>
+            ) : null}
+            {confirmationCallLabel ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="primary"
+                disabled={actionBusy}
+                onClick={() => void handleMarkConfirmationCall()}
+              >
+                Marcar confirmación realizada
+              </Button>
+            ) : isTrackingOnly ? (
+              <p className="text-[11px] text-amber-900/70">
+                Sin confirmación pendiente. El cliente sigue visible hasta
+                Cerrado o Perdido.
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
+        {!isZoom && !isTrackingOnly ? (
           <ClientAdvisedPlanSection
             client={client}
             onUpdated={onUpdated}
@@ -1732,24 +1825,35 @@ export function ClientPipelineDrawer({
           />
         ) : null}
 
+        {!isTrackingOnly ? (
         <ClientProfileForm
           value={profileForm}
           onChange={(next) => {
             setProfileForm(next);
-            if (rutErrors.titular || rutErrors.dependents) {
+            if (
+              rutErrors.titular ||
+              rutErrors.dependents ||
+              rutErrors.additionalTitulares
+            ) {
               setRutErrors({});
             }
           }}
           rutErrors={rutErrors}
         />
+        ) : null}
 
         <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-2">
             <ClientPipelineStatusBadge status={pipelineStatus} />
+            {isTrackingOnly ? (
+              <span className="inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 ring-1 ring-amber-200">
+                Derivado · seguimiento
+              </span>
+            ) : null}
             <ClientContactMethodBadge
               method={client.preferredContactMethod}
             />
-            {!isZoom ? (
+            {!isZoom && !isTrackingOnly ? (
               <span className="text-xs text-muted">
                 {checklistProgress.done}/{checklistProgress.total} documentos listos
               </span>
@@ -1764,7 +1868,9 @@ export function ClientPipelineDrawer({
                 href={whatsappUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                onClick={() => void markContactedFromWhatsApp()}
+                onClick={() => {
+                  if (!isTrackingOnly) void markContactedFromWhatsApp();
+                }}
                 className="ml-auto inline-flex items-center gap-2 rounded-full bg-[#25D366] px-3 py-1.5 text-xs font-semibold text-white transition-opacity hover:opacity-90"
               >
                 <WhatsAppIcon />
@@ -1778,7 +1884,7 @@ export function ClientPipelineDrawer({
           <div className="space-y-3 rounded-xl border border-emerald-200/70 bg-emerald-50/50 p-4">
             <div>
               <h3 className="text-sm font-semibold text-primary-dark">
-                Gestión Isapres
+                Gestión ejecutivo Isapres
               </h3>
               <p className="mt-1 text-xs text-muted">
                 Revisa los datos del cliente y cierra el contrato cuando
@@ -1863,7 +1969,7 @@ export function ClientPipelineDrawer({
           <div className="space-y-3 rounded-xl border border-secondary/25 bg-secondary-muted/40 p-4">
             <div>
               <h3 className="text-sm font-semibold text-primary-dark">
-                Gestión ejecutivo
+                Gestión ejecutivo Zoom
               </h3>
               <p className="mt-1 text-xs text-muted">
                 {isPremium && !isZoom
@@ -2008,8 +2114,10 @@ export function ClientPipelineDrawer({
                         }
                       />
                       <p className="text-[11px] text-muted">
-                        El cliente quedará como Nuevo para el Premium elegido y
-                        saldrá de tu cartera.
+                        El cliente quedará como Nuevo para el Premium elegido.
+                        Tú lo verás en Derivados hasta el cierre, con llamado de
+                        confirmación Zoom ~{CONFIRMATION_CALL_LEAD_MINUTES} min
+                        antes.
                       </p>
                     </label>
 
@@ -2607,13 +2715,15 @@ export function ClientPipelineDrawer({
           <Button type="button" variant="ghost" onClick={onClose}>
             {variant === "page" ? "Volver a clientes" : "Cancelar"}
           </Button>
-          <Button
-            type="button"
-            disabled={saving || actionBusy || !hasUnsavedChanges}
-            onClick={requestSaveConfirm}
-          >
-            {saving ? "Guardando…" : saveButtonLabel}
-          </Button>
+          {!isTrackingOnly ? (
+            <Button
+              type="button"
+              disabled={saving || actionBusy || !hasUnsavedChanges}
+              onClick={requestSaveConfirm}
+            >
+              {saving ? "Guardando…" : saveButtonLabel}
+            </Button>
+          ) : null}
         </div>
       </div>
     );

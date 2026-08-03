@@ -38,6 +38,7 @@ import {
   invalidateExecutiveClients,
   upsertExecutiveClientCache,
 } from "@/lib/query/executive-cache";
+import { isTrackingOnlyForExecutive } from "@/lib/client-pipeline/tracking";
 import { ClientPipelineStatusBadge } from "@/components/executive/client-pipeline-status-badge";
 import { ClientPlanSummary } from "@/components/executive/client-plan-summary";
 import { ClientOriginBadge } from "@/components/executive/client-origin-badge";
@@ -88,7 +89,7 @@ export function ExecutiveClientsPanel({
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
-  const { isAdmin } = useStaffSession();
+  const { isAdmin, user } = useStaffSession();
   const clientsQuery = useExecutiveClientsQuery();
   const executivesQuery = useExecutiveAccountsQuery({ enabled: isAdmin });
 
@@ -104,6 +105,7 @@ export function ExecutiveClientsPanel({
   const isFetching = clientsQuery.isFetching || executivesQuery.isFetching;
 
   const [search, setSearch] = useState("");
+  const [segment, setSegment] = useState<"cartera" | "derivados">("cartera");
   const [savingId, setSavingId] = useState<string | null>(null);
   const [distributing, setDistributing] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -144,8 +146,26 @@ export function ExecutiveClientsPanel({
     }
   }, [clientsQuery.isError, clientsQuery.error, onNotify]);
 
-  const filteredClients = useMemo(() => {
+  const segmentedClients = useMemo(() => {
     const rows = clients ?? [];
+    if (isAdmin || !user?.id) return rows;
+    if (segment === "derivados") {
+      return rows.filter((client) =>
+        isTrackingOnlyForExecutive(client, user.id),
+      );
+    }
+    return rows.filter((client) => client.assignedExecutiveId === user.id);
+  }, [clients, isAdmin, segment, user?.id]);
+
+  const derivadosCount = useMemo(() => {
+    if (isAdmin || !user?.id) return 0;
+    return (clients ?? []).filter((client) =>
+      isTrackingOnlyForExecutive(client, user.id),
+    ).length;
+  }, [clients, isAdmin, user?.id]);
+
+  const filteredClients = useMemo(() => {
+    const rows = segmentedClients;
     const query = search.trim().toLowerCase();
     if (!query) return rows;
 
@@ -163,7 +183,7 @@ export function ExecutiveClientsPanel({
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(query)),
     );
-  }, [clients, search]);
+  }, [segmentedClients, search]);
 
   const unassignedCount = useMemo(
     () => (clients ?? []).filter((client) => !client.assignedExecutiveId).length,
@@ -341,17 +361,46 @@ export function ExecutiveClientsPanel({
         />
       </AdminToolbar>
 
+      {!isAdmin ? (
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant={segment === "cartera" ? "primary" : "ghost"}
+            onClick={() => setSegment("cartera")}
+            className={touchTarget}
+          >
+            Mi cartera
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={segment === "derivados" ? "primary" : "ghost"}
+            onClick={() => setSegment("derivados")}
+            className={touchTarget}
+          >
+            Derivados{derivadosCount > 0 ? ` (${derivadosCount})` : ""}
+          </Button>
+        </div>
+      ) : null}
+
       <AdminTableCard
         loading={loading}
         empty={!loading && filteredClients.length === 0}
-        emptyTitle="Aún no tienes clientes"
+        emptyTitle={
+          segment === "derivados"
+            ? "Sin clientes derivados"
+            : "Aún no tienes clientes"
+        }
         emptyDescription={
-          isAdmin
-            ? "Los clientes aparecerán cuando soliciten cotizaciones o cuando un ejecutivo los registre manualmente."
-            : "Agrega clientes que captaste por tu cuenta o espera leads asignados desde el cotizador."
+          segment === "derivados"
+            ? "Cuando redirijas un cliente a otro ejecutivo, quedará aquí en seguimiento hasta el cierre."
+            : isAdmin
+              ? "Los clientes aparecerán cuando soliciten cotizaciones o cuando un ejecutivo los registre manualmente."
+              : "Agrega clientes que captaste por tu cuenta o espera leads asignados desde el cotizador."
         }
         loadingMessage="Cargando clientes…"
-        footer={`Mostrando ${filteredClients.length} de ${(clients ?? []).length} clientes.`}
+        footer={`Mostrando ${filteredClients.length} de ${segmentedClients.length} clientes.`}
       >
         <AdminTable minWidth={isAdmin ? "72rem" : "64rem"}>
           <AdminTableHead>
@@ -380,9 +429,22 @@ export function ExecutiveClientsPanel({
                       {client.fullName}
                     </p>
                     <ClientPipelineStatusBadge status={client.pipelineStatus} />
+                    {!isAdmin &&
+                    user?.id &&
+                    isTrackingOnlyForExecutive(client, user.id) ? (
+                      <span className="inline-flex w-fit rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 ring-1 ring-amber-200">
+                        Derivado · seguimiento
+                      </span>
+                    ) : null}
                     <ClientContactMethodBadge
                       method={client.preferredContactMethod}
                     />
+                    {formatNextCallAt(client.confirmationCallAt) ? (
+                      <p className="text-[11px] leading-tight text-amber-800">
+                        Confirmación Zoom:{" "}
+                        {formatNextCallAt(client.confirmationCallAt)}
+                      </p>
+                    ) : null}
                     {formatNextCallAt(client.nextCallAt) ? (
                       <p className="text-[11px] leading-tight text-primary-dark">
                         Próximo llamado: {formatNextCallAt(client.nextCallAt)}

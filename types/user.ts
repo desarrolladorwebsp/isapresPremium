@@ -48,12 +48,17 @@ export interface UserRecord {
   assignedExecutiveName?: string | null;
   /** Kind del ejecutivo asignado (Zoom / Isapres / Premium). */
   assignedExecutiveKind?: import("@/types/staff-account").ExecutiveKind | null;
+  /** Ejecutivo que sigue el cliente tras un handoff (hasta CERRADO/PERDIDO). */
+  trackingExecutiveId?: string | null;
+  trackingExecutiveName?: string | null;
   pipelineStatus?: ClientPipelineStatus;
   checklist?: ClientChecklist;
   closedRecord?: ClientClosedRecord | null;
   pipelineNotes?: string | null;
   /** Próximo llamado agendado (ISO). */
   nextCallAt?: string | null;
+  /** Llamado de confirmación Zoom previo a la reunión Premium (ISO). */
+  confirmationCallAt?: string | null;
   lastCallOutcome?: string | null;
   /** Canal preferido de contacto (p. ej. tras redirección Zoom → Premium). */
   preferredContactMethod?: import("@/types/client-pipeline").ClientContactMethod | null;

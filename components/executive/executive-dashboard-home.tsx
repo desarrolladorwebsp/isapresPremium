@@ -16,6 +16,7 @@ import type { UserRecord } from "@/types/user";
 
 interface DashboardStats {
   clients: number;
+  derived: number;
   quotes: number;
   pendingQuotes: number;
   inDocumentation: number;
@@ -87,18 +88,31 @@ export function ExecutiveDashboardHome() {
   const stats = useMemo<DashboardStats | null>(() => {
     if (!clients) return null;
     const quoteRows = quotes ?? [];
+    const activeClients =
+      !isAdmin && user?.id
+        ? clients.filter((client) => client.assignedExecutiveId === user.id)
+        : clients;
+    const derivedCount =
+      !isAdmin && user?.id
+        ? clients.filter(
+            (client) =>
+              client.trackingExecutiveId === user.id &&
+              client.assignedExecutiveId !== user.id,
+          ).length
+        : 0;
     return {
-      clients: clients.length,
+      clients: activeClients.length,
+      derived: derivedCount,
       quotes: canSeeQuotes ? quoteRows.length : 0,
       pendingQuotes: canSeeQuotes
         ? quoteRows.filter((quote) => quote.status === "PENDING").length
         : 0,
-      inDocumentation: countByStatus(clients, "DOCUMENTACION"),
-      closed: countByStatus(clients, "CERRADO"),
-      noAnswer: countByStatus(clients, "NO_CONTESTA"),
-      inFollowUp: countByStatus(clients, "EN_SEGUIMIENTO"),
+      inDocumentation: countByStatus(activeClients, "DOCUMENTACION"),
+      closed: countByStatus(activeClients, "CERRADO"),
+      noAnswer: countByStatus(activeClients, "NO_CONTESTA"),
+      inFollowUp: countByStatus(activeClients, "EN_SEGUIMIENTO"),
     };
-  }, [clients, quotes, canSeeQuotes]);
+  }, [clients, quotes, canSeeQuotes, isAdmin, user?.id]);
 
   const loadingStats = clientsQuery.isLoading && !clientsQuery.data;
   const isFetching =
@@ -154,15 +168,15 @@ export function ExecutiveDashboardHome() {
             icon: <IconUsers className="size-6" />,
           },
           {
-            label: "No contesta",
-            hint: "Pendientes de contacto",
-            value: stats?.noAnswer,
+            label: "Derivados",
+            hint: "En seguimiento hasta el cierre",
+            value: stats?.derived,
             icon: <IconClipboard className="size-6" />,
           },
           {
-            label: "En seguimiento",
-            hint: "Clientes con llamado o seguimiento",
-            value: stats?.inFollowUp,
+            label: "No contesta",
+            hint: "Pendientes de contacto",
+            value: stats?.noAnswer,
             icon: <IconClock className="size-6" />,
           },
         ]

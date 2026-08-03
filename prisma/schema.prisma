@@ -195,12 +195,16 @@ model User {
   role                 UserRole              @default(CLIENT)
   active               Boolean               @default(true)
   assignedExecutiveId  String?               @map("assigned_executive_id")
+  /// Ejecutivo que hizo el handoff y sigue el cliente hasta CERRADO/PERDIDO (sin ser el assignee).
+  trackingExecutiveId  String?               @map("tracking_executive_id")
   pipelineStatus       ClientPipelineStatus  @default(NUEVO) @map("pipeline_status")
   pipelineChecklist    Json?                 @map("pipeline_checklist")
   pipelineClosedRecord Json?                 @map("pipeline_closed_record")
   pipelineNotes        String?               @map("pipeline_notes")
   /// Próximo llamado agendado (p. ej. Ejecutivo Zoom).
   nextCallAt           DateTime?             @map("next_call_at")
+  /// Llamado de confirmación Zoom (típicamente 10 min antes de la reunión Premium).
+  confirmationCallAt   DateTime?             @map("confirmation_call_at")
   /// Último resultado / nota corta del llamado.
   lastCallOutcome      String?               @map("last_call_outcome")
   /// Cómo debe contactar el ejecutivo Premium (tras redirección Zoom).
@@ -219,12 +223,15 @@ model User {
   reviews                PlanReview[]
   calendlyBookings       CalendlyBooking[]
   assignedExecutive      StaffAccount? @relation("AssignedClients", fields: [assignedExecutiveId], references: [id], onDelete: SetNull)
+  trackingExecutive      StaffAccount? @relation("TrackingClients", fields: [trackingExecutiveId], references: [id], onDelete: SetNull)
   advisedPlan            Plan?         @relation("AdvisedPlans", fields: [advisedPlanCode], references: [uniqueCode], onDelete: SetNull)
 
   @@index([role])
   @@index([assignedExecutiveId])
+  @@index([trackingExecutiveId])
   @@index([advisedPlanCode])
   @@index([nextCallAt])
+  @@index([confirmationCallAt])
   @@map("users")
 }
 
@@ -293,6 +300,7 @@ model StaffAccount {
   updatedAt             DateTime            @updatedAt @map("updated_at")
   assignedQuotes        Quote[]
   assignedClients       User[]              @relation("AssignedClients")
+  trackingClients       User[]              @relation("TrackingClients")
   passwordResetTokens   PasswordResetToken[]
 
   @@index([role])

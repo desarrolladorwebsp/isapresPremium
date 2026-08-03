@@ -15,6 +15,16 @@ export const ISAPRE_FILTER_OPTIONS: FilterOption[] = [
   { id: "esencial", label: "Esencial" },
 ];
 
+/**
+ * Opciones de “Isapre / previsión actual” en ficha de cliente.
+ * Incluye Isapres del catálogo más Fonasa y sin previsión.
+ */
+export const CURRENT_COVERAGE_OPTIONS: FilterOption[] = [
+  ...ISAPRE_FILTER_OPTIONS,
+  { id: "fonasa", label: "Fonasa" },
+  { id: "sin-prevision", label: "Sin previsión" },
+];
+
 export const ZONE_FILTER_OPTIONS: FilterOption[] = [
   { id: "rm-metropolitana", label: "Región Metropolitana" },
   { id: "rm-norte", label: "RM Norte" },

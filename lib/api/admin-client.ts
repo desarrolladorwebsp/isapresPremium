@@ -472,6 +472,21 @@ export async function updateClientPipeline(
   return parseJsonResponse<UserRecord>(response);
 }
 
+export async function markClientConfirmationCall(
+  clientId: string,
+  input?: { outcome?: string | null },
+): Promise<UserRecord> {
+  const response = await fetch(
+    `/api/executive/clients/${encodeURIComponent(clientId)}/confirm-call`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input ?? {}),
+    },
+  );
+  return parseJsonResponse<UserRecord>(response);
+}
+
 export async function redirectClientToPremium(
   clientId: string,
   input: import("@/types/client-pipeline").RedirectClientToPremiumInput,

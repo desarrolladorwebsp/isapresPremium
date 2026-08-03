@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState, type FormEvent } from "react";
-import { LandingLogo } from "@/components/platform/landing/landing-logo";
+import { StaffBrandLogo } from "@/components/auth/staff-brand-logo";
 import {
   AUTH_REALM,
   PASSWORD_RESET_REQUEST_PATH,
@@ -12,6 +12,7 @@ import {
   type AuthRealm,
 } from "@/lib/auth/constants";
 import { landing } from "@/components/platform/landing/landing-tokens";
+import { siteConfig } from "@/constants/site";
 import { touchTarget } from "@/lib/ui-tokens";
 import { joinClasses } from "@/lib/utils";
 
@@ -41,7 +42,7 @@ const fieldClass =
   "h-11 w-full rounded-xl border border-border/80 bg-white px-3.5 text-sm text-foreground shadow-sm transition focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/25";
 
 export function LoginForm({
-  title = "Acceso al cotizador",
+  title = `Acceso a ${siteConfig.name}`,
   subtitle = "Ingresa con tu cuenta de administrador o ejecutivo comercial.",
   redirectTo,
 }: LoginFormProps) {
@@ -102,8 +103,8 @@ export function LoginForm({
   return (
     <div className="landing-glass-panel-strong w-full max-w-md rounded-3xl border border-border/70 p-6 shadow-card sm:p-8">
       <div className="mb-8 text-center">
-        <div className="mx-auto mb-4 flex justify-center">
-          <LandingLogo size="lg" transparent />
+        <div className="mx-auto mb-5 flex justify-center">
+          <StaffBrandLogo size="lg" variant="wordmark" />
         </div>
         <h1 className="landing-text-gradient text-2xl font-bold tracking-tight sm:text-[1.65rem]">
           {title}

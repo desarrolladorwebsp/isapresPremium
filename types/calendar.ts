@@ -1,14 +1,14 @@
 import type { ClientPipelineStatus } from "@/types/client-pipeline";
 import type { ExecutiveKind } from "@/types/staff-account";
 
-/** Evento de calendario derivado de `User.nextCallAt`. */
+/** Evento de calendario derivado de `User.nextCallAt` o `confirmationCallAt`. */
 export interface CalendarCallEvent {
   id: string;
   clientId: string;
   clientName: string;
   startsAt: string;
   title: string;
-  kind: "call";
+  kind: "call" | "confirmation";
   /** Canal preferido (Zoom / WhatsApp) para colorear el evento. */
   contactMethod?: "ZOOM" | "WHATSAPP" | null;
   /** Equipo Calendly si hay booking / asignación. */
@@ -24,4 +24,7 @@ export interface CalendarCallEvent {
   assignedExecutiveId?: string | null;
   assignedExecutiveName?: string | null;
   assignedExecutiveKind?: ExecutiveKind | null;
+  /** Ejecutivo en seguimiento post-handoff. */
+  trackingExecutiveId?: string | null;
+  trackingExecutiveName?: string | null;
 }

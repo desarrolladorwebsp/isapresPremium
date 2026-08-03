@@ -20,6 +20,7 @@ import { useStaffSession } from "@/hooks/use-auth-session";
 import { useExecutiveClientsQuery } from "@/hooks/query/use-executive-clients-query";
 import { getStaffRoleLabel } from "@/lib/auth/staff-role";
 import { CLIENT_PIPELINE_STATUS_DESCRIPTIONS } from "@/lib/client-pipeline/constants";
+import { isTrackingOnlyForExecutive } from "@/lib/client-pipeline/tracking";
 import { syncClientMutationCache } from "@/lib/query/executive-cache";
 import { staffExecutiveHref } from "@/lib/staff/staff-sections";
 import { touchTarget, ui } from "@/lib/ui-tokens";
@@ -67,7 +68,7 @@ export function ExecutiveClientDetailView({
 }: ExecutiveClientDetailViewProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { isAdmin } = useStaffSession();
+  const { isAdmin, user } = useStaffSession();
   const clientsQuery = useExecutiveClientsQuery();
 
   const client = useMemo(
@@ -85,9 +86,22 @@ export function ExecutiveClientDetailView({
   function handleRedirected(updated: UserRecord) {
     if (isAdmin) {
       syncClientMutationCache(queryClient, updated);
+      onNotify("Cliente reasignado.");
       return;
     }
-    syncClientMutationCache(queryClient, updated, { removeFromList: true });
+    const stillVisible =
+      Boolean(user?.id) &&
+      (updated.assignedExecutiveId === user?.id ||
+        updated.trackingExecutiveId === user?.id);
+    syncClientMutationCache(queryClient, updated, {
+      removeFromList: !stillVisible,
+    });
+    if (stillVisible) {
+      onNotify(
+        "Cliente derivado. Queda en Derivados hasta el cierre del negocio.",
+      );
+      return;
+    }
     onNotify("Cliente reasignado. Ya no aparece en tu cartera.");
     onLeftPortfolio?.();
     onBack();
@@ -219,6 +233,13 @@ export function ExecutiveClientDetailView({
           <SummaryField label="Etapa del cliente">
             <div className="space-y-1.5">
               <ClientPipelineStatusBadge status={pipelineStatus} />
+              {user?.id &&
+              isTrackingOnlyForExecutive(client, user.id) &&
+              !isAdmin ? (
+                <span className="inline-flex w-fit rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 ring-1 ring-amber-200">
+                  Derivado · seguimiento
+                </span>
+              ) : null}
               <p className="text-xs leading-snug text-muted">
                 {CLIENT_PIPELINE_STATUS_DESCRIPTIONS[pipelineStatus]}
               </p>

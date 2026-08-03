@@ -1,6 +1,7 @@
 /*
  * Landing — misma identidad que Cotizador Premium ([data-brand="premium"]).
  * Scoped bajo [data-landing]; no afecta cotizador de otros socios.
+ * Acceso staff usa [data-brand="isapre-premium"] (override más abajo).
  */
 
 [data-landing] {
@@ -57,6 +58,58 @@
   --landing-section-surface: rgb(255 255 255 / 0.82);
 
   color: var(--foreground);
+}
+
+/* Acceso staff / shell Isapres Premium — alinear con isapre-premium-agent.ts */
+[data-landing][data-brand="isapre-premium"] {
+  --primary: #0f8d8e;
+  --primary-hover: #0c7576;
+  --primary-dark: #154b56;
+  --primary-foreground: #ffffff;
+
+  --secondary: #0f8d8e;
+  --secondary-muted: #e8f5f2;
+
+  --accent-cyan: #0f8d8e;
+  --text-secondary: #5f747a;
+
+  --bg-layout: #f7fafb;
+  --background: #ffffff;
+  --foreground: #154b56;
+  --muted: #7a8d93;
+  --border: #e6eff0;
+  --surface-hover: #eef5f6;
+
+  --shadow-card: 0 4px 24px -8px rgb(21 75 86 / 0.07);
+  --shadow-card-hover: 0 12px 32px -10px rgb(15 141 142 / 0.18);
+  --shadow-cta: 0 8px 28px -8px rgb(15 141 142 / 0.35);
+
+  --landing-card-glow: 0 24px 64px -16px rgb(15 141 142 / 0.14);
+}
+
+[data-landing][data-brand="isapre-premium"] .landing-page-backdrop-gradient {
+  background:
+    linear-gradient(
+      105deg,
+      rgb(247 250 251 / 0.97) 0%,
+      rgb(247 250 251 / 0.88) 38%,
+      rgb(232 245 242 / 0.55) 58%,
+      rgb(21 75 86 / 0.08) 100%
+    ),
+    linear-gradient(
+      to bottom,
+      rgb(247 250 251 / 0.35) 0%,
+      rgb(247 250 251 / 0.72) 55%,
+      rgb(247 250 251 / 0.92) 100%
+    );
+}
+
+[data-landing][data-brand="isapre-premium"] .landing-grid-pattern {
+  background-image:
+    linear-gradient(rgb(21 75 86 / 0.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(21 75 86 / 0.022) 1px, transparent 1px);
+  background-size: 72px 72px;
+  mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, black 20%, transparent 75%);
 }
 
 [data-landing] .premium-text-secondary {
