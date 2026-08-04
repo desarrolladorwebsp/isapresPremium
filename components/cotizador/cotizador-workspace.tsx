@@ -22,6 +22,7 @@ import { CotizadorNav } from "@/components/cotizador/cotizador-nav";
 import { AssignPlanToClientModal } from "@/components/executive/assign-plan-to-client-modal";
 import { PlanCompareModal } from "@/components/executive/plan-compare-modal";
 import { IconWhatsApp } from "@/components/executive/executive-icons";
+import { useStaffSession } from "@/hooks/use-auth-session";
 import { useCotizadorDashboard } from "@/hooks/use-cotizador-dashboard";
 import { usePlansCatalog } from "@/hooks/use-plans-catalog";
 import {
@@ -200,6 +201,9 @@ function CotizadorWorkspaceInner({
   /** Acciones: abiertas por defecto en desktop; cerradas en mobile. */
   const [selectionActionsOpen, setSelectionActionsOpen] = useState(false);
   const isExecutive = variant === "executive";
+  const { allowedSections } = useStaffSession();
+  /** Membresía y roles sin sección clientes: no cargar cartera ni mostrar picker. */
+  const canUseClients = !isExecutive || allowedSections.includes("clientes");
   const searchParams = useSearchParams();
   const clientPickerRef = useRef<HTMLDivElement>(null);
   const selectionBarRef = useRef<HTMLDivElement>(null);
@@ -300,7 +304,10 @@ function CotizadorWorkspaceInner({
   ]);
 
   useEffect(() => {
-    if (!isExecutive) return;
+    if (!isExecutive || !canUseClients) {
+      setClients([]);
+      return;
+    }
 
     let cancelled = false;
     void fetchExecutiveClients()
@@ -319,13 +326,13 @@ function CotizadorWorkspaceInner({
     return () => {
       cancelled = true;
     };
-  }, [isExecutive, onNotify]);
+  }, [isExecutive, canUseClients, onNotify]);
 
   useEffect(() => {
-    if (!isExecutive) return;
+    if (!isExecutive || !canUseClients) return;
     const fromUrl = searchParams.get("clientId")?.trim();
     if (fromUrl) setActiveClientId(fromUrl);
-  }, [isExecutive, searchParams]);
+  }, [isExecutive, canUseClients, searchParams]);
 
   useEffect(() => {
     if (!clientPickerOpen) return;
@@ -514,6 +521,7 @@ function CotizadorWorkspaceInner({
   }
 
   function requireActiveClient(): UserRecord | null {
+    if (!canUseClients) return null;
     if (!activeClientRecord) {
       notify(CLIENT_REQUIRED_MESSAGE, "error");
       return null;
@@ -522,7 +530,7 @@ function CotizadorWorkspaceInner({
   }
 
   async function handleCopySelectedTable() {
-    if (!requireActiveClient()) return;
+    if (canUseClients && !requireActiveClient()) return;
     if (selectedPlans.length === 0) return;
 
     const tsv = buildSelectedPlansTableTsv(selectedShareInput);
@@ -540,27 +548,48 @@ function CotizadorWorkspaceInner({
   }
 
   function handleWhatsAppSelectedPlans() {
-    const client = requireActiveClient();
-    if (!client) return;
     if (selectedPlans.length === 0) return;
 
-    const phone = client.phone?.trim() || null;
-    if (!phone) {
+    const message = buildSelectedPlansShareMessage(selectedShareInput);
+
+    if (canUseClients) {
+      const client = requireActiveClient();
+      if (!client) return;
+
+      const phone = client.phone?.trim() || null;
+      if (!phone) {
+        notify(
+          "El cliente seleccionado no tiene un teléfono registrado.",
+          "error",
+        );
+        return;
+      }
+
+      window.open(buildWhatsAppUrl(phone, message), "_blank", "noopener,noreferrer");
       notify(
-        "El cliente seleccionado no tiene un teléfono registrado.",
-        "error",
+        `Abriendo WhatsApp con ${selectedPlans.length} planes seleccionados.`,
       );
       return;
     }
 
-    const message = buildSelectedPlansShareMessage(selectedShareInput);
-    window.open(buildWhatsAppUrl(phone, message), "_blank", "noopener,noreferrer");
-    notify(
-      `Abriendo WhatsApp con ${selectedPlans.length} planes seleccionados.`,
-    );
+    void (async () => {
+      const copied = await copyTextToClipboard(message);
+      if (copied) {
+        notify(`Mensaje de ${selectedPlans.length} planes copiado.`);
+        return;
+      }
+      notify(
+        "No se pudo copiar el mensaje. Revisa los permisos del portapapeles.",
+        "error",
+      );
+    })();
   }
 
   async function handleEmailSelectedPlans() {
+    if (!canUseClients) {
+      notify("Tu rol no tiene acceso a clientes para enviar correo.", "error");
+      return;
+    }
     const client = requireActiveClient();
     if (!client || emailSending) return;
     if (selectedPlans.length === 0) return;
@@ -780,7 +809,7 @@ function CotizadorWorkspaceInner({
                   />
                 ) : null}
 
-                {isExecutive ? (
+                {isExecutive && canUseClients ? (
                   <div
                     ref={clientPickerRef}
                     className="relative min-w-0 w-full sm:w-52 sm:flex-none"
@@ -1029,10 +1058,12 @@ function CotizadorWorkspaceInner({
                   highlightAmbulatoryClinicIds={getActiveAmbulatoryClinicIds(
                     dashboardFilters,
                   )}
-                  activeClient={isExecutive ? activeClient : null}
+                  activeClient={isExecutive && canUseClients ? activeClient : null}
                   onNotify={isExecutive ? notify : undefined}
                   onAssignPlan={
-                    isExecutive ? (plan) => setAssignPlan(plan) : undefined
+                    isExecutive && canUseClients
+                      ? (plan) => setAssignPlan(plan)
+                      : undefined
                   }
                   selectedPlanCodes={
                     isExecutive ? selectedPlanCodes : undefined
@@ -1088,7 +1119,7 @@ function CotizadorWorkspaceInner({
           bottomOffset={filtersFabBottomOffset}
         />
 
-      {isExecutive ? (
+      {isExecutive && canUseClients ? (
         <AssignPlanToClientModal
           plan={assignPlan}
           beneficiarySummary={beneficiarySummary}
@@ -1244,41 +1275,43 @@ function CotizadorWorkspaceInner({
                       </span>
                     </button>
 
-                    <button
-                      type="button"
-                      onClick={() => void handleEmailSelectedPlans()}
-                      disabled={emailSending}
-                      aria-label={
-                        emailSending
-                          ? "Enviando correo"
-                          : "Enviar por email los planes seleccionados"
-                      }
-                      className={joinClasses(
-                        touchTarget,
-                        "h-auto min-h-11 w-full justify-center gap-1.5 rounded-xl border border-teal-500/40 bg-teal-50 px-2.5 text-xs font-bold text-teal-800 transition hover:border-teal-500 hover:bg-teal-100 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 sm:min-h-10 sm:text-sm lg:w-auto lg:px-3",
-                      )}
-                    >
-                      <svg
-                        viewBox="0 0 20 20"
-                        className="size-3.5 shrink-0"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.8"
-                        aria-hidden
+                    {canUseClients ? (
+                      <button
+                        type="button"
+                        onClick={() => void handleEmailSelectedPlans()}
+                        disabled={emailSending}
+                        aria-label={
+                          emailSending
+                            ? "Enviando correo"
+                            : "Enviar por email los planes seleccionados"
+                        }
+                        className={joinClasses(
+                          touchTarget,
+                          "h-auto min-h-11 w-full justify-center gap-1.5 rounded-xl border border-teal-500/40 bg-teal-50 px-2.5 text-xs font-bold text-teal-800 transition hover:border-teal-500 hover:bg-teal-100 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 sm:min-h-10 sm:text-sm lg:w-auto lg:px-3",
+                        )}
                       >
-                        <path
-                          d="M3 5.5h14v9H3v-9Zm0 0 7 5.5 7-5.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                      <span className="lg:hidden">
-                        {emailSending ? "Enviando…" : "Email"}
-                      </span>
-                      <span className="hidden lg:inline">
-                        {emailSending ? "Enviando…" : "Enviar por email"}
-                      </span>
-                    </button>
+                        <svg
+                          viewBox="0 0 20 20"
+                          className="size-3.5 shrink-0"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.8"
+                          aria-hidden
+                        >
+                          <path
+                            d="M3 5.5h14v9H3v-9Zm0 0 7 5.5 7-5.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                        <span className="lg:hidden">
+                          {emailSending ? "Enviando…" : "Email"}
+                        </span>
+                        <span className="hidden lg:inline">
+                          {emailSending ? "Enviando…" : "Enviar por email"}
+                        </span>
+                      </button>
+                    ) : null}
 
                     <button
                       type="button"

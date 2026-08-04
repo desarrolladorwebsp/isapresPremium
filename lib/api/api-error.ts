@@ -83,10 +83,13 @@ export function toApiError(error: unknown): ApiError {
       detail.includes("lastCallOutcome") ||
       detail.includes("nextCallAt") ||
       detail.includes("clientOrigin") ||
-      detail.includes("Unknown argument")
+      detail.includes("executiveKind") ||
+      detail.includes("trackingExecutiveId") ||
+      detail.includes("Unknown argument") ||
+      detail.includes("Expected ExecutiveKind")
     ) {
       return new ApiError(
-        "El servidor está usando una versión desactualizada de la base de datos. Reinicia con `npm run dev`.",
+        "El servidor está usando una versión desactualizada de Prisma. Reinicia con `npm run dev`.",
         503,
         "STALE_PRISMA_CLIENT",
       );

@@ -68,11 +68,11 @@ export function buildStaffInviteEmailSubject(
   executiveKind?: ExecutiveKind | null,
 ): string {
   if (realm === "admin") {
-    return "Tu acceso de administrador — Cotizador Premium";
+    return "Tu acceso de administrador — Isapres Premium";
   }
 
   const label = resolveRoleLabel(realm, executiveKind);
-  return `Tu acceso de ${label} — Cotizador Premium`;
+  return `Tu acceso de ${label} — Isapres Premium`;
 }
 
 export function buildStaffActivationEmailSubject(
@@ -80,11 +80,11 @@ export function buildStaffActivationEmailSubject(
   executiveKind?: ExecutiveKind | null,
 ): string {
   if (realm === "admin") {
-    return "Activa tu cuenta de administrador — Cotizador Premium";
+    return "Activa tu cuenta de administrador — Isapres Premium";
   }
 
   const label = resolveRoleLabel(realm, executiveKind);
-  return `Activa tu cuenta de ${label} — Cotizador Premium`;
+  return `Activa tu cuenta de ${label} — Isapres Premium`;
 }
 
 export function buildStaffActivationEmailHtml(input: {
@@ -111,7 +111,7 @@ export function buildStaffActivationEmailHtml(input: {
   const body = `
     <h1 style="margin:0 0 12px;font-size:22px;color:#222;">Activa tu cuenta</h1>
     <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#444;">
-      Se te invitó a unirte a Cotizador Premium como <strong>${escapeHtml(roleLabel)}</strong>.
+      Se te invitó a unirte a Isapres Premium como <strong>${escapeHtml(roleLabel)}</strong>.
       Solo tú, con este correo, puedes completar el registro.
     </p>
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 20px;border:1px solid #eee;border-radius:10px;overflow:hidden;">
@@ -142,7 +142,7 @@ export function buildStaffActivationEmailHtml(input: {
 }
 
 export function buildPasswordResetEmailSubject(): string {
-  return "Restablece tu contraseña — Cotizador Premium";
+  return "Restablece tu contraseña — Isapres Premium";
 }
 
 export function buildPasswordResetEmailHtml(input: {
@@ -156,7 +156,7 @@ export function buildPasswordResetEmailHtml(input: {
     <h1 style="margin:0 0 12px;font-size:22px;color:#222;">Restablecer contraseña</h1>
     <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#444;">
       Recibimos una solicitud para restablecer la contraseña de la cuenta
-      <strong>${escapeHtml(input.email)}</strong> en Cotizador Premium.
+      <strong>${escapeHtml(input.email)}</strong> en Isapres Premium.
     </p>
     <p style="margin:0 0 20px;text-align:center;">
       <a href="${escapeHtml(input.resetUrl)}" style="display:inline-block;background:${brand.primary};color:${brand.primaryForeground};text-decoration:none;font-weight:700;font-size:15px;padding:12px 22px;border-radius:999px;">

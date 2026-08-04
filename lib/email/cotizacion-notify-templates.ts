@@ -429,11 +429,11 @@ export function buildAdminCotizacionEmailHtml(
     ),
     renderTableRow(
       "Agente / widget",
-      escapeHtml(data.partnerEntityName ?? data.partnerEntitySlug ?? "Cotizador Premium"),
+      escapeHtml(data.partnerEntityName ?? data.partnerEntitySlug ?? "Isapres Premium"),
     ),
     renderTableRow(
       "Slug del agente",
-      escapeHtml(data.partnerEntitySlug ?? "cotizadorpremium"),
+      escapeHtml(data.partnerEntitySlug ?? "isaprespremium"),
     ),
     ...buildConvenioTableRows(data),
     ...buildAdminPlanRows(data),

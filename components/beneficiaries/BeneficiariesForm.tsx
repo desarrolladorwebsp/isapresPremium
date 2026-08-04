@@ -268,7 +268,7 @@ export function BeneficiariesForm({
         <div className="space-y-3">
           <div className="rounded-lg border border-border/70 bg-white p-3 shadow-sm">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-              <label className="block min-w-0 flex-1 space-y-1.5">
+              <label className="block w-20 shrink-0 space-y-1.5 sm:w-24">
                 <span className="text-[10px] font-bold uppercase tracking-wide text-muted">
                   Edad
                 </span>
@@ -294,7 +294,7 @@ export function BeneficiariesForm({
                 />
               </label>
 
-              <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0">
+              <div className="grid min-w-0 flex-1 grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => addPerson("contributor")}

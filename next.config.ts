@@ -7,7 +7,10 @@ const embedFrameAncestors = resolveEmbedFrameAncestorsDirective();
 const nextConfig: NextConfig = {
   serverExternalPackages: ["@prisma/client", "prisma"],
   outputFileTracingIncludes: {
-    "/api/**/*": ["./public/images/logo-cotizador-premium.png"],
+    "/api/**/*": [
+      "./public/logo-isapres-premium.png",
+      "./public/images/logo-isapres-premium.png",
+    ],
   },
   async headers() {
     return [

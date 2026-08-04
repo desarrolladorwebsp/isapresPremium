@@ -19,6 +19,7 @@ function firstName(fullName: string): string {
 function renderPlanSection(
   plan: ExecutiveSharePlansEmailInput["plans"][number],
   index: number,
+  linkColor: string,
 ): string {
   const rows: Array<[string, string]> = [
     ["Isapre", plan.isapre],
@@ -52,12 +53,12 @@ function renderPlanSection(
   const pdfLink =
     plan.pdfUrl && plan.pdfUrl.trim()
       ? `<p style="margin:12px 0 0;font-size:13px;">
-          <a href="${escapeHtml(plan.pdfUrl)}" style="color:#0d6dee;font-weight:700;">Ver / descargar PDF del plan</a>
+          <a href="${escapeHtml(plan.pdfUrl)}" style="color:${linkColor};font-weight:700;">Ver / descargar PDF del plan</a>
         </p>`
       : `<p style="margin:12px 0 0;font-size:13px;color:#888;">PDF no disponible</p>`;
 
   return `<div style="margin:0 0 22px;padding:16px;border:1px solid #e5e7eb;border-radius:12px;background:#fafbfc;">
-    <p style="margin:0 0 12px;font-size:15px;font-weight:700;color:#092558;">Alternativa ${index + 1}</p>
+    <p style="margin:0 0 12px;font-size:15px;font-weight:700;color:#154B56;">Alternativa ${index + 1}</p>
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">
       ${tableRows}
     </table>
@@ -68,7 +69,7 @@ function renderPlanSection(
 export function buildExecutiveSharePlansSubject(
   data: ExecutiveSharePlansEmailTemplateData,
 ): string {
-  return `Comparación de ${data.plans.length} planes de salud — Cotizador Premium`;
+  return `Comparación de ${data.plans.length} planes de salud — Isapres Premium`;
 }
 
 export function buildExecutiveSharePlansEmailHtml(
@@ -85,7 +86,7 @@ export function buildExecutiveSharePlansEmailHtml(
     : "";
 
   const planSections = data.plans
-    .map((plan, index) => renderPlanSection(plan, index))
+    .map((plan, index) => renderPlanSection(plan, index, brand.primary))
     .join("");
 
   const body = `
@@ -94,7 +95,7 @@ export function buildExecutiveSharePlansEmailHtml(
     </p>
     <p style="margin:0 0 20px;font-size:14px;line-height:1.55;color:#444;">
       Te compartimos <strong>${count}</strong> alternativa${count === 1 ? "" : "s"} de planes de salud
-      preparada${count === 1 ? "" : "s"} desde Cotizador Premium.
+      preparada${count === 1 ? "" : "s"} desde Isapres Premium.
     </p>
     ${profileBlock}
     ${planSections}

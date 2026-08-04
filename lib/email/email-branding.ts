@@ -1,9 +1,11 @@
 import { escapeHtml } from "@/lib/email/escape-html";
 import { PREMIUM_EMAIL_LOGO_CID } from "@/lib/email/email-inline-assets";
-import { COTIZADOR_PREMIUM_PALETTE } from "@/lib/partner-entity/cotizador-premium-palette";
 import {
-  resolveServerAppBaseUrl,
-} from "@/lib/platform/routing";
+  ISAPRE_PREMIUM_THEME,
+  isIsaprePremiumAgentKey,
+} from "@/lib/partner-entity/isapre-premium-agent";
+import { PLATFORM_AGENT_KEY } from "@/lib/partner-entity/platform-agent";
+import { resolveServerAppBaseUrl } from "@/lib/platform/routing";
 import type { PartnerEntityTheme } from "@/types/partner-entity";
 
 export interface EmailBrand {
@@ -15,15 +17,25 @@ export interface EmailBrand {
   logoUrl?: string;
   /** Referencia cid: para logo incrustado en el correo (más fiable que URL externa). */
   logoContentId?: string;
+  /**
+   * Fondo del header. Por defecto (sistema Isapres Premium) es blanco
+   * para que el wordmark se lea bien; agentes pueden usar su primary.
+   */
+  headerBackground?: string;
 }
 
+/**
+ * Marca por defecto de correos del sistema (sin agente asociado).
+ * El cotizador vive en Isapres Premium: logo + paleta turquesa.
+ */
 export const PREMIUM_EMAIL_BRAND: EmailBrand = {
-  name: "Cotizador Premium",
-  primary: COTIZADOR_PREMIUM_PALETTE.primary,
-  primaryDark: COTIZADOR_PREMIUM_PALETTE.primaryDark,
-  primaryForeground: COTIZADOR_PREMIUM_PALETTE.primaryForeground,
-  secondaryMuted: COTIZADOR_PREMIUM_PALETTE.secondaryMuted,
+  name: "Isapres Premium",
+  primary: ISAPRE_PREMIUM_THEME.primary ?? "#0F8D8E",
+  primaryDark: ISAPRE_PREMIUM_THEME.primaryDark ?? "#154B56",
+  primaryForeground: ISAPRE_PREMIUM_THEME.primaryForeground ?? "#ffffff",
+  secondaryMuted: ISAPRE_PREMIUM_THEME.secondaryMuted ?? "#E8F5F2",
   logoContentId: PREMIUM_EMAIL_LOGO_CID,
+  headerBackground: "#FFFFFF",
 };
 
 export function resolveAbsoluteAssetUrl(
@@ -37,26 +49,36 @@ export function resolveAbsoluteAssetUrl(
   return `${base}${trimmed.startsWith("/") ? trimmed : `/${trimmed}`}`;
 }
 
-/** Marca premium con logo incrustado (recomendado para correos transaccionales). */
+/** Marca Isapres Premium con logo incrustado (correos transaccionales del sistema). */
 export function resolvePremiumEmailBrand(): EmailBrand {
   return { ...PREMIUM_EMAIL_BRAND };
 }
 
+function isSystemOrPlatformSlug(slug: string | null | undefined): boolean {
+  const normalized = slug?.trim().toLowerCase() ?? "";
+  if (!normalized) return true;
+  if (normalized === PLATFORM_AGENT_KEY) return true;
+  if (isIsaprePremiumAgentKey(normalized)) return true;
+  return false;
+}
+
+/**
+ * Marca de correo según agente.
+ * Sin agente / cotizadorpremium / isaprespremium → Isapres Premium (sistema).
+ * Otros agentes → su logo y colores.
+ */
 export function resolveAgentEmailBrand(input: {
   partnerEntityName?: string | null;
   partnerEntitySlug?: string | null;
   partnerEntityTheme?: PartnerEntityTheme | null;
   partnerEntityLogoUrl?: string | null;
 }): EmailBrand {
-  const name = input.partnerEntityName?.trim() || PREMIUM_EMAIL_BRAND.name;
-  const theme = input.partnerEntityTheme;
-  const hasAgent =
-    Boolean(input.partnerEntitySlug?.trim()) &&
-    input.partnerEntitySlug?.trim().toLowerCase() !== "cotizadorpremium";
-
-  if (!hasAgent && !theme?.primary) {
+  if (isSystemOrPlatformSlug(input.partnerEntitySlug)) {
     return resolvePremiumEmailBrand();
   }
+
+  const name = input.partnerEntityName?.trim() || PREMIUM_EMAIL_BRAND.name;
+  const theme = input.partnerEntityTheme;
 
   return {
     name,
@@ -67,6 +89,7 @@ export function resolveAgentEmailBrand(input: {
     secondaryMuted:
       theme?.secondaryMuted ?? PREMIUM_EMAIL_BRAND.secondaryMuted,
     logoUrl: resolveAbsoluteAssetUrl(input.partnerEntityLogoUrl ?? undefined),
+    headerBackground: theme?.primary ?? PREMIUM_EMAIL_BRAND.primary,
   };
 }
 
@@ -80,9 +103,15 @@ export function buildEmailShell(
     ? `cid:${brand.logoContentId}`
     : brand.logoUrl;
 
+  const headerBg = brand.headerBackground ?? brand.primary;
+  const isLightHeader =
+    headerBg.toLowerCase() === "#ffffff" ||
+    headerBg.toLowerCase() === "#fff" ||
+    headerBg.toLowerCase() === PREMIUM_EMAIL_BRAND.secondaryMuted.toLowerCase();
+
   const headerContent = logoSrc
     ? `<img src="${escapeHtml(logoSrc)}" alt="${escapeHtml(brand.name)}" width="180" style="display:block;max-width:180px;max-height:48px;height:auto;border:0;" />`
-    : `<p style="margin:0;font-size:22px;font-weight:700;color:${brand.primaryForeground};">${escapeHtml(brand.name)}</p>`;
+    : `<p style="margin:0;font-size:22px;font-weight:700;color:${isLightHeader ? brand.primaryDark : brand.primaryForeground};">${escapeHtml(brand.name)}</p>`;
 
   return `<!DOCTYPE html>
 <html lang="es">
@@ -97,7 +126,10 @@ export function buildEmailShell(
         <td align="center">
           <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:620px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
             <tr>
-              <td style="background:${brand.primary};padding:20px 24px;">
+              <td style="height:4px;background:${brand.primary};font-size:0;line-height:0;">&nbsp;</td>
+            </tr>
+            <tr>
+              <td style="background:${headerBg};padding:20px 24px;border-bottom:1px solid ${isLightHeader ? "#eee" : "transparent"};">
                 ${headerContent}
               </td>
             </tr>

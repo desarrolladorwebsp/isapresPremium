@@ -56,7 +56,7 @@ export function buildExecutiveClientAssignmentEmailHtml(
       Hola ${escapeHtml(data.executiveName)},
     </p>
     <p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:#444;">
-      Se te ha asignado un nuevo cliente en Cotizador Premium. Revisa su información y da seguimiento desde tu panel.
+      Se te ha asignado un nuevo cliente en Isapres Premium. Revisa su información y da seguimiento desde tu panel.
     </p>
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border:1px solid #eee;border-radius:8px;overflow:hidden;margin-bottom:24px;">
       ${tableRows}
@@ -68,6 +68,6 @@ export function buildExecutiveClientAssignmentEmailHtml(
     brand,
     "Nuevo cliente asignado",
     body,
-    "Este correo fue enviado desde cotizaciones@cotizadorpremium.cl",
+    "Notificaciones de Isapres Premium",
   );
 }
