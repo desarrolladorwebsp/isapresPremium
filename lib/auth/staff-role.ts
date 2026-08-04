@@ -21,6 +21,18 @@ export function isClientAssignableExecutiveKind(
   return kind !== "MEMBRESIA_ISAPRES_PREMIUM";
 }
 
+/**
+ * Admins pueden recibir cartera como destino operativo en los mismos
+ * flujos que Ejecutivo Isapres Premium y Ejecutivo Zoom.
+ * Sin `kind` (pool general / asignación manual) también se incluyen.
+ */
+export function adminCanReceiveAssignmentsForKind(
+  kind: ExecutiveKind | null | undefined,
+): boolean {
+  if (!kind) return true;
+  return kind === "ISAPRES_PREMIUM" || kind === "ZOOM";
+}
+
 export function staffRoleToRealm(role: StaffRole): StaffRealm {
   return role === "ADMIN" ? "admin" : "executive";
 }

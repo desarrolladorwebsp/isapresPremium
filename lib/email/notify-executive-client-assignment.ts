@@ -51,7 +51,7 @@ export async function sendExecutiveClientAssignmentEmail(
     prisma.staffAccount.findFirst({
       where: {
         id: input.executiveAccountId,
-        role: "EXECUTIVE",
+        role: { in: ["EXECUTIVE", "ADMIN"] },
         active: true,
       },
       select: { email: true, fullName: true },

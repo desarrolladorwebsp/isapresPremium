@@ -10,6 +10,9 @@ export interface ClientDependentProfile {
   preexistenciasMedicas: string;
 }
 
+/** Moneda del monto ingresado en perfil (UF o pesos chilenos). */
+export type ClientMoneyCurrency = "UF" | "CLP";
+
 /** Titulares adicionales del grupo familiar (además del titular de la cuenta). */
 export interface ClientAdditionalTitularProfile {
   id: string;
@@ -24,6 +27,12 @@ export interface ClientAdditionalTitularProfile {
   maritalStatus: string;
   phone: string;
   currentIsapre: string;
+  /** Precio del plan actual (monto). */
+  currentPlanPrice: string;
+  currentPlanPriceCurrency: ClientMoneyCurrency;
+  /** Adicional voluntario (monto). */
+  voluntaryAdditional: string;
+  voluntaryAdditionalCurrency: ClientMoneyCurrency;
   /** Renta imponible (texto libre / monto). */
   rentaImponible: string;
   /** Motivo de cotización. */
@@ -47,6 +56,12 @@ export interface ClientExecutiveProfile {
   /** Edad; se puede recalcular desde birthDate, pero es editable. */
   age: string;
   currentIsapre: string;
+  /** Precio del plan actual (monto). */
+  currentPlanPrice: string;
+  currentPlanPriceCurrency: ClientMoneyCurrency;
+  /** Adicional voluntario (monto). */
+  voluntaryAdditional: string;
+  voluntaryAdditionalCurrency: ClientMoneyCurrency;
   heightCm: string;
   weightKg: string;
   maritalStatus: string;
@@ -86,6 +101,10 @@ export interface ClientProfileInput {
   birthDate?: string | null;
   age?: string | null;
   currentIsapre?: string | null;
+  currentPlanPrice?: string | null;
+  currentPlanPriceCurrency?: ClientMoneyCurrency | null;
+  voluntaryAdditional?: string | null;
+  voluntaryAdditionalCurrency?: ClientMoneyCurrency | null;
   heightCm?: string | null;
   weightKg?: string | null;
   maritalStatus?: string | null;

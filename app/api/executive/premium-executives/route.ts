@@ -9,6 +9,7 @@ import type { ExecutiveSessionUser } from "@/lib/auth/types";
 /**
  * Lista ejecutivos Isapres Premium elegibles para redirección del flujo Zoom.
  * Acceso: Admin, Ejecutivo Zoom, o Ejecutivo Isapres Premium (adaptación).
+ * Incluye administradores activos como destino operativo.
  */
 export async function GET(request: Request) {
   try {

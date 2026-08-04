@@ -1,13 +1,21 @@
 import { prisma } from "@/lib/prisma";
 import { isSubscriptionActive } from "@/lib/auth/subscription";
-import { isClientAssignableExecutiveKind } from "@/lib/auth/staff-role";
+import {
+  adminCanReceiveAssignmentsForKind,
+  isClientAssignableExecutiveKind,
+  staffRoleToRealm,
+} from "@/lib/auth/staff-role";
 import { queueExecutiveClientAssignmentEmail } from "@/lib/email/notify-executive-client-assignment";
-import type { ExecutiveKind } from "@prisma/client";
+import type { ExecutiveKind, StaffRole } from "@prisma/client";
+import type { StaffRealm } from "@/types/staff-account";
 
 export interface EligibleExecutiveRow {
   id: string;
   fullName?: string;
   email?: string;
+  role?: StaffRole;
+  realm?: StaffRealm;
+  executiveKind?: ExecutiveKind | null;
 }
 
 export interface ListEligibleExecutivesOptions {
@@ -21,6 +29,7 @@ export interface ListEligibleExecutivesOptions {
  * Ejecutivos elegibles para recibir nuevos clientes:
  * activos, onboarding completo, sin suspensión de asignaciones y suscripción vigente.
  * Excluye membresía (no reciben cartera).
+ * Incluye administradores activos cuando el kind es Premium, Zoom o pool general.
  */
 export async function listEligibleExecutivesForAssignment(
   options?: ListEligibleExecutivesOptions,
@@ -32,42 +41,78 @@ export async function listEligibleExecutivesForAssignment(
     return [];
   }
 
-  const executives = await prisma.staffAccount.findMany({
+  const includeAdmins = adminCanReceiveAssignmentsForKind(
+    options?.executiveKind,
+  );
+
+  const accounts = await prisma.staffAccount.findMany({
     where: {
-      role: "EXECUTIVE",
-      active: true,
-      onboardingCompleted: true,
-      assignmentsSuspended: false,
-      executiveKind: options?.executiveKind
-        ? options.executiveKind
-        : { not: "MEMBRESIA_ISAPRES_PREMIUM" },
+      OR: [
+        {
+          role: "EXECUTIVE",
+          active: true,
+          onboardingCompleted: true,
+          assignmentsSuspended: false,
+          executiveKind: options?.executiveKind
+            ? options.executiveKind
+            : { not: "MEMBRESIA_ISAPRES_PREMIUM" },
+        },
+        ...(includeAdmins
+          ? [
+              {
+                role: "ADMIN" as const,
+                active: true,
+                assignmentsSuspended: false,
+              },
+            ]
+          : []),
+      ],
     },
     select: {
       id: true,
       fullName: true,
       email: true,
+      role: true,
+      executiveKind: true,
       subscriptionStatus: true,
       subscriptionExpiresAt: true,
     },
-    orderBy: { createdAt: "asc" },
+    orderBy: [{ fullName: "asc" }, { createdAt: "asc" }],
   });
 
-  return executives
-    .filter((executive) =>
-      isSubscriptionActive({
-        subscriptionStatus: executive.subscriptionStatus ?? "TRIAL",
-        subscriptionExpiresAt: executive.subscriptionExpiresAt,
-      }),
-    )
-    .map((executive) =>
-      options?.withProfile
-        ? {
-            id: executive.id,
-            fullName: executive.fullName,
-            email: executive.email,
-          }
-        : { id: executive.id },
-    );
+  const eligible = accounts
+    .filter((account) => {
+      if (account.role === "ADMIN") return true;
+      return isSubscriptionActive({
+        subscriptionStatus: account.subscriptionStatus ?? "TRIAL",
+        subscriptionExpiresAt: account.subscriptionExpiresAt,
+      });
+    })
+    // Ejecutivos primero; administradores al final.
+    .sort((a, b) => {
+      if (a.role !== b.role) {
+        return a.role === "ADMIN" ? 1 : -1;
+      }
+      return a.fullName.localeCompare(b.fullName, "es");
+    });
+
+  return eligible.map((account) =>
+    options?.withProfile
+      ? {
+          id: account.id,
+          fullName: account.fullName,
+          email: account.email,
+          role: account.role,
+          realm: staffRoleToRealm(account.role),
+          executiveKind: account.executiveKind,
+        }
+      : {
+          id: account.id,
+          role: account.role,
+          realm: staffRoleToRealm(account.role),
+          executiveKind: account.executiveKind,
+        },
+  );
 }
 
 /**

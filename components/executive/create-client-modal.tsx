@@ -96,6 +96,11 @@ export function CreateClientModal({
         birthDate: profile.birthDate || null,
         age: profile.age.trim() || null,
         currentIsapre: profile.currentIsapre || null,
+        currentPlanPrice: profile.currentPlanPrice.trim() || null,
+        currentPlanPriceCurrency: profile.currentPlanPriceCurrency || "UF",
+        voluntaryAdditional: profile.voluntaryAdditional.trim() || null,
+        voluntaryAdditionalCurrency:
+          profile.voluntaryAdditionalCurrency || "UF",
         heightCm: profile.heightCm || null,
         weightKg: profile.weightKg || null,
         maritalStatus: profile.maritalStatus || null,

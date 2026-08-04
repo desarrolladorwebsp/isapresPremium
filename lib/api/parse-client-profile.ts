@@ -1,7 +1,9 @@
 import type {
   ClientCoverageArea,
+  ClientMoneyCurrency,
   ClientProfileInput,
 } from "@/types/client-profile";
+import { resolveClientMoneyCurrency } from "@/lib/client-profile/constants";
 
 function resolveCoverageArea(value: unknown): ClientCoverageArea {
   if (value === "santiago-centro" || value === "region") return value;
@@ -17,6 +19,14 @@ function resolveCoverageRegionId(
   }
   if (coverageArea === "santiago-centro") return "metropolitana";
   return "";
+}
+
+function resolveMoneyAmount(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
+
+function resolveMoneyCurrency(value: unknown): ClientMoneyCurrency {
+  return resolveClientMoneyCurrency(value);
 }
 
 export function parseClientProfilePayload(payload: unknown): ClientProfileInput {
@@ -81,6 +91,16 @@ export function parseClientProfilePayload(payload: unknown): ClientProfileInput 
               typeof titular.currentIsapre === "string"
                 ? titular.currentIsapre
                 : "",
+            currentPlanPrice: resolveMoneyAmount(titular.currentPlanPrice),
+            currentPlanPriceCurrency: resolveMoneyCurrency(
+              titular.currentPlanPriceCurrency,
+            ),
+            voluntaryAdditional: resolveMoneyAmount(
+              titular.voluntaryAdditional,
+            ),
+            voluntaryAdditionalCurrency: resolveMoneyCurrency(
+              titular.voluntaryAdditionalCurrency,
+            ),
             rentaImponible:
               typeof titular.rentaImponible === "string"
                 ? titular.rentaImponible
@@ -111,6 +131,18 @@ export function parseClientProfilePayload(payload: unknown): ClientProfileInput 
     age: typeof data.age === "string" ? data.age : null,
     currentIsapre:
       typeof data.currentIsapre === "string" ? data.currentIsapre : null,
+    currentPlanPrice:
+      typeof data.currentPlanPrice === "string" ? data.currentPlanPrice : null,
+    currentPlanPriceCurrency: resolveMoneyCurrency(
+      data.currentPlanPriceCurrency,
+    ),
+    voluntaryAdditional:
+      typeof data.voluntaryAdditional === "string"
+        ? data.voluntaryAdditional
+        : null,
+    voluntaryAdditionalCurrency: resolveMoneyCurrency(
+      data.voluntaryAdditionalCurrency,
+    ),
     heightCm: typeof data.heightCm === "string" ? data.heightCm : null,
     weightKg: typeof data.weightKg === "string" ? data.weightKg : null,
     maritalStatus:

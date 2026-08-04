@@ -11,6 +11,7 @@ import {
   CLIENT_MOTIVO_COTIZACION_OPTIONS,
   CLIENT_REGION_OPTIONS,
   MARITAL_STATUS_OPTIONS,
+  resolveClientMoneyCurrency,
   splitFullName,
 } from "@/lib/client-profile/constants";
 import { sanitizeRutInput, isValidRut } from "@/lib/auth/rut";
@@ -25,12 +26,65 @@ import type {
   ClientAdditionalTitularProfile,
   ClientCoverageArea,
   ClientDependentProfile,
+  ClientMoneyCurrency,
 } from "@/types/client-profile";
 
 const COVERAGE_SELECT_OPTIONS = CURRENT_COVERAGE_OPTIONS.map((option) => ({
   value: option.label,
   label: option.label,
 }));
+
+function CurrencyAmountField({
+  label,
+  amount,
+  currency,
+  onAmountChange,
+  onCurrencyChange,
+  placeholderUf = "Ej. 4,5",
+  placeholderClp = "Ej. 180000",
+}: {
+  label: string;
+  amount: string;
+  currency: ClientMoneyCurrency;
+  onAmountChange: (value: string) => void;
+  onCurrencyChange: (value: ClientMoneyCurrency) => void;
+  placeholderUf?: string;
+  placeholderClp?: string;
+}) {
+  const nextCurrency: ClientMoneyCurrency = currency === "UF" ? "CLP" : "UF";
+
+  return (
+    <label className="block space-y-1.5">
+      <span className="text-xs font-medium">{label}</span>
+      <div className="flex gap-2">
+        <Input
+          value={amount}
+          onChange={(event) => onAmountChange(event.target.value)}
+          placeholder={currency === "UF" ? placeholderUf : placeholderClp}
+          inputMode="decimal"
+          className="min-w-0 flex-1"
+        />
+        <button
+          type="button"
+          onClick={() => onCurrencyChange(nextCurrency)}
+          className={joinClasses(
+            "inline-flex h-10 shrink-0 items-center justify-center rounded-md border px-3 text-xs font-semibold tracking-wide transition",
+            currency === "UF"
+              ? "border-primary/30 bg-primary/10 text-primary-dark hover:bg-primary/15"
+              : "border-secondary/30 bg-secondary-muted/50 text-secondary hover:bg-secondary-muted",
+          )}
+          title={`Moneda: ${currency}. Clic para cambiar a ${nextCurrency}.`}
+          aria-label={`Moneda ${currency}. Cambiar a ${nextCurrency}`}
+        >
+          {currency === "UF" ? "UF" : "$"}
+        </button>
+      </div>
+      <p className="text-[11px] text-muted">
+        Monto en {currency === "UF" ? "UF" : "pesos chilenos (CLP)"}.
+      </p>
+    </label>
+  );
+}
 
 export interface ClientProfileFormValue {
   email: string;
@@ -41,6 +95,10 @@ export interface ClientProfileFormValue {
   birthDate: string;
   age: string;
   currentIsapre: string;
+  currentPlanPrice: string;
+  currentPlanPriceCurrency: ClientMoneyCurrency;
+  voluntaryAdditional: string;
+  voluntaryAdditionalCurrency: ClientMoneyCurrency;
   heightCm: string;
   weightKg: string;
   maritalStatus: string;
@@ -70,6 +128,10 @@ export function buildEmptyClientProfileFormValue(): ClientProfileFormValue {
     birthDate: "",
     age: "",
     currentIsapre: "",
+    currentPlanPrice: "",
+    currentPlanPriceCurrency: "UF",
+    voluntaryAdditional: "",
+    voluntaryAdditionalCurrency: "UF",
     heightCm: "",
     weightKg: "",
     maritalStatus: "",
@@ -473,10 +535,24 @@ export function ClientProfileForm({
             </label>
 
             <label className="block space-y-1.5">
-              <span className="text-xs font-medium">Isapre / previsión actual</span>
-              {renderIsapreSelect(value.currentIsapre, (next) =>
-                updateField("currentIsapre", next),
-              )}
+              <span className="text-xs font-medium">Estado civil legal</span>
+              <select
+                value={value.maritalStatus}
+                onChange={(event) =>
+                  updateField("maritalStatus", event.target.value)
+                }
+                className={joinClasses(
+                  "h-11 w-full rounded-xl px-3 text-sm",
+                  ui.input,
+                )}
+              >
+                <option value="">Seleccionar…</option>
+                {MARITAL_STATUS_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
             </label>
 
             <label className="block space-y-1.5">
@@ -502,25 +578,33 @@ export function ClientProfileForm({
             </label>
 
             <label className="block space-y-1.5">
-              <span className="text-xs font-medium">Estado civil legal</span>
-              <select
-                value={value.maritalStatus}
-                onChange={(event) =>
-                  updateField("maritalStatus", event.target.value)
-                }
-                className={joinClasses(
-                  "h-11 w-full rounded-xl px-3 text-sm",
-                  ui.input,
-                )}
-              >
-                <option value="">Seleccionar…</option>
-                {MARITAL_STATUS_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
+              <span className="text-xs font-medium">Isapre / previsión actual</span>
+              {renderIsapreSelect(value.currentIsapre, (next) =>
+                updateField("currentIsapre", next),
+              )}
             </label>
+
+            <CurrencyAmountField
+              label="Precio del plan actual"
+              amount={value.currentPlanPrice}
+              currency={value.currentPlanPriceCurrency}
+              onAmountChange={(next) => updateField("currentPlanPrice", next)}
+              onCurrencyChange={(next) =>
+                updateField("currentPlanPriceCurrency", next)
+              }
+            />
+
+            <CurrencyAmountField
+              label="Adicional voluntario"
+              amount={value.voluntaryAdditional}
+              currency={value.voluntaryAdditionalCurrency}
+              onAmountChange={(next) =>
+                updateField("voluntaryAdditional", next)
+              }
+              onCurrencyChange={(next) =>
+                updateField("voluntaryAdditionalCurrency", next)
+              }
+            />
 
             <label className="block space-y-1.5">
               <span className="text-xs font-medium">Renta imponible</span>
@@ -819,15 +903,29 @@ export function ClientProfileForm({
 
                   <label className="block space-y-1.5">
                     <span className="text-xs font-medium">
-                      Isapre / previsión actual
+                      Estado civil legal
                     </span>
-                    {renderIsapreSelect(titular.currentIsapre, (next) =>
-                      updateAdditionalTitular(
-                        titular.id,
-                        "currentIsapre",
-                        next,
-                      ),
-                    )}
+                    <select
+                      value={titular.maritalStatus}
+                      onChange={(event) =>
+                        updateAdditionalTitular(
+                          titular.id,
+                          "maritalStatus",
+                          event.target.value,
+                        )
+                      }
+                      className={joinClasses(
+                        "h-11 w-full rounded-xl px-3 text-sm",
+                        ui.input,
+                      )}
+                    >
+                      <option value="">Seleccionar…</option>
+                      {MARITAL_STATUS_OPTIONS.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
                   </label>
 
                   <label className="block space-y-1.5">
@@ -862,6 +960,63 @@ export function ClientProfileForm({
 
                   <label className="block space-y-1.5">
                     <span className="text-xs font-medium">
+                      Isapre / previsión actual
+                    </span>
+                    {renderIsapreSelect(titular.currentIsapre, (next) =>
+                      updateAdditionalTitular(
+                        titular.id,
+                        "currentIsapre",
+                        next,
+                      ),
+                    )}
+                  </label>
+
+                  <CurrencyAmountField
+                    label="Precio del plan actual"
+                    amount={titular.currentPlanPrice ?? ""}
+                    currency={resolveClientMoneyCurrency(
+                      titular.currentPlanPriceCurrency,
+                    )}
+                    onAmountChange={(next) =>
+                      updateAdditionalTitular(
+                        titular.id,
+                        "currentPlanPrice",
+                        next,
+                      )
+                    }
+                    onCurrencyChange={(next) =>
+                      updateAdditionalTitular(
+                        titular.id,
+                        "currentPlanPriceCurrency",
+                        next,
+                      )
+                    }
+                  />
+
+                  <CurrencyAmountField
+                    label="Adicional voluntario"
+                    amount={titular.voluntaryAdditional ?? ""}
+                    currency={resolveClientMoneyCurrency(
+                      titular.voluntaryAdditionalCurrency,
+                    )}
+                    onAmountChange={(next) =>
+                      updateAdditionalTitular(
+                        titular.id,
+                        "voluntaryAdditional",
+                        next,
+                      )
+                    }
+                    onCurrencyChange={(next) =>
+                      updateAdditionalTitular(
+                        titular.id,
+                        "voluntaryAdditionalCurrency",
+                        next,
+                      )
+                    }
+                  />
+
+                  <label className="block space-y-1.5">
+                    <span className="text-xs font-medium">
                       Preexistencias médicas
                     </span>
                     <Input
@@ -875,33 +1030,6 @@ export function ClientProfileForm({
                       }
                       placeholder="Ej. hipertensión, diabetes…"
                     />
-                  </label>
-
-                  <label className="block space-y-1.5">
-                    <span className="text-xs font-medium">
-                      Estado civil legal
-                    </span>
-                    <select
-                      value={titular.maritalStatus}
-                      onChange={(event) =>
-                        updateAdditionalTitular(
-                          titular.id,
-                          "maritalStatus",
-                          event.target.value,
-                        )
-                      }
-                      className={joinClasses(
-                        "h-11 w-full rounded-xl px-3 text-sm",
-                        ui.input,
-                      )}
-                    >
-                      <option value="">Seleccionar…</option>
-                      {MARITAL_STATUS_OPTIONS.map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
-                    </select>
                   </label>
 
                   <label className="block space-y-1.5">
@@ -1141,6 +1269,10 @@ export function userRecordToProfileFormValue(
       birthDate?: string;
       age?: string;
       currentIsapre?: string;
+      currentPlanPrice?: string;
+      currentPlanPriceCurrency?: ClientMoneyCurrency;
+      voluntaryAdditional?: string;
+      voluntaryAdditionalCurrency?: ClientMoneyCurrency;
       heightCm?: string;
       weightKg?: string;
       maritalStatus?: string;
@@ -1178,6 +1310,14 @@ export function userRecordToProfileFormValue(
         ? calculateAgeFromBirthDate(profile.birthDate)
         : ""),
     currentIsapre: profile?.currentIsapre ?? "",
+    currentPlanPrice: profile?.currentPlanPrice ?? "",
+    currentPlanPriceCurrency: resolveClientMoneyCurrency(
+      profile?.currentPlanPriceCurrency,
+    ),
+    voluntaryAdditional: profile?.voluntaryAdditional ?? "",
+    voluntaryAdditionalCurrency: resolveClientMoneyCurrency(
+      profile?.voluntaryAdditionalCurrency,
+    ),
     heightCm: profile?.heightCm ?? "",
     weightKg: profile?.weightKg ?? "",
     maritalStatus: profile?.maritalStatus ?? "",

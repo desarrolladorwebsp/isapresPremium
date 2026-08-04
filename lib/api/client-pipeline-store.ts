@@ -17,6 +17,7 @@ import {
 } from "@/lib/api/lead-assignment";
 import { queueExecutiveClientAssignmentEmail } from "@/lib/email/notify-executive-client-assignment";
 import { isSubscriptionActive } from "@/lib/auth/subscription";
+import { adminCanReceiveAssignmentsForKind } from "@/lib/auth/staff-role";
 import {
   canManageClientAsExecutive,
   canViewClientAsExecutive,
@@ -24,6 +25,7 @@ import {
   CONFIRMATION_CALL_LEAD_MINUTES,
   isClientTrackedBy,
 } from "@/lib/client-pipeline/tracking";
+import type { StaffRealm } from "@/types/staff-account";
 import type {
   ClientClosedRecord,
   PremiumRedirectTargetKind,
@@ -375,33 +377,41 @@ export async function markClientConfirmationCall(
 async function assertIsapresPremiumExecutive(
   executiveAccountId: string,
 ): Promise<void> {
-  const executive = await prisma.staffAccount.findFirst({
+  const account = await prisma.staffAccount.findFirst({
     where: {
       id: executiveAccountId,
-      role: "EXECUTIVE",
-      executiveKind: "ISAPRES_PREMIUM",
       active: true,
-      onboardingCompleted: true,
       assignmentsSuspended: false,
+      OR: [
+        {
+          role: "EXECUTIVE",
+          executiveKind: "ISAPRES_PREMIUM",
+          onboardingCompleted: true,
+        },
+        { role: "ADMIN" },
+      ],
     },
     select: {
       id: true,
+      role: true,
       subscriptionStatus: true,
       subscriptionExpiresAt: true,
     },
   });
 
-  if (!executive) {
+  if (!account) {
     throw new ApiError(
-      "El ejecutivo seleccionado no es un Ejecutivo Isapres Premium elegible.",
+      "El seleccionado no es un Ejecutivo Isapres Premium ni un administrador elegible.",
       400,
       "INVALID_PREMIUM_EXECUTIVE",
     );
   }
 
+  if (account.role === "ADMIN") return;
+
   const subscriptionActive = isSubscriptionActive({
-    subscriptionStatus: executive.subscriptionStatus ?? "TRIAL",
-    subscriptionExpiresAt: executive.subscriptionExpiresAt,
+    subscriptionStatus: account.subscriptionStatus ?? "TRIAL",
+    subscriptionExpiresAt: account.subscriptionExpiresAt,
   });
 
   if (!subscriptionActive) {
@@ -555,27 +565,23 @@ export async function redirectClientToIsapresPremium(
   return mapDbClientRecord(user);
 }
 
+export type RedirectEligibleStaff = {
+  id: string;
+  fullName: string;
+  email: string;
+  executiveKind: ExecutiveKind | null;
+  realm: StaffRealm;
+};
+
 export async function listPremiumExecutivesForRedirect(): Promise<
-  Array<{
-    id: string;
-    fullName: string;
-    email: string;
-    executiveKind: ExecutiveKind;
-  }>
+  RedirectEligibleStaff[]
 > {
   return listExecutivesForRedirect("ISAPRES_PREMIUM");
 }
 
 export async function listExecutivesForRedirect(
   executiveKind: ExecutiveKind,
-): Promise<
-  Array<{
-    id: string;
-    fullName: string;
-    email: string;
-    executiveKind: ExecutiveKind;
-  }>
-> {
+): Promise<RedirectEligibleStaff[]> {
   const rows = await listEligibleExecutivesForAssignment({
     executiveKind,
     withProfile: true,
@@ -583,9 +589,10 @@ export async function listExecutivesForRedirect(
 
   return rows.map((row) => ({
     id: row.id,
-    fullName: row.fullName ?? "Ejecutivo",
+    fullName: row.fullName ?? (row.realm === "admin" ? "Administrador" : "Ejecutivo"),
     email: row.email ?? "",
-    executiveKind,
+    executiveKind: row.executiveKind ?? executiveKind,
+    realm: row.realm ?? "executive",
   }));
 }
 
@@ -594,33 +601,45 @@ async function assertEligibleExecutiveOfKind(
   expectedKind: ExecutiveKind,
   label: string,
 ): Promise<void> {
-  const executive = await prisma.staffAccount.findFirst({
+  const includeAdmin = adminCanReceiveAssignmentsForKind(expectedKind);
+
+  const account = await prisma.staffAccount.findFirst({
     where: {
       id: executiveAccountId,
-      role: "EXECUTIVE",
-      executiveKind: expectedKind,
       active: true,
-      onboardingCompleted: true,
       assignmentsSuspended: false,
+      OR: [
+        {
+          role: "EXECUTIVE",
+          executiveKind: expectedKind,
+          onboardingCompleted: true,
+        },
+        ...(includeAdmin ? [{ role: "ADMIN" as const }] : []),
+      ],
     },
     select: {
       id: true,
+      role: true,
       subscriptionStatus: true,
       subscriptionExpiresAt: true,
     },
   });
 
-  if (!executive) {
+  if (!account) {
     throw new ApiError(
-      `El ejecutivo seleccionado no es un ${label} elegible.`,
+      includeAdmin
+        ? `El seleccionado no es un ${label} ni un administrador elegible.`
+        : `El ejecutivo seleccionado no es un ${label} elegible.`,
       400,
       "INVALID_TARGET_EXECUTIVE",
     );
   }
 
+  if (account.role === "ADMIN") return;
+
   const subscriptionActive = isSubscriptionActive({
-    subscriptionStatus: executive.subscriptionStatus ?? "TRIAL",
-    subscriptionExpiresAt: executive.subscriptionExpiresAt,
+    subscriptionStatus: account.subscriptionStatus ?? "TRIAL",
+    subscriptionExpiresAt: account.subscriptionExpiresAt,
   });
 
   if (!subscriptionActive) {

@@ -55,8 +55,9 @@ La membresía es para usuarios externos: no reciben asignación de clientes ni a
 
 - **Todo lo del catálogo**: planes, clínicas, coberturas, GES.
 - Ver **todas las cotizaciones** del sistema.
-- **Asignar un cliente** (`User`) a un ejecutivo operativo (no a membresía).
-- **Asignar una cotización** (`Quote`) a un ejecutivo.
+- **Asignar un cliente** (`User`) a un ejecutivo operativo, a Zoom o a **otro administrador** (no a membresía).
+- **Recibir clientes asignados** como destino operativo (misma elegibilidad que Ejecutivo Isapres Premium y Zoom en redirects y round-robin).
+- **Asignar una cotización** (`Quote`) a un ejecutivo o administrador.
 - **Invitar usuarios** admin, ejecutivo o membresía desde Usuarios.
 
 ### Flujo de alta de usuarios (solo admin)
@@ -83,10 +84,12 @@ La membresía es para usuarios externos: no reciben asignación de clientes ni a
 
 | Entidad | Campo | Quién asigna |
 |---------|-------|--------------|
-| Cliente (`User`) | `assignedExecutiveId` | Solo admin (ejecutivos operativos o admin; no membresía) |
+| Cliente (`User`) | `assignedExecutiveId` | Solo admin (ejecutivos operativos, Zoom, o admin; no membresía) |
 | Cotización (`Quote`) | `executiveAccountId` | Admin o ejecutivo operativo |
 
-Cuando un cliente cotiza en la web, se crea/actualiza un `User` y un `Quote`. El admin puede asignar ese cliente a un ejecutivo; el ejecutivo ve las cotizaciones en su panel.
+Los **administradores activos** aparecen en selectores de asignación manual y en redirecciones a Isapres Premium / Zoom, y pueden entrar al round-robin automático de esos kinds. No requieren suscripción de ejecutivo.
+
+Cuando un cliente cotiza en la web, se crea/actualiza un `User` y un `Quote`. El admin puede asignar ese cliente a un ejecutivo o a un administrador; el asignado ve las cotizaciones en su panel.
 
 ---
 

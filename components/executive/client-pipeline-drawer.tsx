@@ -25,7 +25,6 @@ import {
 import {
   fetchCalendlySchedulingLink,
   fetchEligibleExecutives,
-  fetchPremiumExecutives,
   markClientConfirmationCall,
   redirectClientToIsapres,
   redirectClientToPremium,
@@ -161,10 +160,14 @@ const PROFILE_FIELD_LABELS: Array<{
   { key: "lastNames", label: "Apellidos" },
   { key: "birthDate", label: "Fecha de nacimiento" },
   { key: "age", label: "Edad" },
-  { key: "currentIsapre", label: "Isapre / previsión actual" },
+  { key: "maritalStatus", label: "Estado civil" },
   { key: "heightCm", label: "Estatura" },
   { key: "weightKg", label: "Peso" },
-  { key: "maritalStatus", label: "Estado civil" },
+  { key: "currentIsapre", label: "Isapre / previsión actual" },
+  { key: "currentPlanPrice", label: "Precio del plan actual" },
+  { key: "currentPlanPriceCurrency", label: "Moneda precio plan" },
+  { key: "voluntaryAdditional", label: "Adicional voluntario" },
+  { key: "voluntaryAdditionalCurrency", label: "Moneda adicional voluntario" },
   { key: "rentaImponible", label: "Renta imponible" },
   { key: "motivoCotizacion", label: "Motivo de cotización" },
   { key: "motivoCotizacionOther", label: "Detalle del motivo" },
@@ -387,6 +390,10 @@ function profileSnapshot(value: ClientProfileFormValue): string {
     birthDate: value.birthDate || "",
     age: value.age || "",
     currentIsapre: value.currentIsapre || "",
+    currentPlanPrice: value.currentPlanPrice || "",
+    currentPlanPriceCurrency: value.currentPlanPriceCurrency || "UF",
+    voluntaryAdditional: value.voluntaryAdditional || "",
+    voluntaryAdditionalCurrency: value.voluntaryAdditionalCurrency || "UF",
     heightCm: value.heightCm || "",
     weightKg: value.weightKg || "",
     maritalStatus: value.maritalStatus || "",
@@ -459,7 +466,8 @@ export function ClientPipelineDrawer({
       id: string;
       fullName: string;
       email: string;
-      executiveKind: "ISAPRES_PREMIUM" | "ZOOM" | "ISAPRES";
+      executiveKind: "ISAPRES_PREMIUM" | "ZOOM" | "ISAPRES" | null;
+      realm?: "admin" | "executive";
     }>
   >([]);
   const [zoomExecutives, setZoomExecutives] = useState<
@@ -467,7 +475,8 @@ export function ClientPipelineDrawer({
       id: string;
       fullName: string;
       email: string;
-      executiveKind: "ISAPRES_PREMIUM" | "ZOOM" | "ISAPRES";
+      executiveKind: "ISAPRES_PREMIUM" | "ZOOM" | "ISAPRES" | null;
+      realm?: "admin" | "executive";
     }>
   >([]);
   const [isapresExecutives, setIsapresExecutives] = useState<
@@ -475,7 +484,8 @@ export function ClientPipelineDrawer({
       id: string;
       fullName: string;
       email: string;
-      executiveKind: "ISAPRES_PREMIUM" | "ZOOM" | "ISAPRES";
+      executiveKind: "ISAPRES_PREMIUM" | "ZOOM" | "ISAPRES" | null;
+      realm?: "admin" | "executive";
     }>
   >([]);
   const [redirectTargetId, setRedirectTargetId] = useState("");
@@ -617,7 +627,7 @@ export function ClientPipelineDrawer({
     let cancelled = false;
     void (async () => {
       try {
-        const executives = await fetchPremiumExecutives();
+        const executives = await fetchEligibleExecutives("ISAPRES_PREMIUM");
         if (!cancelled) setPremiumExecutives(executives);
       } catch {
         if (!cancelled) setPremiumExecutives([]);
@@ -905,6 +915,11 @@ export function ClientPipelineDrawer({
       birthDate: profileForm.birthDate || null,
       age: profileForm.age.trim() || null,
       currentIsapre: profileForm.currentIsapre || null,
+      currentPlanPrice: profileForm.currentPlanPrice.trim() || null,
+      currentPlanPriceCurrency: profileForm.currentPlanPriceCurrency || "UF",
+      voluntaryAdditional: profileForm.voluntaryAdditional.trim() || null,
+      voluntaryAdditionalCurrency:
+        profileForm.voluntaryAdditionalCurrency || "UF",
       heightCm: profileForm.heightCm || null,
       weightKg: profileForm.weightKg || null,
       maritalStatus: profileForm.maritalStatus || null,
@@ -1483,6 +1498,7 @@ export function ClientPipelineDrawer({
         ? formatExecutiveOptionLabel({
             fullName: target.fullName,
             executiveKind: target.executiveKind,
+            realm: target.realm,
           })
         : "el ejecutivo seleccionado";
       setPendingConfirm({
@@ -1507,6 +1523,7 @@ export function ClientPipelineDrawer({
         ? formatExecutiveOptionLabel({
             fullName: target.fullName,
             executiveKind: target.executiveKind,
+            realm: target.realm,
           })
         : "el ejecutivo seleccionado";
       setPendingConfirm({ kind: "send_zoom", targetLabel });
@@ -1525,6 +1542,7 @@ export function ClientPipelineDrawer({
         ? formatExecutiveOptionLabel({
             fullName: target.fullName,
             executiveKind: target.executiveKind,
+            realm: target.realm,
           })
         : "el ejecutivo seleccionado";
       setPendingConfirm({ kind: "send_isapres", targetLabel });
@@ -2199,6 +2217,7 @@ export function ClientPipelineDrawer({
                           label: `${formatExecutiveOptionLabel({
                             fullName: executive.fullName,
                             executiveKind: executive.executiveKind,
+                            realm: executive.realm,
                           })} (${executive.email})`,
                         }))}
                         onChange={(event) =>
@@ -2383,6 +2402,7 @@ export function ClientPipelineDrawer({
                           label: `${formatExecutiveOptionLabel({
                             fullName: executive.fullName,
                             executiveKind: executive.executiveKind,
+                            realm: executive.realm,
                           })} (${executive.email})`,
                         }))}
                         onChange={(event) =>
@@ -2423,6 +2443,7 @@ export function ClientPipelineDrawer({
                           label: `${formatExecutiveOptionLabel({
                             fullName: executive.fullName,
                             executiveKind: executive.executiveKind,
+                            realm: executive.realm,
                           })} (${executive.email})`,
                         }))}
                         onChange={(event) =>

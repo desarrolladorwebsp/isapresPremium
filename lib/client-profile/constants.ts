@@ -3,6 +3,7 @@ import type {
   ClientCoverageArea,
   ClientDependentProfile,
   ClientExecutiveProfile,
+  ClientMoneyCurrency,
   ClientProfileInput,
 } from "@/types/client-profile";
 import {
@@ -21,6 +22,17 @@ export const MARITAL_STATUS_OPTIONS = [
   "Separado/a",
   "Otro",
 ] as const;
+
+export const CLIENT_MONEY_CURRENCY_OPTIONS: readonly ClientMoneyCurrency[] = [
+  "UF",
+  "CLP",
+] as const;
+
+export function resolveClientMoneyCurrency(
+  value: unknown,
+): ClientMoneyCurrency {
+  return value === "CLP" ? "CLP" : "UF";
+}
 
 export const CLIENT_MOTIVO_COTIZACION_OPTIONS = [
   { id: "otro-plan", label: "Otro plan" },
@@ -112,6 +124,10 @@ export function buildEmptyAdditionalTitular(): ClientAdditionalTitularProfile {
     maritalStatus: "",
     phone: "",
     currentIsapre: "",
+    currentPlanPrice: "",
+    currentPlanPriceCurrency: "UF",
+    voluntaryAdditional: "",
+    voluntaryAdditionalCurrency: "UF",
     rentaImponible: "",
     motivoCotizacion: "",
     motivoCotizacionOther: "",
@@ -126,6 +142,10 @@ export function buildEmptyClientProfile(): ClientExecutiveProfile {
     birthDate: "",
     age: "",
     currentIsapre: "",
+    currentPlanPrice: "",
+    currentPlanPriceCurrency: "UF",
+    voluntaryAdditional: "",
+    voluntaryAdditionalCurrency: "UF",
     heightCm: "",
     weightKg: "",
     maritalStatus: "",
@@ -282,6 +302,20 @@ export function resolveClientProfile(
     age: resolveAge(profile.age, birthDate),
     currentIsapre:
       typeof profile.currentIsapre === "string" ? profile.currentIsapre : "",
+    currentPlanPrice:
+      typeof profile.currentPlanPrice === "string"
+        ? profile.currentPlanPrice
+        : "",
+    currentPlanPriceCurrency: resolveClientMoneyCurrency(
+      profile.currentPlanPriceCurrency,
+    ),
+    voluntaryAdditional:
+      typeof profile.voluntaryAdditional === "string"
+        ? profile.voluntaryAdditional
+        : "",
+    voluntaryAdditionalCurrency: resolveClientMoneyCurrency(
+      profile.voluntaryAdditionalCurrency,
+    ),
     heightCm: typeof profile.heightCm === "string" ? profile.heightCm : "",
     weightKg: typeof profile.weightKg === "string" ? profile.weightKg : "",
     maritalStatus:
@@ -338,6 +372,10 @@ export function resolveClientProfile(
             rentaImponible?: string;
             motivoCotizacion?: string;
             motivoCotizacionOther?: string;
+            currentPlanPrice?: string;
+            currentPlanPriceCurrency?: ClientMoneyCurrency;
+            voluntaryAdditional?: string;
+            voluntaryAdditionalCurrency?: ClientMoneyCurrency;
           };
           const motivoCotizacion = resolveMotivoCotizacion(
             rawTitular.motivoCotizacion,
@@ -345,6 +383,20 @@ export function resolveClientProfile(
           return {
             ...titular,
             age: resolveAge(rawTitular.age, titular.birthDate),
+            currentPlanPrice:
+              typeof rawTitular.currentPlanPrice === "string"
+                ? rawTitular.currentPlanPrice
+                : "",
+            currentPlanPriceCurrency: resolveClientMoneyCurrency(
+              rawTitular.currentPlanPriceCurrency,
+            ),
+            voluntaryAdditional:
+              typeof rawTitular.voluntaryAdditional === "string"
+                ? rawTitular.voluntaryAdditional
+                : "",
+            voluntaryAdditionalCurrency: resolveClientMoneyCurrency(
+              rawTitular.voluntaryAdditionalCurrency,
+            ),
             rentaImponible:
               typeof rawTitular.rentaImponible === "string"
                 ? rawTitular.rentaImponible
@@ -468,6 +520,14 @@ export function normalizeClientProfileInput(
         maritalStatus: titular.maritalStatus.trim(),
         phone: titular.phone.trim(),
         currentIsapre: titular.currentIsapre.trim(),
+        currentPlanPrice: (titular.currentPlanPrice ?? "").trim(),
+        currentPlanPriceCurrency: resolveClientMoneyCurrency(
+          titular.currentPlanPriceCurrency,
+        ),
+        voluntaryAdditional: (titular.voluntaryAdditional ?? "").trim(),
+        voluntaryAdditionalCurrency: resolveClientMoneyCurrency(
+          titular.voluntaryAdditionalCurrency,
+        ),
         rentaImponible: (titular.rentaImponible ?? "").trim(),
         motivoCotizacion: resolveMotivoCotizacion(titular.motivoCotizacion),
         motivoCotizacionOther: resolveMotivoCotizacionOther(
@@ -493,6 +553,14 @@ export function normalizeClientProfileInput(
       birthDate,
       age: ageRaw || calculateAgeFromBirthDate(birthDate),
       currentIsapre: input.currentIsapre?.trim() || "",
+      currentPlanPrice: (input.currentPlanPrice ?? "").trim(),
+      currentPlanPriceCurrency: resolveClientMoneyCurrency(
+        input.currentPlanPriceCurrency,
+      ),
+      voluntaryAdditional: (input.voluntaryAdditional ?? "").trim(),
+      voluntaryAdditionalCurrency: resolveClientMoneyCurrency(
+        input.voluntaryAdditionalCurrency,
+      ),
       heightCm: input.heightCm?.trim() || "",
       weightKg: input.weightKg?.trim() || "",
       maritalStatus: input.maritalStatus?.trim() || "",

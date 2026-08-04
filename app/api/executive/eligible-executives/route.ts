@@ -10,6 +10,7 @@ import { isExecutiveKind } from "@/types/staff-account";
 
 /**
  * Lista ejecutivos elegibles por kind para selectores de reasignación.
+ * Incluye administradores activos cuando kind es ISAPRES_PREMIUM o ZOOM.
  *
  * Acceso:
  * - Admin: cualquier kind

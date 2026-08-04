@@ -402,7 +402,7 @@ export async function fetchExecutiveAccounts(): Promise<StaffAccountRecord[]> {
     })
     .sort((a, b) => {
       if (a.realm !== b.realm) {
-        return a.realm === "admin" ? -1 : 1;
+        return a.realm === "admin" ? 1 : -1;
       }
       return a.fullName.localeCompare(b.fullName, "es");
     });
@@ -546,7 +546,8 @@ export async function fetchPremiumExecutives(): Promise<
     id: string;
     fullName: string;
     email: string;
-    executiveKind: "ISAPRES_PREMIUM" | "ZOOM" | "ISAPRES";
+    executiveKind: "ISAPRES_PREMIUM" | "ZOOM" | "ISAPRES" | null;
+    realm: "admin" | "executive";
   }>
 > {
   const response = await fetch("/api/executive/premium-executives");
@@ -555,7 +556,8 @@ export async function fetchPremiumExecutives(): Promise<
       id: string;
       fullName: string;
       email: string;
-      executiveKind: "ISAPRES_PREMIUM" | "ZOOM" | "ISAPRES";
+      executiveKind: "ISAPRES_PREMIUM" | "ZOOM" | "ISAPRES" | null;
+      realm: "admin" | "executive";
     }>;
   }>(response);
   return data.executives;
@@ -568,7 +570,8 @@ export async function fetchEligibleExecutives(
     id: string;
     fullName: string;
     email: string;
-    executiveKind: "ISAPRES_PREMIUM" | "ZOOM" | "ISAPRES";
+    executiveKind: "ISAPRES_PREMIUM" | "ZOOM" | "ISAPRES" | null;
+    realm: "admin" | "executive";
   }>
 > {
   const response = await fetch(
@@ -579,7 +582,8 @@ export async function fetchEligibleExecutives(
       id: string;
       fullName: string;
       email: string;
-      executiveKind: "ISAPRES_PREMIUM" | "ZOOM" | "ISAPRES";
+      executiveKind: "ISAPRES_PREMIUM" | "ZOOM" | "ISAPRES" | null;
+      realm: "admin" | "executive";
     }>;
   }>(response);
   return data.executives;

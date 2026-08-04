@@ -367,9 +367,17 @@ export async function readExecutiveAssignmentStats(): Promise<
   ExecutiveAssignmentStat[]
 > {
   const executives = await prisma.staffAccount.findMany({
-    where: { role: "EXECUTIVE" },
-    orderBy: { fullName: "asc" },
-    select: { id: true, fullName: true, email: true, active: true },
+    where: {
+      OR: [
+        {
+          role: "EXECUTIVE",
+          executiveKind: { not: "MEMBRESIA_ISAPRES_PREMIUM" },
+        },
+        { role: "ADMIN" },
+      ],
+    },
+    orderBy: [{ fullName: "asc" }],
+    select: { id: true, fullName: true, email: true, active: true, role: true },
   });
 
   const counts = await prisma.user.groupBy({
@@ -387,11 +395,19 @@ export async function readExecutiveAssignmentStats(): Promise<
       .map((row) => [row.assignedExecutiveId as string, row._count.id]),
   );
 
-  return executives.map((executive) => ({
-    executiveId: executive.id,
-    fullName: executive.fullName,
-    email: executive.email,
-    active: executive.active,
-    assignedCount: countByExecutive.get(executive.id) ?? 0,
-  }));
+  return executives
+    .slice()
+    .sort((a, b) => {
+      if (a.role !== b.role) {
+        return a.role === "ADMIN" ? 1 : -1;
+      }
+      return a.fullName.localeCompare(b.fullName, "es");
+    })
+    .map((executive) => ({
+      executiveId: executive.id,
+      fullName: executive.fullName,
+      email: executive.email,
+      active: executive.active,
+      assignedCount: countByExecutive.get(executive.id) ?? 0,
+    }));
 }
