@@ -31,7 +31,7 @@ import {
   redirectClientToZoom,
   updateClientPipeline,
 } from "@/lib/api/admin-client";
-import { CALENDLY_TEAM_LABELS } from "@/lib/calendly/labels";
+import { CALENDLY_TEAM_IDS, CALENDLY_TEAM_LABELS, type CalendlyTeamId, isCalendlyTeamId } from "@/lib/calendly/labels";
 import {
   advancePipelineStatus,
   buildEmptyClosedRecord,
@@ -156,6 +156,7 @@ const PROFILE_FIELD_LABELS: Array<{
   { key: "email", label: "Correo" },
   { key: "phone", label: "Celular" },
   { key: "rut", label: "RUT" },
+  { key: "employerRut", label: "RUT empleador" },
   { key: "firstNames", label: "Nombres" },
   { key: "lastNames", label: "Apellidos" },
   { key: "birthDate", label: "Fecha de nacimiento" },
@@ -397,6 +398,7 @@ function profileSnapshot(value: ClientProfileFormValue): string {
     heightCm: value.heightCm || "",
     weightKg: value.weightKg || "",
     maritalStatus: value.maritalStatus || "",
+    employerRut: value.employerRut || "",
     rentaImponible: value.rentaImponible || "",
     motivoCotizacion: value.motivoCotizacion || "",
     motivoCotizacionOther: value.motivoCotizacionOther || "",
@@ -509,7 +511,17 @@ export function ClientPipelineDrawer({
   const [lostReason, setLostReason] = useState<ClientLostReasonCode | "">("");
   const [lostReasonOther, setLostReasonOther] = useState("");
   const [calendlyBusy, setCalendlyBusy] = useState(false);
+  const [calendlyTeamId, setCalendlyTeamId] = useState<CalendlyTeamId | "">("");
+  const [calendlyConfiguredTeams, setCalendlyConfiguredTeams] = useState<
+    Array<{
+      teamId: CalendlyTeamId;
+      label: string;
+      ready: boolean;
+      schedulingUrl?: string;
+    }>
+  >([]);
   const [calendlyLinkInfo, setCalendlyLinkInfo] = useState<{
+    teamId: CalendlyTeamId;
     teamLabel: string;
     schedulingUrl: string;
     prefill: { email: string | null; name: string | null } | null;
@@ -612,6 +624,12 @@ export function ClientPipelineDrawer({
     setCalendlyLinkInfo(null);
     setCalendlyError(null);
     setCalendlyBookedHint(false);
+    setCalendlyTeamId(
+      client.calendlyTeam && isCalendlyTeamId(client.calendlyTeam)
+        ? client.calendlyTeam
+        : "",
+    );
+    setCalendlyConfiguredTeams([]);
     setShowCloseForm((client.pipelineStatus ?? "NUEVO") === "CERRADO");
     setRedirectTargetId("");
     setRedirectContactMethod("");
@@ -686,10 +704,22 @@ export function ClientPipelineDrawer({
       try {
         const link = await fetchCalendlySchedulingLink({
           clientId: client.id,
-          auto: true,
+          ...(calendlyTeamId
+            ? { team: calendlyTeamId, auto: false }
+            : { auto: true }),
         });
         if (cancelled) return;
+        setCalendlyTeamId(link.teamId);
+        setCalendlyConfiguredTeams(
+          link.configuredTeams.map((team) => ({
+            teamId: team.teamId,
+            label: team.label,
+            ready: team.ready,
+            schedulingUrl: team.schedulingUrl,
+          })),
+        );
         setCalendlyLinkInfo({
+          teamId: link.teamId,
           teamLabel: link.teamLabel,
           schedulingUrl: link.schedulingUrl,
           prefill: link.prefill,
@@ -718,6 +748,7 @@ export function ClientPipelineDrawer({
     showReschedule,
     rescheduleSource,
     rescheduleContactMethod,
+    calendlyTeamId,
   ]);
 
   const checklistProgress = useMemo(() => {
@@ -923,6 +954,7 @@ export function ClientPipelineDrawer({
       heightCm: profileForm.heightCm || null,
       weightKg: profileForm.weightKg || null,
       maritalStatus: profileForm.maritalStatus || null,
+      employerRut: profileForm.employerRut.trim() || null,
       rentaImponible: profileForm.rentaImponible.trim() || null,
       motivoCotizacion: profileForm.motivoCotizacion || null,
       motivoCotizacionOther:
@@ -966,25 +998,67 @@ export function ClientPipelineDrawer({
             Agendar Zoom con Calendly
           </p>
           <p className="mt-1 text-[11px] text-sky-900/80">
-            Agenda aquí mismo con el widget. Tras confirmar, el webhook guarda
-            el link Zoom y sincroniza la agenda.
+            Elige el equipo Zoom/Calendly (1, 2 o 3), agenda con el widget y el
+            webhook guarda el link Zoom.
           </p>
         </div>
 
-        {calendlyLinkInfo ? (
-          <p className="text-[11px] text-sky-950">
-            Equipo:{" "}
-            <span className="font-semibold">{calendlyLinkInfo.teamLabel}</span>
-          </p>
-        ) : null}
-        {client.calendlyTeam && !calendlyLinkInfo ? (
-          <p className="text-[11px] text-sky-950">
-            Equipo asignado:{" "}
-            <span className="font-semibold">
-              {CALENDLY_TEAM_LABELS[client.calendlyTeam]}
-            </span>
-          </p>
-        ) : null}
+        <label className="block space-y-1.5">
+          <span className="text-xs font-medium text-sky-950">
+            Equipo Calendly / Zoom
+          </span>
+          <select
+            value={calendlyTeamId}
+            disabled={actionBusy || calendlyBusy}
+            onChange={(event) => {
+              const next = event.target.value;
+              setCalendlyBookedHint(false);
+              setCalendlyLinkInfo(null);
+              setCalendlyError(null);
+              setCalendlyTeamId(
+                isCalendlyTeamId(next) ? next : "",
+              );
+            }}
+            className={joinClasses(
+              "h-10 w-full rounded-md border border-sky-200 bg-white px-3 text-sm text-sky-950",
+              ui.input,
+            )}
+          >
+            <option value="">Seleccionar equipo…</option>
+            {(calendlyConfiguredTeams.length > 0
+              ? calendlyConfiguredTeams
+              : CALENDLY_TEAM_IDS.map((id) => ({
+                  teamId: id,
+                  label: CALENDLY_TEAM_LABELS[id],
+                  ready: true,
+                }))
+            ).map((team) => (
+              <option
+                key={team.teamId}
+                value={team.teamId}
+                disabled={team.ready === false}
+              >
+                {team.label}
+                {team.ready === false ? " (sin URL)" : ""}
+              </option>
+            ))}
+          </select>
+          {calendlyLinkInfo ? (
+            <p className="text-[11px] text-sky-900/80">
+              Usando{" "}
+              <span className="font-semibold">{calendlyLinkInfo.teamLabel}</span>
+              {" · "}
+              <span className="break-all">{calendlyLinkInfo.schedulingUrl}</span>
+            </p>
+          ) : client.calendlyTeam && isCalendlyTeamId(client.calendlyTeam) ? (
+            <p className="text-[11px] text-sky-900/80">
+              Equipo previo del cliente:{" "}
+              <span className="font-semibold">
+                {CALENDLY_TEAM_LABELS[client.calendlyTeam]}
+              </span>
+            </p>
+          ) : null}
+        </label>
 
         {calendlyBusy && !calendlyLinkInfo ? (
           <p className="text-xs text-sky-900">Cargando Calendly…</p>
@@ -1602,9 +1676,21 @@ export function ClientPipelineDrawer({
     try {
       const link = await fetchCalendlySchedulingLink({
         clientId: client.id,
-        auto: true,
+        ...(calendlyTeamId
+          ? { team: calendlyTeamId, auto: false }
+          : { auto: true }),
       });
+      setCalendlyTeamId(link.teamId);
+      setCalendlyConfiguredTeams(
+        link.configuredTeams.map((team) => ({
+          teamId: team.teamId,
+          label: team.label,
+          ready: team.ready,
+          schedulingUrl: team.schedulingUrl,
+        })),
+      );
       setCalendlyLinkInfo({
+        teamId: link.teamId,
         teamLabel: link.teamLabel,
         schedulingUrl: link.schedulingUrl,
         prefill: link.prefill,
@@ -1629,12 +1715,24 @@ export function ClientPipelineDrawer({
     setCalendlyError(null);
     try {
       let link = calendlyLinkInfo;
-      if (!link) {
+      if (!link || (calendlyTeamId && link.teamId !== calendlyTeamId)) {
         const row = await fetchCalendlySchedulingLink({
           clientId: client.id,
-          auto: true,
+          ...(calendlyTeamId
+            ? { team: calendlyTeamId, auto: false }
+            : { auto: true }),
         });
+        setCalendlyTeamId(row.teamId);
+        setCalendlyConfiguredTeams(
+          row.configuredTeams.map((team) => ({
+            teamId: team.teamId,
+            label: team.label,
+            ready: team.ready,
+            schedulingUrl: team.schedulingUrl,
+          })),
+        );
         link = {
+          teamId: row.teamId,
           teamLabel: row.teamLabel,
           schedulingUrl: row.schedulingUrl,
           prefill: row.prefill,

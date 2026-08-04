@@ -114,9 +114,10 @@ export interface CalendlySchedulingLinkResult {
   schedulingUrl: string;
   prefill: { email: string | null; name: string | null } | null;
   configuredTeams: Array<{
-    teamId: string;
+    teamId: "EQUIPO_1" | "EQUIPO_2" | "EQUIPO_3";
     label: string;
     ready: boolean;
+    schedulingUrl?: string;
   }>;
 }
 

@@ -149,6 +149,7 @@ export function buildEmptyClientProfile(): ClientExecutiveProfile {
     heightCm: "",
     weightKg: "",
     maritalStatus: "",
+    employerRut: "",
     rentaImponible: "",
     motivoCotizacion: "",
     motivoCotizacionOther: "",
@@ -320,6 +321,8 @@ export function resolveClientProfile(
     weightKg: typeof profile.weightKg === "string" ? profile.weightKg : "",
     maritalStatus:
       typeof profile.maritalStatus === "string" ? profile.maritalStatus : "",
+    employerRut:
+      typeof profile.employerRut === "string" ? profile.employerRut : "",
     rentaImponible:
       typeof profile.rentaImponible === "string" ? profile.rentaImponible : "",
     motivoCotizacion: resolveMotivoCotizacion(profile.motivoCotizacion),
@@ -564,6 +567,7 @@ export function normalizeClientProfileInput(
       heightCm: input.heightCm?.trim() || "",
       weightKg: input.weightKg?.trim() || "",
       maritalStatus: input.maritalStatus?.trim() || "",
+      employerRut: formatOptionalClientRut(input.employerRut) ?? "",
       rentaImponible: (input.rentaImponible ?? "").trim(),
       motivoCotizacion: resolveMotivoCotizacion(input.motivoCotizacion),
       motivoCotizacionOther: resolveMotivoCotizacionOther(

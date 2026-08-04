@@ -87,6 +87,12 @@ export async function GET(request: Request) {
       }
       email = client.email;
       name = client.fullName;
+
+      // Persiste el equipo elegido (o el round-robin) para la ficha / protocolo.
+      await prisma.user.update({
+        where: { id: clientId },
+        data: { calendlyTeam: teamId },
+      });
     }
 
     const schedulingUrl = buildCalendlySchedulingUrl({
@@ -102,16 +108,15 @@ export async function GET(request: Request) {
       prefill: email || name ? { email, name } : null,
       configuredTeams: (
         ["EQUIPO_1", "EQUIPO_2", "EQUIPO_3"] as CalendlyTeamId[]
-      )
-        .map((id) => {
-          const c = getCalendlyTeamConfig(id);
-          return {
-            teamId: id,
-            label: c.label,
-            ready: Boolean(c.schedulingUrl),
-          };
-        })
-        .filter((t) => t.ready),
+      ).map((id) => {
+        const c = getCalendlyTeamConfig(id);
+        return {
+          teamId: id,
+          label: c.label,
+          ready: Boolean(c.schedulingUrl),
+          schedulingUrl: c.schedulingUrl,
+        };
+      }),
     });
   } catch (error) {
     if (error instanceof CalendlyConfigError) {

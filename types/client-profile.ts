@@ -65,6 +65,8 @@ export interface ClientExecutiveProfile {
   heightCm: string;
   weightKg: string;
   maritalStatus: string;
+  /** RUT del empleador (para detectar convenio empresa). */
+  employerRut: string;
   /** Renta imponible (texto libre / monto). */
   rentaImponible: string;
   /** Motivo de cotización. */
@@ -108,6 +110,7 @@ export interface ClientProfileInput {
   heightCm?: string | null;
   weightKg?: string | null;
   maritalStatus?: string | null;
+  employerRut?: string | null;
   rentaImponible?: string | null;
   motivoCotizacion?: string | null;
   motivoCotizacionOther?: string | null;

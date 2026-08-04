@@ -11,6 +11,7 @@
  */
 
 import {
+  CALENDLY_DEFAULT_SCHEDULING_URLS,
   CALENDLY_TEAM_IDS,
   CALENDLY_TEAM_LABELS,
   isCalendlyTeamId,
@@ -18,6 +19,7 @@ import {
 } from "@/lib/calendly/labels";
 
 export {
+  CALENDLY_DEFAULT_SCHEDULING_URLS,
   CALENDLY_TEAM_IDS,
   CALENDLY_TEAM_LABELS,
   isCalendlyTeamId,
@@ -68,7 +70,9 @@ export function getCalendlyTeamConfig(
     teamId,
     label: CALENDLY_TEAM_LABELS[teamId],
     token: readEnv(`${prefix}_TOKEN`) ?? "",
-    schedulingUrl: readEnv(`${prefix}_SCHEDULING_URL`) ?? "",
+    schedulingUrl:
+      readEnv(`${prefix}_SCHEDULING_URL`) ??
+      CALENDLY_DEFAULT_SCHEDULING_URLS[teamId],
     webhookSigningKey:
       readEnv(`${prefix}_WEBHOOK_SIGNING_KEY`) ?? sharedSigning,
     userUri: readEnv(`${prefix}_USER_URI`),

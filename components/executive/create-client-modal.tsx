@@ -104,6 +104,7 @@ export function CreateClientModal({
         heightCm: profile.heightCm || null,
         weightKg: profile.weightKg || null,
         maritalStatus: profile.maritalStatus || null,
+        employerRut: profile.employerRut.trim() || null,
         rentaImponible: profile.rentaImponible.trim() || null,
         motivoCotizacion: profile.motivoCotizacion || null,
         motivoCotizacionOther:

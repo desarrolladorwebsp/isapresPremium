@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CollapsibleSection } from "@/components/executive/collapsible-section";
@@ -28,11 +28,149 @@ import type {
   ClientDependentProfile,
   ClientMoneyCurrency,
 } from "@/types/client-profile";
+import type {
+  CompanyAgreementLookupResult,
+  CompanyAgreementRecord,
+} from "@/types/company-agreement";
 
 const COVERAGE_SELECT_OPTIONS = CURRENT_COVERAGE_OPTIONS.map((option) => ({
   value: option.label,
   label: option.label,
 }));
+
+type EmployerAgreementStatus =
+  | { kind: "idle" }
+  | { kind: "checking" }
+  | { kind: "invalid" }
+  | { kind: "none" }
+  | { kind: "match"; agreement: CompanyAgreementRecord }
+  | { kind: "error" };
+
+function formatDiscountLabel(value: number | null): string | null {
+  if (value == null) return null;
+  const formatted = Number.isInteger(value)
+    ? String(value)
+    : value.toLocaleString("es-CL", { maximumFractionDigits: 2 });
+  return `${formatted}%`;
+}
+
+function EmployerRutField({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const [status, setStatus] = useState<EmployerAgreementStatus>({
+    kind: "idle",
+  });
+
+  useEffect(() => {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      setStatus({ kind: "idle" });
+      return;
+    }
+
+    if (!isValidRut(trimmed)) {
+      setStatus({ kind: "invalid" });
+      return;
+    }
+
+    let cancelled = false;
+    setStatus({ kind: "checking" });
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const params = new URLSearchParams({ rut: trimmed });
+          const response = await fetch(
+            `/api/company-agreements/lookup?${params}`,
+          );
+          const payload = (await response.json().catch(() => null)) as
+            | (CompanyAgreementLookupResult & { error?: string })
+            | null;
+
+          if (cancelled) return;
+
+          if (!response.ok) {
+            setStatus({ kind: "error" });
+            return;
+          }
+
+          const match = payload?.matches[0] ?? null;
+          if (match) {
+            setStatus({ kind: "match", agreement: match });
+          } else {
+            setStatus({ kind: "none" });
+          }
+        } catch {
+          if (!cancelled) setStatus({ kind: "error" });
+        }
+      })();
+    }, 400);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [value]);
+
+  const discount = status.kind === "match"
+    ? formatDiscountLabel(status.agreement.discountPercent)
+    : null;
+
+  return (
+    <label className="block space-y-1.5">
+      <span className="flex flex-wrap items-center gap-2 text-xs font-medium">
+        RUT empleador
+        {status.kind === "checking" ? (
+          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600">
+            Verificando…
+          </span>
+        ) : null}
+        {status.kind === "match" ? (
+          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-800">
+            En convenio
+            {discount ? ` · ${discount}` : ""}
+          </span>
+        ) : null}
+        {status.kind === "none" ? (
+          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-900">
+            Sin convenio
+          </span>
+        ) : null}
+        {status.kind === "invalid" ? (
+          <span className="rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-rose-800">
+            RUT inválido
+          </span>
+        ) : null}
+        {status.kind === "error" ? (
+          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600">
+            No se pudo verificar
+          </span>
+        ) : null}
+      </span>
+      <Input
+        value={value}
+        onChange={(event) => onChange(sanitizeRutInput(event.target.value))}
+        placeholder="76.XXX.XXX-X"
+      />
+      {status.kind === "match" ? (
+        <p className="text-[11px] text-emerald-800">
+          {status.agreement.companyName.trim() || "Empresa con convenio"}
+          {status.agreement.isapreName?.trim()
+            ? ` · ${status.agreement.isapreName.trim()}`
+            : ""}
+        </p>
+      ) : null}
+      {status.kind === "none" ? (
+        <p className="text-[11px] text-muted">
+          Este RUT no aparece en el catálogo de convenios activos.
+        </p>
+      ) : null}
+    </label>
+  );
+}
 
 function CurrencyAmountField({
   label,
@@ -102,6 +240,7 @@ export interface ClientProfileFormValue {
   heightCm: string;
   weightKg: string;
   maritalStatus: string;
+  employerRut: string;
   rentaImponible: string;
   motivoCotizacion: string;
   motivoCotizacionOther: string;
@@ -135,6 +274,7 @@ export function buildEmptyClientProfileFormValue(): ClientProfileFormValue {
     heightCm: "",
     weightKg: "",
     maritalStatus: "",
+    employerRut: "",
     rentaImponible: "",
     motivoCotizacion: "",
     motivoCotizacionOther: "",
@@ -508,6 +648,11 @@ export function ClientProfileForm({
                 </p>
               ) : null}
             </label>
+
+            <EmployerRutField
+              value={value.employerRut}
+              onChange={(next) => updateField("employerRut", next)}
+            />
 
             <label className="block space-y-1.5">
               <span className="text-xs font-medium">Fecha de nacimiento</span>
@@ -1276,6 +1421,7 @@ export function userRecordToProfileFormValue(
       heightCm?: string;
       weightKg?: string;
       maritalStatus?: string;
+      employerRut?: string;
       rentaImponible?: string;
       motivoCotizacion?: string;
       motivoCotizacionOther?: string;
@@ -1321,6 +1467,7 @@ export function userRecordToProfileFormValue(
     heightCm: profile?.heightCm ?? "",
     weightKg: profile?.weightKg ?? "",
     maritalStatus: profile?.maritalStatus ?? "",
+    employerRut: profile?.employerRut ?? "",
     rentaImponible: profile?.rentaImponible ?? "",
     motivoCotizacion: profile?.motivoCotizacion ?? "",
     motivoCotizacionOther: profile?.motivoCotizacionOther ?? "",

@@ -147,6 +147,7 @@ export function parseClientProfilePayload(payload: unknown): ClientProfileInput 
     weightKg: typeof data.weightKg === "string" ? data.weightKg : null,
     maritalStatus:
       typeof data.maritalStatus === "string" ? data.maritalStatus : null,
+    employerRut: typeof data.employerRut === "string" ? data.employerRut : null,
     rentaImponible:
       typeof data.rentaImponible === "string" ? data.rentaImponible : null,
     motivoCotizacion:

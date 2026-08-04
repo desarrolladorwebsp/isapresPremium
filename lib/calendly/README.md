@@ -9,6 +9,14 @@ Por cada cuenta (`EQUIPO_1` / `EQUIPO_2` / `EQUIPO_3`):
 - `CALENDLY_EQUIPO_N_WEBHOOK_SIGNING_KEY` — signing key del webhook
 - Opcional: `CALENDLY_EQUIPO_N_USER_URI`
 
+Defaults de scheduling (si no hay env):
+
+| Equipo | URL |
+|--------|-----|
+| Equipo 1 | https://calendly.com/cotizador-isaprespremium/reunion |
+| Equipo 2 | https://calendly.com/cotizador-isaprespremium_/online |
+| Equipo 3 | https://calendly.com/isaprespremium-info/online |
+
 Firma compartida (fallback): `CALENDLY_WEBHOOK_SIGNING_KEY`  
 Solo desarrollo: `CALENDLY_WEBHOOK_SKIP_VERIFY=true` (nunca en producción)
 
@@ -28,8 +36,9 @@ Si no hay match: se guarda `CalendlyBooking` sin `userId` (no crea lead). Log en
 
 ## Flujo staff
 
-- En **Redirigir a Isapres Premium** + método Zoom: widget Calendly embebido
-  (misma URL del embed oficial / `CALENDLY_EQUIPO_N_SCHEDULING_URL`).
+- En **Redirigir a Isapres Premium** o reagendar con Zoom: el ejecutivo
+  **elige Equipo 1 / 2 / 3** (las tres cuentas Calendly) y agenda con el widget.
 - Prefill `email` + `name` del cliente.
+- El equipo elegido se guarda en `User.calendlyTeam` (útil para la ficha / protocolo).
 - Copiar link / abrir en pestaña como respaldo.
 - Tras webhook: `nextCallAt`, `preferredContactMethod=ZOOM`, `zoomJoinUrl`, historial.
