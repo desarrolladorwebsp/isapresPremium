@@ -61,10 +61,23 @@ import {
 import { touchTarget, ui } from "@/lib/ui-tokens";
 import { joinClasses } from "@/lib/utils";
 import type { UserRecord } from "@/types/user";
+import { CLIENT_ORIGIN_LABELS } from "@/components/executive/client-origin-badge";
 
 export interface ExecutiveClientsPanelProps {
   onNotify: (message: string, tone?: "success" | "error") => void;
 }
+
+type ClientsSortKey =
+  | "cliente"
+  | "origen"
+  | "cotizador"
+  | "plan"
+  | "contacto"
+  | "rut"
+  | "ejecutivo"
+  | "registro";
+
+type SortDirection = "asc" | "desc";
 
 function formatDate(value: string): string {
   return new Intl.DateTimeFormat("es-CL", {
@@ -82,6 +95,46 @@ function formatNextCallAt(value: string | null | undefined): string | null {
     dateStyle: "short",
     timeStyle: "short",
   }).format(date);
+}
+
+function compareText(a: string, b: string): number {
+  return a.localeCompare(b, "es", { sensitivity: "base", numeric: true });
+}
+
+function clientSortValue(client: UserRecord, key: ClientsSortKey): string | number {
+  switch (key) {
+    case "cliente":
+      return client.fullName?.trim() || "";
+    case "origen": {
+      const origin = client.clientOrigin ?? "MANUAL";
+      if (origin === "FORMULARIO_WEB" && client.webFormSource?.trim()) {
+        return client.webFormSource.trim();
+      }
+      return CLIENT_ORIGIN_LABELS[origin] ?? origin;
+    }
+    case "cotizador":
+      return (
+        client.cotizadorSource?.label?.trim() ||
+        client.cotizadorSource?.slug?.trim() ||
+        ""
+      );
+    case "plan":
+      return (
+        client.advisedPlan?.planName?.trim() ||
+        client.requestedPlan?.planName?.trim() ||
+        ""
+      );
+    case "contacto":
+      return client.email?.trim() || client.phone?.trim() || "";
+    case "rut":
+      return client.rut?.trim() || "";
+    case "ejecutivo":
+      return client.assignedExecutiveName?.trim() || "";
+    case "registro":
+      return new Date(client.createdAt).getTime() || 0;
+    default:
+      return "";
+  }
 }
 
 export function ExecutiveClientsPanel({
@@ -107,6 +160,8 @@ export function ExecutiveClientsPanel({
 
   const [search, setSearch] = useState("");
   const [segment, setSegment] = useState<"cartera" | "derivados">("cartera");
+  const [sortKey, setSortKey] = useState<ClientsSortKey>("registro");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [savingId, setSavingId] = useState<string | null>(null);
   const [distributing, setDistributing] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -185,6 +240,44 @@ export function ExecutiveClientsPanel({
         .some((value) => String(value).toLowerCase().includes(query)),
     );
   }, [segmentedClients, search]);
+
+  const sortedClients = useMemo(() => {
+    const rows = [...filteredClients];
+    const direction = sortDirection === "asc" ? 1 : -1;
+
+    rows.sort((left, right) => {
+      const a = clientSortValue(left, sortKey);
+      const b = clientSortValue(right, sortKey);
+
+      if (typeof a === "number" && typeof b === "number") {
+        if (a === b) return compareText(left.fullName, right.fullName);
+        return (a - b) * direction;
+      }
+
+      const cmp = compareText(String(a), String(b));
+      if (cmp !== 0) return cmp * direction;
+      return compareText(left.fullName, right.fullName);
+    });
+
+    return rows;
+  }, [filteredClients, sortKey, sortDirection]);
+
+  function toggleSort(nextKey: ClientsSortKey) {
+    if (sortKey === nextKey) {
+      setSortDirection((current) => (current === "asc" ? "desc" : "asc"));
+      return;
+    }
+    setSortKey(nextKey);
+    setSortDirection(nextKey === "registro" ? "desc" : "asc");
+  }
+
+  function sortProps(key: ClientsSortKey) {
+    return {
+      sortable: true as const,
+      sortDirection: sortKey === key ? sortDirection : null,
+      onSort: () => toggleSort(key),
+    };
+  }
 
   const unassignedCount = useMemo(
     () => (clients ?? []).filter((client) => !client.assignedExecutiveId).length,
@@ -390,7 +483,7 @@ export function ExecutiveClientsPanel({
 
       <AdminTableCard
         loading={loading}
-        empty={!loading && filteredClients.length === 0}
+        empty={!loading && sortedClients.length === 0}
         emptyTitle={
           segment === "derivados"
             ? "Sin clientes derivados"
@@ -404,28 +497,44 @@ export function ExecutiveClientsPanel({
               : "Agrega clientes que captaste por tu cuenta o espera leads asignados desde el cotizador."
         }
         loadingMessage="Cargando clientes…"
-        footer={`Mostrando ${filteredClients.length} de ${segmentedClients.length} clientes.`}
+        footer={`Mostrando ${sortedClients.length} de ${segmentedClients.length} clientes.`}
       >
         <AdminTable minWidth={isAdmin ? "72rem" : "64rem"}>
           <AdminTableHead>
             <tr>
-              <AdminTableHeaderCell>Cliente</AdminTableHeaderCell>
-              <AdminTableHeaderCell>Origen</AdminTableHeaderCell>
+              <AdminTableHeaderCell {...sortProps("cliente")}>
+                Cliente
+              </AdminTableHeaderCell>
+              <AdminTableHeaderCell {...sortProps("origen")}>
+                Origen
+              </AdminTableHeaderCell>
               {isAdmin ? (
-                <AdminTableHeaderCell>Cotizador</AdminTableHeaderCell>
+                <AdminTableHeaderCell {...sortProps("cotizador")}>
+                  Cotizador
+                </AdminTableHeaderCell>
               ) : null}
-              <AdminTableHeaderCell>Plan</AdminTableHeaderCell>
-              <AdminTableHeaderCell>Contacto</AdminTableHeaderCell>
-              <AdminTableHeaderCell>RUT</AdminTableHeaderCell>
+              <AdminTableHeaderCell {...sortProps("plan")}>
+                Plan
+              </AdminTableHeaderCell>
+              <AdminTableHeaderCell {...sortProps("contacto")}>
+                Contacto
+              </AdminTableHeaderCell>
+              <AdminTableHeaderCell {...sortProps("rut")}>
+                RUT
+              </AdminTableHeaderCell>
               {isAdmin ? (
-                <AdminTableHeaderCell>Ejecutivo</AdminTableHeaderCell>
+                <AdminTableHeaderCell {...sortProps("ejecutivo")}>
+                  Ejecutivo
+                </AdminTableHeaderCell>
               ) : null}
-              <AdminTableHeaderCell>Registro</AdminTableHeaderCell>
+              <AdminTableHeaderCell {...sortProps("registro")}>
+                Registro
+              </AdminTableHeaderCell>
               <AdminTableHeaderCell>Acciones</AdminTableHeaderCell>
             </tr>
           </AdminTableHead>
           <AdminTableBody>
-            {filteredClients.map((client) => (
+            {sortedClients.map((client) => (
               <AdminTableRow key={client.id}>
                 <AdminTableCell className="min-w-[11rem]">
                   <TableCellStack>

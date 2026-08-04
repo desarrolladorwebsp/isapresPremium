@@ -17,6 +17,7 @@ import {
   userRecordToProfileFormValue,
   type ClientProfileFormValue,
 } from "@/components/executive/client-profile-form";
+import { CollapsibleSection } from "@/components/executive/collapsible-section";
 import { useStaffSession } from "@/hooks/use-auth-session";
 import {
   canUseZoomExecutiveWorkflow,
@@ -251,6 +252,7 @@ function buildSaveChangeSummary(input: {
   profileForm: ClientProfileFormValue;
   nextCallLocal: string;
   rescheduleNote: string;
+  meetingNote: string;
   rescheduleContactMethod: ClientContactMethod | "";
   checklist: ClientChecklist;
   closedRecord: ClientClosedRecord;
@@ -263,6 +265,7 @@ function buildSaveChangeSummary(input: {
     profileForm,
     nextCallLocal,
     rescheduleNote,
+    meetingNote,
     rescheduleContactMethod,
     checklist,
     closedRecord,
@@ -271,6 +274,10 @@ function buildSaveChangeSummary(input: {
     isZoom,
   } = input;
   const items: string[] = [];
+
+  if (meetingNote.trim()) {
+    items.push("Agregar nota de reunión");
+  }
 
   const originalNextCall = toDatetimeLocalValue(client.nextCallAt);
   if (nextCallLocal !== originalNextCall) {
@@ -455,6 +462,7 @@ export function ClientPipelineDrawer({
   const [pipelineNotes, setPipelineNotes] = useState("");
   const [nextCallLocal, setNextCallLocal] = useState("");
   const [rescheduleNote, setRescheduleNote] = useState("");
+  const [meetingNote, setMeetingNote] = useState("");
   const [rescheduleContactMethod, setRescheduleContactMethod] = useState<
     ClientContactMethod | ""
   >("");
@@ -548,6 +556,7 @@ export function ClientPipelineDrawer({
     }
     if (toDatetimeLocalValue(client.nextCallAt) !== nextCallLocal) return true;
     if (rescheduleNote.trim()) return true;
+    if (meetingNote.trim()) return true;
     if (
       showReschedule &&
       rescheduleSource === "premium" &&
@@ -579,6 +588,7 @@ export function ClientPipelineDrawer({
     pipelineStatus,
     nextCallLocal,
     rescheduleNote,
+    meetingNote,
     rescheduleContactMethod,
     profileForm,
     checklist,
@@ -609,6 +619,7 @@ export function ClientPipelineDrawer({
     setPipelineNotes(client.pipelineNotes ?? "");
     setNextCallLocal(toDatetimeLocalValue(client.nextCallAt));
     setRescheduleNote("");
+    setMeetingNote("");
     setRescheduleContactMethod(client.preferredContactMethod ?? "");
     setProfileForm(userRecordToProfileFormValue(client));
     setShowReschedule(false);
@@ -769,6 +780,7 @@ export function ClientPipelineDrawer({
           profileForm,
           nextCallLocal,
           rescheduleNote,
+          meetingNote,
           rescheduleContactMethod,
           checklist,
           closedRecord,
@@ -894,6 +906,7 @@ export function ClientPipelineDrawer({
     profileForm,
     nextCallLocal,
     rescheduleNote,
+    meetingNote,
     rescheduleContactMethod,
     checklist,
     closedRecord,
@@ -1210,6 +1223,17 @@ export function ClientPipelineDrawer({
       lastCallOutcome = `Cerrado · ${closedRecord.isapre.trim()}`;
     }
 
+    if (meetingNote.trim()) {
+      notesToSave = appendPipelineNoteLine(
+        notesToSave ?? client.pipelineNotes,
+        `Nota de reunión: ${meetingNote.trim()}`,
+        actorDisplayName,
+      );
+      if (!lastCallOutcome) {
+        lastCallOutcome = "Nota de reunión registrada";
+      }
+    }
+
     setSaving(true);
     try {
       const nextStatus = closing
@@ -1241,6 +1265,7 @@ export function ClientPipelineDrawer({
         setPipelineNotes(updated.pipelineNotes ?? notesToSave ?? "");
       }
       setRescheduleNote("");
+      setMeetingNote("");
       setShowReschedule(false);
       setRescheduleSource(null);
       setShowCloseForm(closing);
@@ -2046,6 +2071,36 @@ export function ClientPipelineDrawer({
           }}
           rutErrors={rutErrors}
         />
+
+        {!isTrackingOnly ? (
+          <CollapsibleSection
+            title="Nota de reunión"
+            description="Registra lo conversado con el cliente tras la reunión. Al guardar, queda en el historial."
+            className="rounded-xl border border-border bg-bg-layout/30 p-4"
+            bodyClassName="space-y-3"
+            defaultOpen
+          >
+            <label className="block space-y-1.5">
+              <span className="text-xs font-medium">
+                Comentario post-reunión
+              </span>
+              <textarea
+                value={meetingNote}
+                onChange={(event) => setMeetingNote(event.target.value)}
+                rows={4}
+                placeholder="Ej. Cliente interesado en bajar costo; enviará liquidaciones mañana. Prefiere WhatsApp…"
+                className={joinClasses(
+                  "min-h-[6rem] w-full resize-y rounded-xl px-3 py-2.5 text-sm",
+                  ui.input,
+                )}
+              />
+              <p className="text-[11px] text-muted">
+                Se agregará al historial con tu nombre y la fecha al guardar
+                cambios.
+              </p>
+            </label>
+          </CollapsibleSection>
+        ) : null}
 
         <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-2">

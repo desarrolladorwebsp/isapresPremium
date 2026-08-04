@@ -169,20 +169,74 @@ export function AdminTableHeaderCell({
   children,
   align = "left",
   className,
+  sortable = false,
+  sortDirection = null,
+  onSort,
 }: {
   children: ReactNode;
   align?: "left" | "right" | "center";
   className?: string;
+  /** Si es true, el encabezado es clickeable para ordenar. */
+  sortable?: boolean;
+  sortDirection?: "asc" | "desc" | null;
+  onSort?: () => void;
 }) {
+  const alignClass =
+    align === "right"
+      ? "text-right"
+      : align === "center"
+        ? "text-center"
+        : "text-left";
+
+  if (!sortable) {
+    return (
+      <th
+        className={joinClasses(
+          "px-4 py-3 font-semibold whitespace-nowrap",
+          alignClass,
+          className,
+        )}
+      >
+        {children}
+      </th>
+    );
+  }
+
   return (
     <th
       className={joinClasses(
         "px-4 py-3 font-semibold whitespace-nowrap",
-        align === "right" ? "text-right" : align === "center" ? "text-center" : "text-left",
+        alignClass,
         className,
       )}
+      aria-sort={
+        sortDirection === "asc"
+          ? "ascending"
+          : sortDirection === "desc"
+            ? "descending"
+            : "none"
+      }
     >
-      {children}
+      <button
+        type="button"
+        onClick={onSort}
+        className={joinClasses(
+          "inline-flex max-w-full items-center gap-1 rounded-md px-0.5 py-0.5 text-inherit transition",
+          "hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
+          sortDirection ? "text-primary" : "text-inherit",
+        )}
+      >
+        <span className="truncate">{children}</span>
+        <span
+          className={joinClasses(
+            "inline-flex w-3 shrink-0 justify-center text-[10px] leading-none",
+            sortDirection ? "opacity-100" : "opacity-40",
+          )}
+          aria-hidden
+        >
+          {sortDirection === "asc" ? "↑" : sortDirection === "desc" ? "↓" : "↕"}
+        </span>
+      </button>
     </th>
   );
 }
