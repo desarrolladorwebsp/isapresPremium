@@ -82,7 +82,8 @@ type SortDirection = "asc" | "desc";
 function formatDate(value: string): string {
   return new Intl.DateTimeFormat("es-CL", {
     timeZone: "America/Santiago",
-    dateStyle: "medium",
+    dateStyle: "short",
+    timeStyle: "short",
   }).format(new Date(value));
 }
 
@@ -416,7 +417,7 @@ export function ExecutiveClientsPanel({
             {isAdmin && unassignedCount > 0 ? (
               <Button
                 size="sm"
-                variant="warning"
+                variant="danger"
                 disabled={distributing}
                 onClick={() => setDistributeConfirmOpen(true)}
                 aria-label={
@@ -431,11 +432,11 @@ export function ExecutiveClientsPanel({
                 }
                 className={joinClasses(
                   touchTarget,
-                  "relative px-0 sm:h-9 sm:min-h-9 sm:min-w-0 sm:px-3",
+                  "relative border-rose-300 !bg-rose-600 px-0 !text-white shadow-sm hover:!bg-rose-500 active:scale-[0.98] sm:h-9 sm:min-h-9 sm:min-w-0 sm:px-3",
                 )}
               >
                 <IconUsers className="size-4 sm:mr-1.5" />
-                <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-700 px-1 text-[10px] font-bold text-white sm:hidden">
+                <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-900 px-1 text-[10px] font-bold text-white sm:hidden">
                   {unassignedCount}
                 </span>
                 <span className="hidden sm:inline">

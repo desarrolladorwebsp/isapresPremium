@@ -39,7 +39,8 @@ export interface ExecutiveClientDetailViewProps {
 function formatDate(value: string): string {
   return new Intl.DateTimeFormat("es-CL", {
     timeZone: "America/Santiago",
-    dateStyle: "medium",
+    dateStyle: "short",
+    timeStyle: "short",
   }).format(new Date(value));
 }
 
