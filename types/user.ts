@@ -62,6 +62,9 @@ export interface UserRecord {
   assignedExecutiveName?: string | null;
   /** Kind del ejecutivo asignado (Zoom / Isapres / Premium). */
   assignedExecutiveKind?: import("@/types/staff-account").ExecutiveKind | null;
+  /** Staff que registró el cliente (alta manual). */
+  registeredById?: string | null;
+  registeredByName?: string | null;
   /** Ejecutivo que sigue el cliente tras un handoff (hasta CERRADO/PERDIDO). */
   trackingExecutiveId?: string | null;
   trackingExecutiveName?: string | null;

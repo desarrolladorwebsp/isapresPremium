@@ -155,3 +155,62 @@ EXCEPTION
   WHEN duplicate_object THEN null;
   WHEN undefined_object THEN null;
 END $$;
+
+-- Quién registró el cliente (alta manual)
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "registered_by_id" TEXT;
+
+CREATE INDEX IF NOT EXISTS "users_registered_by_id_idx" ON "users"("registered_by_id");
+
+DO $$ BEGIN
+  ALTER TABLE "users"
+    ADD CONSTRAINT "users_registered_by_id_fkey"
+    FOREIGN KEY ("registered_by_id") REFERENCES "staff_accounts"("id")
+    ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
+
+-- Documentos de ficha de cliente
+DO $$ BEGIN
+  CREATE TYPE "ClientDocumentKind" AS ENUM ('RUT', 'LIQUIDACION', 'PLAN', 'OTROS');
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
+
+CREATE TABLE IF NOT EXISTS "client_documents" (
+    "id" TEXT NOT NULL,
+    "user_id" TEXT NOT NULL,
+    "kind" "ClientDocumentKind" NOT NULL,
+    "custom_label" TEXT,
+    "file_name" TEXT NOT NULL,
+    "mime_type" TEXT NOT NULL,
+    "byte_size" INTEGER NOT NULL,
+    "storage_key" TEXT NOT NULL,
+    "storage_backend" TEXT NOT NULL DEFAULT 'blob',
+    "uploaded_by_id" TEXT,
+    "uploaded_by_name" TEXT,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "client_documents_pkey" PRIMARY KEY ("id")
+);
+
+CREATE INDEX IF NOT EXISTS "client_documents_user_id_idx" ON "client_documents"("user_id");
+CREATE INDEX IF NOT EXISTS "client_documents_kind_idx" ON "client_documents"("kind");
+CREATE INDEX IF NOT EXISTS "client_documents_created_at_idx" ON "client_documents"("created_at");
+
+DO $$ BEGIN
+  ALTER TABLE "client_documents"
+    ADD CONSTRAINT "client_documents_user_id_fkey"
+    FOREIGN KEY ("user_id") REFERENCES "users"("id")
+    ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+  ALTER TABLE "client_documents"
+    ADD CONSTRAINT "client_documents_uploaded_by_id_fkey"
+    FOREIGN KEY ("uploaded_by_id") REFERENCES "staff_accounts"("id")
+    ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;

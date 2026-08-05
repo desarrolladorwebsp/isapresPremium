@@ -9,6 +9,7 @@ import { AdminFormModal } from "@/components/admin/admin-data-table";
 import { ClientPipelineStatusBadge } from "@/components/executive/client-pipeline-status-badge";
 import { ClientContactMethodBadge } from "@/components/executive/client-contact-method-badge";
 import { ClientAdvisedPlanSection } from "@/components/executive/client-advised-plan-section";
+import { ClientDocumentsSection } from "@/components/executive/client-documents-section";
 import { ClientPlanSummary } from "@/components/executive/client-plan-summary";
 import { CalendlyInlineEmbed } from "@/components/executive/calendly-inline-embed";
 import { RescheduleDayAgenda } from "@/components/executive/reschedule-day-agenda";
@@ -44,6 +45,7 @@ import {
 } from "@/lib/client-pipeline/note-stamp";
 import {
   CONFIRMATION_CALL_LEAD_MINUTES,
+  canEditClientDataAsExecutive,
   isTrackingOnlyForExecutive,
 } from "@/lib/client-pipeline/tracking";
 import { getClientManagementRutErrors } from "@/lib/client-profile/validate-client-ruts";
@@ -443,6 +445,15 @@ export function ClientPipelineDrawer({
     Boolean(client) &&
     !isAdmin &&
     isTrackingOnlyForExecutive(client!, sessionUser!.id);
+  const canEditClientData =
+    Boolean(sessionUser?.id) &&
+    Boolean(client) &&
+    canEditClientDataAsExecutive(
+      client!,
+      sessionUser!.id,
+      isAdmin,
+      executiveKind,
+    );
   const canManageZoom =
     (canUseZoomExecutiveWorkflow(executiveKind) || isAdmin) && !isTrackingOnly;
   const canManagePremium = (isPremium || isAdmin) && !isTrackingOnly;
@@ -545,9 +556,6 @@ export function ClientPipelineDrawer({
     dependents?: Record<string, string>;
     additionalTitulares?: Record<string, string>;
   }>({});
-
-  const isTerminalStatus =
-    pipelineStatus === "CERRADO" || pipelineStatus === "PERDIDO";
 
   const hasUnsavedChanges = useMemo(() => {
     if (!client) return false;
@@ -1150,7 +1158,7 @@ export function ClientPipelineDrawer({
       Boolean(options?.forceClose) ||
       showCloseForm ||
       pipelineStatus === "CERRADO";
-    if (closing && !isZoom) {
+    if (closing) {
       if (!closedRecord.isapre.trim()) {
         onNotify("Indica la Isapre del registro de cierre.", "error");
         return;
@@ -1209,7 +1217,7 @@ export function ClientPipelineDrawer({
           : "Llamado reagendado");
     }
 
-    if (closing && !isZoom) {
+    if (closing) {
       const closeBody = `Cierre de negocio registrado. Isapre: ${closedRecord.isapre.trim()}.${
         closedRecord.planName?.trim() || closedRecord.planCode?.trim()
           ? ` Plan: ${closedRecord.planName?.trim() || closedRecord.planCode?.trim()}.`
@@ -1240,7 +1248,7 @@ export function ClientPipelineDrawer({
         ? "CERRADO"
         : applyReschedule
           ? "EN_SEGUIMIENTO"
-          : !isZoom && checklist.items.some((item) => item.checked)
+          : checklist.items.some((item) => item.checked)
             ? advancePipelineStatus(pipelineStatus, "DOCUMENTACION")
             : pipelineStatus;
 
@@ -1248,9 +1256,9 @@ export function ClientPipelineDrawer({
         ...(closing || nextStatus !== (client.pipelineStatus ?? "NUEVO")
           ? { pipelineStatus: nextStatus }
           : {}),
-        ...(isZoom ? {} : { checklist }),
+        checklist,
         clientProfile: buildProfilePayload(),
-        ...(closing && !isZoom ? { closedRecord } : {}),
+        ...(closing ? { closedRecord } : {}),
         ...(notesToSave !== undefined ? { pipelineNotes: notesToSave } : {}),
         ...(lastCallOutcome !== undefined ? { lastCallOutcome } : {}),
         nextCallAt: nextCallIso,
@@ -2030,7 +2038,7 @@ export function ClientPipelineDrawer({
           </div>
         ) : null}
 
-        {!isTrackingOnly ? (
+        {canEditClientData ? (
           <ClientAdvisedPlanSection
             client={client}
             onUpdated={onUpdated}
@@ -2057,9 +2065,9 @@ export function ClientPipelineDrawer({
 
         <ClientProfileForm
           value={profileForm}
-          readOnly={isTrackingOnly}
+          readOnly={!canEditClientData}
           onChange={(next) => {
-            if (isTrackingOnly) return;
+            if (!canEditClientData) return;
             setProfileForm(next);
             if (
               rutErrors.titular ||
@@ -2072,7 +2080,7 @@ export function ClientPipelineDrawer({
           rutErrors={rutErrors}
         />
 
-        {!isTrackingOnly ? (
+        {canEditClientData ? (
           <CollapsibleSection
             title="Nota de reunión"
             description="Registra lo conversado con el cliente tras la reunión. Al guardar, queda en el historial."
@@ -2113,7 +2121,7 @@ export function ClientPipelineDrawer({
             <ClientContactMethodBadge
               method={client.preferredContactMethod}
             />
-            {!isZoom && !isTrackingOnly ? (
+            {canEditClientData ? (
               <span className="text-xs text-muted">
                 {checklistProgress.done}/{checklistProgress.total} documentos listos
               </span>
@@ -2129,7 +2137,7 @@ export function ClientPipelineDrawer({
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => {
-                  if (!isTrackingOnly) void markContactedFromWhatsApp();
+                  if (canEditClientData) void markContactedFromWhatsApp();
                 }}
                 className="ml-auto inline-flex items-center gap-2 rounded-full bg-[#25D366] px-3 py-1.5 text-xs font-semibold text-white transition-opacity hover:opacity-90"
               >
@@ -2153,55 +2161,36 @@ export function ClientPipelineDrawer({
             </div>
 
             <div className="flex flex-wrap gap-2">
-              {!isTerminalStatus ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="primary"
-                  disabled={actionBusy}
-                  aria-pressed={showCloseForm}
-                  onClick={() => {
-                    clearManagementPanels();
-                    setShowCloseForm(true);
-                  }}
-                >
-                  Cerrar negocio
-                </Button>
-              ) : null}
-              {!isTerminalStatus ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="danger"
-                  disabled={actionBusy}
-                  aria-pressed={showLost && lostSource === "isapres"}
-                  onClick={() => {
-                    clearManagementPanels();
-                    setShowCloseForm(false);
-                    setShowLost(true);
-                    setLostSource("isapres");
-                    setLostReason("");
-                    setLostReasonOther("");
-                  }}
-                >
-                  Marcar perdido
-                </Button>
-              ) : null}
-              {pipelineStatus === "CERRADO" ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="secondary"
-                  disabled={actionBusy}
-                  aria-pressed={showCloseForm}
-                  onClick={() => {
-                    clearManagementPanels();
-                    setShowCloseForm(true);
-                  }}
-                >
-                  Ver registro de cierre
-                </Button>
-              ) : null}
+              <Button
+                type="button"
+                size="sm"
+                variant="primary"
+                disabled={actionBusy}
+                aria-pressed={showCloseForm}
+                onClick={() => {
+                  clearManagementPanels();
+                  setShowCloseForm(true);
+                }}
+              >
+                {pipelineStatus === "CERRADO" ? "Ver registro de cierre" : "Cerrar negocio"}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="danger"
+                disabled={actionBusy}
+                aria-pressed={showLost && lostSource === "isapres"}
+                onClick={() => {
+                  clearManagementPanels();
+                  setShowCloseForm(false);
+                  setShowLost(true);
+                  setLostSource("isapres");
+                  setLostReason("");
+                  setLostReasonOther("");
+                }}
+              >
+                Marcar perdido
+              </Button>
             </div>
 
             <AnimatePresence>
@@ -2269,16 +2258,31 @@ export function ClientPipelineDrawer({
               >
                 Redirigir a Isapres Premium
               </Button>
-              {!isTerminalStatus ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="danger"
+                disabled={actionBusy}
+                aria-pressed={showLost && lostSource === "zoom"}
+                onClick={() => openZoomAction("perdido")}
+              >
+                Marcar perdido
+              </Button>
+              {canEditClientData ? (
                 <Button
                   type="button"
                   size="sm"
-                  variant="danger"
+                  variant={pipelineStatus === "CERRADO" ? "secondary" : "ghost"}
                   disabled={actionBusy}
-                  aria-pressed={showLost && lostSource === "zoom"}
-                  onClick={() => openZoomAction("perdido")}
+                  aria-pressed={showCloseForm}
+                  onClick={() => {
+                    clearManagementPanels();
+                    setShowCloseForm(true);
+                  }}
                 >
-                  Marcar perdido
+                  {pipelineStatus === "CERRADO"
+                    ? "Ver registro de cierre"
+                    : "Cerrar negocio"}
                 </Button>
               ) : null}
             </div>
@@ -2522,16 +2526,31 @@ export function ClientPipelineDrawer({
               >
                 Reagendar llamado
               </Button>
-              {!isTerminalStatus ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="danger"
+                disabled={actionBusy}
+                aria-pressed={showLost && lostSource === "premium"}
+                onClick={() => openPremiumAction("perdido")}
+              >
+                Marcar perdido
+              </Button>
+              {canEditClientData ? (
                 <Button
                   type="button"
                   size="sm"
-                  variant="danger"
+                  variant={pipelineStatus === "CERRADO" ? "secondary" : "ghost"}
                   disabled={actionBusy}
-                  aria-pressed={showLost && lostSource === "premium"}
-                  onClick={() => openPremiumAction("perdido")}
+                  aria-pressed={showCloseForm}
+                  onClick={() => {
+                    clearManagementPanels();
+                    setShowCloseForm(true);
+                  }}
                 >
-                  Marcar perdido
+                  {pipelineStatus === "CERRADO"
+                    ? "Ver registro de cierre"
+                    : "Cerrar negocio"}
                 </Button>
               ) : null}
             </div>
@@ -2732,7 +2751,7 @@ export function ClientPipelineDrawer({
           </div>
         ) : null}
 
-        {!isZoom ? (
+        {canEditClientData ? (
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-3">
               <h3 className="text-sm font-semibold text-foreground">Documentos</h3>
@@ -2777,8 +2796,16 @@ export function ClientPipelineDrawer({
           </div>
         ) : null}
 
+        {client ? (
+          <ClientDocumentsSection
+            clientId={client.id}
+            canEdit={canEditClientData}
+            onNotify={onNotify}
+          />
+        ) : null}
+
         <AnimatePresence>
-          {!isZoom && showCloseForm ? (
+          {canEditClientData && showCloseForm ? (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
@@ -2987,7 +3014,7 @@ export function ClientPipelineDrawer({
           <Button type="button" variant="ghost" onClick={onClose}>
             {variant === "page" ? "Volver a clientes" : "Cancelar"}
           </Button>
-          {!isTrackingOnly ? (
+          {canEditClientData ? (
             <Button
               type="button"
               disabled={saving || actionBusy || !hasUnsavedChanges}

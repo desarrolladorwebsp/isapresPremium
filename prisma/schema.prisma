@@ -85,6 +85,13 @@ enum ClientContactMethod {
   WHATSAPP
 }
 
+enum ClientDocumentKind {
+  RUT
+  LIQUIDACION
+  PLAN
+  OTROS
+}
+
 enum CalendlyTeam {
   EQUIPO_1
   EQUIPO_2
@@ -196,6 +203,8 @@ model User {
   role                 UserRole              @default(CLIENT)
   active               Boolean               @default(true)
   assignedExecutiveId  String?               @map("assigned_executive_id")
+  /// Ejecutivo o admin que registró el cliente (alta manual). Null en leads del cotizador/formulario.
+  registeredById       String?               @map("registered_by_id")
   /// Ejecutivo que hizo el handoff y sigue el cliente hasta CERRADO/PERDIDO (sin ser el assignee).
   trackingExecutiveId  String?               @map("tracking_executive_id")
   pipelineStatus       ClientPipelineStatus  @default(NUEVO) @map("pipeline_status")
@@ -221,19 +230,46 @@ model User {
   updatedAt              DateTime               @updatedAt @map("updated_at")
   quotes                 Quote[]
   activities             ClientActivity[]
+  documents              ClientDocument[]
   reviews                PlanReview[]
   calendlyBookings       CalendlyBooking[]
   assignedExecutive      StaffAccount? @relation("AssignedClients", fields: [assignedExecutiveId], references: [id], onDelete: SetNull)
+  registeredBy           StaffAccount? @relation("RegisteredClients", fields: [registeredById], references: [id], onDelete: SetNull)
   trackingExecutive      StaffAccount? @relation("TrackingClients", fields: [trackingExecutiveId], references: [id], onDelete: SetNull)
   advisedPlan            Plan?         @relation("AdvisedPlans", fields: [advisedPlanCode], references: [uniqueCode], onDelete: SetNull)
 
   @@index([role])
   @@index([assignedExecutiveId])
+  @@index([registeredById])
   @@index([trackingExecutiveId])
   @@index([advisedPlanCode])
   @@index([nextCallAt])
   @@index([confirmationCallAt])
   @@map("users")
+}
+
+/// Documentos e imágenes adjuntos a la ficha del cliente.
+model ClientDocument {
+  id             String             @id @default(cuid())
+  userId         String             @map("user_id")
+  kind           ClientDocumentKind
+  /// Nombre libre cuando kind = OTROS.
+  customLabel    String?            @map("custom_label")
+  fileName       String             @map("file_name")
+  mimeType       String             @map("mime_type")
+  byteSize       Int                @map("byte_size")
+  storageKey     String             @map("storage_key")
+  storageBackend String             @default("blob") @map("storage_backend")
+  uploadedById   String?            @map("uploaded_by_id")
+  uploadedByName String?            @map("uploaded_by_name")
+  createdAt      DateTime           @default(now()) @map("created_at")
+  user           User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  uploadedBy     StaffAccount?      @relation("UploadedClientDocuments", fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([kind])
+  @@index([createdAt])
+  @@map("client_documents")
 }
 
 /// Key-value para contadores (p. ej. round-robin Calendly).
@@ -301,7 +337,9 @@ model StaffAccount {
   updatedAt             DateTime            @updatedAt @map("updated_at")
   assignedQuotes        Quote[]
   assignedClients       User[]              @relation("AssignedClients")
+  registeredClients     User[]              @relation("RegisteredClients")
   trackingClients       User[]              @relation("TrackingClients")
+  uploadedClientDocuments ClientDocument[]  @relation("UploadedClientDocuments")
   passwordResetTokens   PasswordResetToken[]
 
   @@index([role])

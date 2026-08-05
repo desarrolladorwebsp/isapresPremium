@@ -20,7 +20,7 @@ import { useStaffSession } from "@/hooks/use-auth-session";
 import { useExecutiveClientsQuery } from "@/hooks/query/use-executive-clients-query";
 import { getStaffRoleLabel } from "@/lib/auth/staff-role";
 import { CLIENT_PIPELINE_STATUS_DESCRIPTIONS } from "@/lib/client-pipeline/constants";
-import { isTrackingOnlyForExecutive } from "@/lib/client-pipeline/tracking";
+import { canEditClientDataAsExecutive, isTrackingOnlyForExecutive } from "@/lib/client-pipeline/tracking";
 import { syncClientMutationCache } from "@/lib/query/executive-cache";
 import { staffExecutiveHref } from "@/lib/staff/staff-sections";
 import { touchTarget, ui } from "@/lib/ui-tokens";
@@ -69,7 +69,7 @@ export function ExecutiveClientDetailView({
 }: ExecutiveClientDetailViewProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { isAdmin, user } = useStaffSession();
+  const { isAdmin, user, executiveKind } = useStaffSession();
   const clientsQuery = useExecutiveClientsQuery();
 
   const client = useMemo(
@@ -171,6 +171,15 @@ export function ExecutiveClientDetailView({
       !isAdmin &&
       isTrackingOnlyForExecutive(client, user.id),
   );
+  const canEditClientData = Boolean(
+    user?.id &&
+      canEditClientDataAsExecutive(
+        client,
+        user.id,
+        isAdmin,
+        executiveKind,
+      ),
+  );
   const executiveRoleLabel = client.assignedExecutiveName
     ? getStaffRoleLabel({
         realm: "executive",
@@ -259,7 +268,7 @@ export function ExecutiveClientDetailView({
             client={client}
             onUpdated={handleUpdated}
             onNotify={onNotify}
-            readOnly={isTrackingOnly}
+            readOnly={!canEditClientData}
           />
           <span className="text-xs text-muted">
             Registro: {formatDate(client.createdAt)}

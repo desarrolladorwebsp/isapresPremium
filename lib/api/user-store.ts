@@ -31,6 +31,7 @@ export type UserWithExecutive = DbUser & {
     StaffAccount,
     "id" | "fullName" | "email" | "executiveKind"
   > | null;
+  registeredBy?: Pick<StaffAccount, "id" | "fullName"> | null;
   trackingExecutive?: Pick<StaffAccount, "id" | "fullName"> | null;
 };
 
@@ -47,6 +48,7 @@ export type ClientRecordWithPlans = DbUser & {
     StaffAccount,
     "id" | "fullName" | "email" | "executiveKind"
   > | null;
+  registeredBy?: Pick<StaffAccount, "id" | "fullName"> | null;
   trackingExecutive?: Pick<StaffAccount, "id" | "fullName"> | null;
   quotes?: QuoteWithPlan[];
   advisedPlan?: PlanSummary | null;
@@ -55,6 +57,9 @@ export type ClientRecordWithPlans = DbUser & {
 export const clientRecordInclude = {
   assignedExecutive: {
     select: { id: true, fullName: true, email: true, executiveKind: true },
+  },
+  registeredBy: {
+    select: { id: true, fullName: true },
   },
   trackingExecutive: {
     select: { id: true, fullName: true },
@@ -119,6 +124,8 @@ export function mapDbUser(user: UserWithExecutive): UserRecord {
     assignedExecutiveId: user.assignedExecutiveId,
     assignedExecutiveName: user.assignedExecutive?.fullName ?? null,
     assignedExecutiveKind: user.assignedExecutive?.executiveKind ?? null,
+    registeredById: user.registeredById,
+    registeredByName: user.registeredBy?.fullName ?? null,
     trackingExecutiveId: user.trackingExecutiveId,
     trackingExecutiveName: user.trackingExecutive?.fullName ?? null,
     pipelineStatus: user.pipelineStatus as ClientPipelineStatus,
@@ -358,6 +365,7 @@ export async function createManualClient(
       active: true,
       clientOrigin: input.clientOrigin ?? "MANUAL",
       assignedExecutiveId,
+      registeredById: actor.executiveAccountId,
       pipelineNotes: input.pipelineNotes?.trim() || null,
       clientProfile: normalized.profile as unknown as Prisma.InputJsonValue,
     },

@@ -38,6 +38,10 @@ export async function PATCH(request: Request, context: RouteContext) {
     const updated = await updateClientAdvisedPlan(id, input, {
       executiveAccountId: user.id,
       isAdmin: realm === AUTH_REALM.admin,
+      executiveKind:
+        realm === AUTH_REALM.executive
+          ? (user as import("@/lib/auth/types").ExecutiveSessionUser).executiveKind
+          : null,
       actor: {
         realm: realm === AUTH_REALM.admin ? "admin" : "executive",
         id: user.id,

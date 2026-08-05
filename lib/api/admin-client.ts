@@ -614,6 +614,65 @@ export async function fetchClientActivities(
   return parseJsonResponse(response);
 }
 
+export async function fetchClientDocuments(
+  clientId: string,
+): Promise<import("@/types/client-document").ClientDocumentRecord[]> {
+  const response = await fetch(
+    `/api/executive/clients/${encodeURIComponent(clientId)}/documents`,
+  );
+  const data = await parseJsonResponse<{ documents: import("@/types/client-document").ClientDocumentRecord[] }>(
+    response,
+  );
+  return data.documents;
+}
+
+export async function uploadClientDocument(input: {
+  clientId: string;
+  kind: import("@/types/client-document").ClientDocumentKind;
+  customLabel?: string | null;
+  file: File;
+}): Promise<import("@/types/client-document").ClientDocumentRecord> {
+  const formData = new FormData();
+  formData.append("file", input.file);
+  formData.append("kind", input.kind);
+  if (input.customLabel?.trim()) {
+    formData.append("customLabel", input.customLabel.trim());
+  }
+  const response = await fetch(
+    `/api/executive/clients/${encodeURIComponent(input.clientId)}/documents`,
+    { method: "POST", body: formData },
+  );
+  const data = await parseJsonResponse<{ document: import("@/types/client-document").ClientDocumentRecord }>(
+    response,
+  );
+  return data.document;
+}
+
+export function getClientDocumentInlineUrl(
+  clientId: string,
+  documentId: string,
+): string {
+  return `/api/executive/clients/${encodeURIComponent(clientId)}/documents/${encodeURIComponent(documentId)}?inline=1`;
+}
+
+export function getClientDocumentDownloadUrl(
+  clientId: string,
+  documentId: string,
+): string {
+  return `/api/executive/clients/${encodeURIComponent(clientId)}/documents/${encodeURIComponent(documentId)}?download=1`;
+}
+
+export async function deleteClientDocumentApi(
+  clientId: string,
+  documentId: string,
+): Promise<void> {
+  const response = await fetch(
+    `/api/executive/clients/${encodeURIComponent(clientId)}/documents/${encodeURIComponent(documentId)}`,
+    { method: "DELETE" },
+  );
+  await parseJsonResponse(response);
+}
+
 export async function updateStaffAccount(
   realm: StaffRealm,
   id: string,

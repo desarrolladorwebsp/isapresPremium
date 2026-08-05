@@ -52,3 +52,5 @@ scripts/.*-audit-parsed.json
 
 # basura local
 public/images/Untitled
+
+!/storage/client-docs/.gitkeep

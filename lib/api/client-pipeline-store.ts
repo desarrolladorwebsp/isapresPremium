@@ -19,6 +19,7 @@ import { queueExecutiveClientAssignmentEmail } from "@/lib/email/notify-executiv
 import { isSubscriptionActive } from "@/lib/auth/subscription";
 import { adminCanReceiveAssignmentsForKind } from "@/lib/auth/staff-role";
 import {
+  canEditClientDataAsExecutive,
   canManageClientAsExecutive,
   canViewClientAsExecutive,
   computeConfirmationCallAt,
@@ -68,6 +69,30 @@ function assertExecutiveAccess(
   if (!canManageClientAsExecutive(user, executiveAccountId, isAdmin)) {
     throw new ApiError(
       "No tienes permiso para gestionar este cliente.",
+      403,
+      "FORBIDDEN",
+    );
+  }
+}
+
+function assertCanEditClientData(
+  user: ClientRecordWithPlans,
+  actor: {
+    executiveAccountId: string;
+    isAdmin: boolean;
+    executiveKind?: ExecutiveKind | null;
+  },
+): void {
+  if (
+    !canEditClientDataAsExecutive(
+      user,
+      actor.executiveAccountId,
+      actor.isAdmin,
+      actor.executiveKind,
+    )
+  ) {
+    throw new ApiError(
+      "No tienes permiso para editar los datos de este cliente.",
       403,
       "FORBIDDEN",
     );
@@ -150,7 +175,7 @@ export async function updateClientPipeline(
   },
 ): Promise<UserRecord> {
   const existing = await readClientOrThrow(userId);
-  assertExecutiveAccess(existing, actor.executiveAccountId, actor.isAdmin);
+  assertCanEditClientData(existing, actor);
 
   const canNotes = canAccessInternalPipelineNotes({
     isAdmin: actor.isAdmin,
@@ -265,16 +290,6 @@ export async function updateClientPipeline(
   }
 
   if (input.closedRecord !== undefined) {
-    if (
-      !actor.isAdmin &&
-      actor.executiveKind === "ZOOM"
-    ) {
-      throw new ApiError(
-        "El Ejecutivo Zoom no puede registrar el cierre del negocio.",
-        403,
-        "FORBIDDEN",
-      );
-    }
     data.pipelineClosedRecord = validateClosedRecord(
       input.closedRecord,
     ) as unknown as Prisma.InputJsonValue;
@@ -282,13 +297,6 @@ export async function updateClientPipeline(
 
   const nextStatus = input.pipelineStatus ?? existing.pipelineStatus;
   if (nextStatus === "CERRADO") {
-    if (!actor.isAdmin && actor.executiveKind === "ZOOM") {
-      throw new ApiError(
-        "El Ejecutivo Zoom no puede marcar el cliente como Cerrado.",
-        403,
-        "FORBIDDEN",
-      );
-    }
     const closed =
       input.closedRecord !== undefined
         ? validateClosedRecord(input.closedRecord)

@@ -3,6 +3,7 @@ import { ApiError } from "@/lib/api/api-error";
 import { logClientActivity } from "@/lib/api/client-activity-store";
 import { formatClientPlanLabel } from "@/lib/client-plan/format";
 import { advancePipelineStatus } from "@/lib/client-pipeline/constants";
+import { canEditClientDataAsExecutive } from "@/lib/client-pipeline/tracking";
 import {
   mapDbClientRecord,
   readClientOrThrow,
@@ -12,16 +13,26 @@ import type { ClientActivityActor } from "@/types/client-activity";
 import type { ClientPipelineStatus } from "@/types/client-pipeline";
 import type { UpdateClientAdvisedPlanInput } from "@/types/client-plan";
 import type { UserRecord } from "@/types/user";
+import type { ExecutiveKind } from "@prisma/client";
 
-function assertExecutiveAccess(
+function assertCanEditClientData(
   user: ClientRecordWithPlans,
-  executiveAccountId: string,
-  isAdmin: boolean,
+  actor: {
+    executiveAccountId: string;
+    isAdmin: boolean;
+    executiveKind?: ExecutiveKind | null;
+  },
 ): void {
-  if (isAdmin) return;
-  if (user.assignedExecutiveId !== executiveAccountId) {
+  if (
+    !canEditClientDataAsExecutive(
+      user,
+      actor.executiveAccountId,
+      actor.isAdmin,
+      actor.executiveKind,
+    )
+  ) {
     throw new ApiError(
-      "No tienes permiso para gestionar este cliente.",
+      "No tienes permiso para editar los datos de este cliente.",
       403,
       "FORBIDDEN",
     );
@@ -55,11 +66,12 @@ export async function updateClientAdvisedPlan(
   actor: {
     executiveAccountId: string;
     isAdmin: boolean;
+    executiveKind?: ExecutiveKind | null;
     actor?: ClientActivityActor;
   },
 ): Promise<UserRecord> {
   const existing = await readClientOrThrow(userId);
-  assertExecutiveAccess(existing, actor.executiveAccountId, actor.isAdmin);
+  assertCanEditClientData(existing, actor);
 
   const nextPlanCode = input.planCode?.trim() || null;
   const previousPlanCode = existing.advisedPlanCode;

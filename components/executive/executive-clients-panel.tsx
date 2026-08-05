@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   IconEye,
+  IconLayoutCards,
+  IconLayoutTable,
   IconUserPlus,
   IconUsers,
   IconWhatsApp,
@@ -39,7 +41,6 @@ import {
   upsertExecutiveClientCache,
 } from "@/lib/query/executive-cache";
 import { isTrackingOnlyForExecutive } from "@/lib/client-pipeline/tracking";
-import { formatExecutiveOptionLabel } from "@/lib/auth/staff-role";
 import { ClientPipelineStatusBadge } from "@/components/executive/client-pipeline-status-badge";
 import { ClientPlanSummary } from "@/components/executive/client-plan-summary";
 import { ClientOriginBadge } from "@/components/executive/client-origin-badge";
@@ -60,6 +61,7 @@ import {
 } from "@/lib/staff/staff-sections";
 import { touchTarget, ui } from "@/lib/ui-tokens";
 import { joinClasses } from "@/lib/utils";
+import { formatPersonDisplayName } from "@/lib/format-person-name";
 import type { UserRecord } from "@/types/user";
 import { CLIENT_ORIGIN_LABELS } from "@/components/executive/client-origin-badge";
 
@@ -74,10 +76,38 @@ type ClientsSortKey =
   | "plan"
   | "contacto"
   | "rut"
+  | "registroPor"
   | "ejecutivo"
   | "registro";
 
 type SortDirection = "asc" | "desc";
+
+type ClientsViewMode = "table" | "cards";
+
+const CLIENTS_VIEW_MODE_KEY = "executive-clients-view-mode";
+
+const CLIENTS_SORT_OPTIONS: { key: ClientsSortKey; label: string; adminOnly?: boolean }[] = [
+  { key: "registro", label: "Fecha registro" },
+  { key: "cliente", label: "Cliente" },
+  { key: "origen", label: "Origen" },
+  { key: "cotizador", label: "Cotizador", adminOnly: true },
+  { key: "plan", label: "Plan" },
+  { key: "contacto", label: "Contacto" },
+  { key: "rut", label: "RUT" },
+  { key: "registroPor", label: "Registró" },
+  { key: "ejecutivo", label: "Asignado" },
+];
+
+function readStoredClientsViewMode(): ClientsViewMode {
+  if (typeof window === "undefined") return "table";
+  try {
+    const stored = window.localStorage.getItem(CLIENTS_VIEW_MODE_KEY);
+    if (stored === "table" || stored === "cards") return stored;
+  } catch {
+    /* ignore */
+  }
+  return "table";
+}
 
 function formatDate(value: string): string {
   return new Intl.DateTimeFormat("es-CL", {
@@ -100,6 +130,26 @@ function formatNextCallAt(value: string | null | undefined): string | null {
 
 function compareText(a: string, b: string): number {
   return a.localeCompare(b, "es", { sensitivity: "base", numeric: true });
+}
+
+function resolveRegisteredByLabel(client: UserRecord): string {
+  if (client.registeredByName?.trim()) {
+    return formatPersonDisplayName(client.registeredByName);
+  }
+  switch (client.clientOrigin) {
+    case "COTIZADOR":
+      return "Cotizador";
+    case "FORMULARIO_WEB":
+      return "Formulario web";
+    case "CAMPANA_LEAD_WHATSAPP":
+      return "Campaña WhatsApp";
+    default:
+      return "—";
+  }
+}
+
+function resolveAssignedExecutiveLabel(client: UserRecord): string {
+  return formatPersonDisplayName(client.assignedExecutiveName);
 }
 
 function clientSortValue(client: UserRecord, key: ClientsSortKey): string | number {
@@ -129,8 +179,10 @@ function clientSortValue(client: UserRecord, key: ClientsSortKey): string | numb
       return client.email?.trim() || client.phone?.trim() || "";
     case "rut":
       return client.rut?.trim() || "";
+    case "registroPor":
+      return resolveRegisteredByLabel(client);
     case "ejecutivo":
-      return client.assignedExecutiveName?.trim() || "";
+      return resolveAssignedExecutiveLabel(client);
     case "registro":
       return new Date(client.createdAt).getTime() || 0;
     default:
@@ -161,6 +213,7 @@ export function ExecutiveClientsPanel({
 
   const [search, setSearch] = useState("");
   const [segment, setSegment] = useState<"cartera" | "derivados">("cartera");
+  const [viewMode, setViewMode] = useState<ClientsViewMode>("table");
   const [sortKey, setSortKey] = useState<ClientsSortKey>("registro");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -170,6 +223,19 @@ export function ExecutiveClientsPanel({
     Record<string, string>
   >({});
   const [distributeConfirmOpen, setDistributeConfirmOpen] = useState(false);
+
+  useEffect(() => {
+    setViewMode(readStoredClientsViewMode());
+  }, []);
+
+  function handleViewModeChange(mode: ClientsViewMode) {
+    setViewMode(mode);
+    try {
+      window.localStorage.setItem(CLIENTS_VIEW_MODE_KEY, mode);
+    } catch {
+      /* ignore */
+    }
+  }
 
   function openClientFicha(clientId: string, executiveId?: string) {
     router.replace(
@@ -362,11 +428,7 @@ export function ExecutiveClientsPanel({
     if (!executiveAccountId) return "Sin asignar";
     const executive = executives.find((row) => row.id === executiveAccountId);
     if (!executive) return "la cuenta seleccionada";
-    return formatExecutiveOptionLabel({
-      fullName: executive.fullName,
-      executiveKind: executive.executiveKind,
-      realm: executive.realm,
-    });
+    return formatPersonDisplayName(executive.fullName);
   }
 
   async function handleDistributeUnassigned() {
@@ -388,6 +450,137 @@ export function ExecutiveClientsPanel({
     }
   }
 
+  const listFooter = `Mostrando ${sortedClients.length} de ${segmentedClients.length} clientes.`;
+
+  function renderExecutiveAssign(client: UserRecord) {
+    const currentExecutiveId = client.assignedExecutiveId ?? "";
+    const selectedExecutiveId =
+      pendingExecutiveByClientId[client.id] ?? currentExecutiveId;
+    const hasPendingChange = selectedExecutiveId !== currentExecutiveId;
+
+    return (
+      <div className="space-y-2">
+        <select
+          value={selectedExecutiveId}
+          disabled={savingId === client.id}
+          onChange={(event) => {
+            handlePendingExecutiveChange(client.id, event.target.value);
+          }}
+          className={joinClasses(
+            "h-8 w-full min-w-[8.5rem] max-w-[10rem] rounded-lg px-2 text-xs",
+            ui.input,
+            hasPendingChange ? "ring-2 ring-primary/25" : "",
+          )}
+          aria-label={`Asignar ejecutivo a ${client.fullName}`}
+        >
+          <option value="">Sin asignar</option>
+          {executives.map((executive) => (
+            <option key={executive.id} value={executive.id}>
+              {formatPersonDisplayName(executive.fullName)}
+            </option>
+          ))}
+        </select>
+
+        {hasPendingChange ? (
+          <div className="space-y-2 rounded-lg border border-primary/20 bg-primary/5 p-2.5">
+            <p className="text-[11px] leading-snug text-muted">
+              {selectedExecutiveId
+                ? `¿Confirmas asignar a ${client.fullName} a ${resolveExecutiveLabel(selectedExecutiveId)}?`
+                : `¿Confirmas dejar a ${client.fullName} sin ejecutivo asignado?`}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="primary"
+                disabled={savingId === client.id}
+                onClick={() => {
+                  void handleAssignExecutive(client, selectedExecutiveId || null);
+                }}
+              >
+                Confirmar
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                disabled={savingId === client.id}
+                onClick={() => cancelPendingExecutiveChange(client.id)}
+              >
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  function renderClientActions(client: UserRecord, { compact = false } = {}) {
+    return (
+      <AdminRowActions className="flex-nowrap">
+        {client.phone ? (
+          <a
+            href={buildWhatsAppUrl(
+              client.phone,
+              buildClientWhatsAppMessage(client.fullName),
+            )}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <Button size="sm" variant="whatsapp" className={compact ? "px-2.5" : undefined}>
+              <IconWhatsApp className={joinClasses("size-3.5", compact ? "sm:mr-1" : "mr-1.5")} />
+              {compact ? <span className="hidden sm:inline">WhatsApp</span> : "WhatsApp"}
+            </Button>
+          </a>
+        ) : (
+          <Button size="sm" variant="ghost" disabled className={joinClasses("opacity-50", compact && "px-2.5")}>
+            <IconWhatsApp className={joinClasses("size-3.5", compact ? "sm:mr-1" : "mr-1.5")} />
+            {compact ? <span className="hidden sm:inline">WhatsApp</span> : "WhatsApp"}
+          </Button>
+        )}
+        <Button
+          size="sm"
+          variant="primary"
+          className={compact ? "px-2.5" : undefined}
+          onClick={() => openClientFicha(client.id)}
+        >
+          <IconEye className={joinClasses("size-3.5", compact ? "sm:mr-1" : "mr-1.5")} />
+          {compact ? <span className="hidden sm:inline">Ver ficha</span> : "Ver ficha"}
+        </Button>
+      </AdminRowActions>
+    );
+  }
+
+  function renderClientIdentity(client: UserRecord) {
+    return (
+      <TableCellStack className="min-h-0 gap-1">
+        <p className="truncate font-semibold leading-tight text-foreground">
+          {client.fullName}
+        </p>
+        <ClientPipelineStatusBadge status={client.pipelineStatus} />
+        {!isAdmin &&
+        user?.id &&
+        isTrackingOnlyForExecutive(client, user.id) ? (
+          <span className="inline-flex w-fit rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 ring-1 ring-amber-200">
+            Derivado · seguimiento
+          </span>
+        ) : null}
+        <ClientContactMethodBadge method={client.preferredContactMethod} />
+        {formatNextCallAt(client.confirmationCallAt) ? (
+          <p className="text-[11px] leading-tight text-amber-800">
+            Confirmación Zoom: {formatNextCallAt(client.confirmationCallAt)}
+          </p>
+        ) : null}
+        {formatNextCallAt(client.nextCallAt) ? (
+          <p className="text-[11px] leading-tight text-primary-dark">
+            Próximo llamado: {formatNextCallAt(client.nextCallAt)}
+          </p>
+        ) : null}
+      </TableCellStack>
+    );
+  }
+
   return (
     <AdminPanel>
       <AdminPanelHeader
@@ -395,6 +588,47 @@ export function ExecutiveClientsPanel({
         compactMobile
         actions={
           <>
+            <div
+              className={joinClasses(
+                "inline-flex shrink-0 rounded-lg p-0.5",
+                ui.borderHairline,
+              )}
+              role="group"
+              aria-label="Vista de clientes"
+            >
+              <button
+                type="button"
+                onClick={() => handleViewModeChange("table")}
+                aria-pressed={viewMode === "table"}
+                aria-label="Vista de tabla"
+                title="Vista de tabla"
+                className={joinClasses(
+                  touchTarget,
+                  "rounded-md px-0 transition sm:h-9 sm:min-h-9 sm:min-w-9 sm:px-2",
+                  viewMode === "table"
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted hover:bg-surface-hover hover:text-foreground",
+                )}
+              >
+                <IconLayoutTable className="size-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => handleViewModeChange("cards")}
+                aria-pressed={viewMode === "cards"}
+                aria-label="Vista de cuadros"
+                title="Vista de cuadros"
+                className={joinClasses(
+                  touchTarget,
+                  "rounded-md px-0 transition sm:h-9 sm:min-h-9 sm:min-w-9 sm:px-2",
+                  viewMode === "cards"
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted hover:bg-surface-hover hover:text-foreground",
+                )}
+              >
+                <IconLayoutCards className="size-4" />
+              </button>
+            </div>
             <AdminRefreshButton
               compactMobile
               loading={isFetching && !loading}
@@ -450,13 +684,53 @@ export function ExecutiveClientsPanel({
         }
       />
 
-      <AdminToolbar>
+      <AdminToolbar className="sm:grid-cols-[minmax(0,1fr)_auto]">
         <Input
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           placeholder="Buscar por nombre, correo, teléfono o RUT…"
           className={joinClasses("h-11", ui.input)}
         />
+        {viewMode === "cards" ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="sr-only" htmlFor="clients-sort-key">
+              Ordenar por
+            </label>
+            <select
+              id="clients-sort-key"
+              value={sortKey}
+              onChange={(event) => {
+                const nextKey = event.target.value as ClientsSortKey;
+                setSortKey(nextKey);
+                setSortDirection(nextKey === "registro" ? "desc" : "asc");
+              }}
+              className={joinClasses("h-11 min-w-[10rem] rounded-lg px-3 text-sm", ui.input)}
+            >
+              {CLIENTS_SORT_OPTIONS.filter(
+                (option) => isAdmin || !option.adminOnly,
+              ).map((option) => (
+                <option key={option.key} value={option.key}>
+                  Ordenar: {option.label}
+                </option>
+              ))}
+            </select>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() =>
+                setSortDirection((current) => (current === "asc" ? "desc" : "asc"))
+              }
+              className={joinClasses(touchTarget, "h-11 px-3")}
+              aria-label={
+                sortDirection === "asc" ? "Orden ascendente" : "Orden descendente"
+              }
+              title={sortDirection === "asc" ? "Ascendente" : "Descendente"}
+            >
+              {sortDirection === "asc" ? "A→Z" : "Z→A"}
+            </Button>
+          </div>
+        ) : null}
       </AdminToolbar>
 
       {!isAdmin ? (
@@ -498,232 +772,215 @@ export function ExecutiveClientsPanel({
               : "Agrega clientes que captaste por tu cuenta o espera leads asignados desde el cotizador."
         }
         loadingMessage="Cargando clientes…"
-        footer={`Mostrando ${sortedClients.length} de ${segmentedClients.length} clientes.`}
+        footer={listFooter}
+        contentLayout={viewMode === "cards" ? "stack" : "scroll"}
       >
-        <AdminTable minWidth={isAdmin ? "72rem" : "64rem"}>
-          <AdminTableHead>
-            <tr>
-              <AdminTableHeaderCell {...sortProps("cliente")}>
-                Cliente
-              </AdminTableHeaderCell>
-              <AdminTableHeaderCell {...sortProps("origen")}>
-                Origen
-              </AdminTableHeaderCell>
-              {isAdmin ? (
-                <AdminTableHeaderCell {...sortProps("cotizador")}>
-                  Cotizador
+        {viewMode === "table" ? (
+          <AdminTable minWidth={isAdmin ? "70rem" : "62rem"}>
+            <AdminTableHead>
+              <tr>
+                <AdminTableHeaderCell {...sortProps("cliente")}>
+                  Cliente
                 </AdminTableHeaderCell>
-              ) : null}
-              <AdminTableHeaderCell {...sortProps("plan")}>
-                Plan
-              </AdminTableHeaderCell>
-              <AdminTableHeaderCell {...sortProps("contacto")}>
-                Contacto
-              </AdminTableHeaderCell>
-              <AdminTableHeaderCell {...sortProps("rut")}>
-                RUT
-              </AdminTableHeaderCell>
-              {isAdmin ? (
-                <AdminTableHeaderCell {...sortProps("ejecutivo")}>
-                  Ejecutivo
+                <AdminTableHeaderCell {...sortProps("origen")}>
+                  Origen
                 </AdminTableHeaderCell>
-              ) : null}
-              <AdminTableHeaderCell {...sortProps("registro")}>
-                Registro
-              </AdminTableHeaderCell>
-              <AdminTableHeaderCell>Acciones</AdminTableHeaderCell>
-            </tr>
-          </AdminTableHead>
-          <AdminTableBody>
-            {sortedClients.map((client) => (
-              <AdminTableRow key={client.id}>
-                <AdminTableCell className="min-w-[11rem]">
-                  <TableCellStack>
-                    <p className="font-semibold leading-tight text-foreground">
-                      {client.fullName}
-                    </p>
-                    <ClientPipelineStatusBadge status={client.pipelineStatus} />
-                    {!isAdmin &&
-                    user?.id &&
-                    isTrackingOnlyForExecutive(client, user.id) ? (
-                      <span className="inline-flex w-fit rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 ring-1 ring-amber-200">
-                        Derivado · seguimiento
-                      </span>
-                    ) : null}
-                    <ClientContactMethodBadge
-                      method={client.preferredContactMethod}
-                    />
-                    {formatNextCallAt(client.confirmationCallAt) ? (
-                      <p className="text-[11px] leading-tight text-amber-800">
-                        Confirmación Zoom:{" "}
-                        {formatNextCallAt(client.confirmationCallAt)}
-                      </p>
-                    ) : null}
-                    {formatNextCallAt(client.nextCallAt) ? (
-                      <p className="text-[11px] leading-tight text-primary-dark">
-                        Próximo llamado: {formatNextCallAt(client.nextCallAt)}
-                      </p>
-                    ) : null}
-                  </TableCellStack>
-                </AdminTableCell>
-                <AdminTableCell className="whitespace-nowrap">
-                  <TableCellStack>
-                    <ClientOriginBadge
-                      origin={client.clientOrigin}
-                      cotizadorSource={client.cotizadorSource}
-                      webFormSource={client.webFormSource}
-                    />
-                  </TableCellStack>
-                </AdminTableCell>
                 {isAdmin ? (
-                  <AdminTableCell className="min-w-[8rem]">
-                    <CotizadorSourceBadge
-                      source={client.cotizadorSource}
-                      compact
-                    />
-                  </AdminTableCell>
+                  <AdminTableHeaderCell {...sortProps("cotizador")}>
+                    Cotizador
+                  </AdminTableHeaderCell>
                 ) : null}
-                <AdminTableCell className="min-w-[12rem]">
-                  <ClientPlanSummary
-                    requestedPlan={client.requestedPlan}
-                    advisedPlan={client.advisedPlan}
-                    compact
+                <AdminTableHeaderCell {...sortProps("plan")}>
+                  Plan
+                </AdminTableHeaderCell>
+                <AdminTableHeaderCell {...sortProps("contacto")}>
+                  Contacto
+                </AdminTableHeaderCell>
+                <AdminTableHeaderCell {...sortProps("rut")}>
+                  RUT
+                </AdminTableHeaderCell>
+                <AdminTableHeaderCell {...sortProps("registroPor")}>
+                  Registró
+                </AdminTableHeaderCell>
+                <AdminTableHeaderCell {...sortProps("ejecutivo")}>
+                  Asignado
+                </AdminTableHeaderCell>
+                <AdminTableHeaderCell {...sortProps("registro")}>
+                  Registro
+                </AdminTableHeaderCell>
+                <AdminTableHeaderCell>Acciones</AdminTableHeaderCell>
+              </tr>
+            </AdminTableHead>
+            <AdminTableBody>
+              {sortedClients.map((client) => (
+                <AdminTableRow key={client.id}>
+                  <AdminTableCell className="max-w-[9.5rem] min-w-[8.5rem]">
+                    <div className="min-w-0 [&>div]:min-h-0 [&>div]:gap-0.5">
+                      {renderClientIdentity(client)}
+                    </div>
+                  </AdminTableCell>
+                  <AdminTableCell className="max-w-[7.5rem] min-w-[6.5rem]">
+                    <div className="min-w-0 overflow-hidden">
+                      <ClientOriginBadge
+                        origin={client.clientOrigin}
+                        cotizadorSource={client.cotizadorSource}
+                        webFormSource={client.webFormSource}
+                      />
+                    </div>
+                  </AdminTableCell>
+                  {isAdmin ? (
+                    <AdminTableCell className="max-w-[7rem] min-w-[6rem]">
+                      <div className="min-w-0 overflow-hidden">
+                        <CotizadorSourceBadge
+                          source={client.cotizadorSource}
+                          compact
+                        />
+                      </div>
+                    </AdminTableCell>
+                  ) : null}
+                  <AdminTableCell className="max-w-[9rem] min-w-[7.5rem]">
+                    <div className="min-w-0 overflow-hidden">
+                      <ClientPlanSummary
+                        requestedPlan={client.requestedPlan}
+                        advisedPlan={client.advisedPlan}
+                        compact
+                      />
+                    </div>
+                  </AdminTableCell>
+                  <AdminTableCell className="max-w-[9rem] min-w-[7.5rem]">
+                    <TableCellStack className="min-h-0 gap-0.5">
+                      <p className="truncate text-xs leading-tight sm:text-sm">
+                        {client.email}
+                      </p>
+                      <p className="truncate text-[11px] leading-tight text-muted">
+                        {client.phone ?? "Sin teléfono"}
+                      </p>
+                    </TableCellStack>
+                  </AdminTableCell>
+                  <AdminTableCell className="min-w-[6rem] whitespace-nowrap">
+                    <ClientRutCell rut={client.rut} />
+                  </AdminTableCell>
+                  <AdminTableCell className="max-w-[7rem] min-w-[6rem]">
+                    <span className="block truncate text-xs text-foreground sm:text-sm">
+                      {resolveRegisteredByLabel(client)}
+                    </span>
+                  </AdminTableCell>
+                  <AdminTableCell className="max-w-[9.5rem] min-w-[8rem]">
+                    {isAdmin ? (
+                      <TableCellStack className="min-h-0 gap-1.5">
+                        <p className="truncate text-xs font-medium text-foreground sm:text-sm">
+                          {resolveAssignedExecutiveLabel(client)}
+                        </p>
+                        {renderExecutiveAssign(client)}
+                      </TableCellStack>
+                    ) : (
+                      <span className="block truncate text-xs text-foreground sm:text-sm">
+                        {resolveAssignedExecutiveLabel(client)}
+                      </span>
+                    )}
+                  </AdminTableCell>
+                  <AdminTableCell className="min-w-[6rem] whitespace-nowrap">
+                    <span className="text-xs tabular-nums sm:text-sm">
+                      {formatDate(client.createdAt)}
+                    </span>
+                  </AdminTableCell>
+                  <AdminTableCell className="min-w-[7.5rem] whitespace-nowrap">
+                    {renderClientActions(client, { compact: true })}
+                  </AdminTableCell>
+                </AdminTableRow>
+              ))}
+            </AdminTableBody>
+          </AdminTable>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {sortedClients.map((client) => (
+              <article
+                key={client.id}
+                className="flex flex-col gap-3 rounded-xl border border-border bg-bg-layout/40 p-4 transition hover:border-primary/30 hover:bg-bg-layout/60"
+              >
+                <header className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">{renderClientIdentity(client)}</div>
+                  <ClientOriginBadge
+                    origin={client.clientOrigin}
+                    cotizadorSource={client.cotizadorSource}
+                    webFormSource={client.webFormSource}
                   />
-                </AdminTableCell>
-                <AdminTableCell className="min-w-[10rem]">
-                  <TableCellStack>
-                    <p className="truncate text-sm leading-tight">{client.email}</p>
+                </header>
+
+                <div className="space-y-2 text-sm">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+                      Contacto
+                    </p>
+                    <p className="truncate leading-tight text-foreground">
+                      {client.email}
+                    </p>
                     <p className="text-xs leading-tight text-muted">
                       {client.phone ?? "Sin teléfono"}
                     </p>
-                  </TableCellStack>
-                </AdminTableCell>
-                <AdminTableCell className="whitespace-nowrap">
-                  <ClientRutCell rut={client.rut} />
-                </AdminTableCell>
-                {isAdmin ? (
-                  <AdminTableCell className="min-w-[11rem]">
-                    {(() => {
-                      const currentExecutiveId = client.assignedExecutiveId ?? "";
-                      const selectedExecutiveId =
-                        pendingExecutiveByClientId[client.id] ?? currentExecutiveId;
-                      const hasPendingChange =
-                        selectedExecutiveId !== currentExecutiveId;
-
-                      return (
-                        <TableCellStack className="gap-2">
-                          <select
-                            value={selectedExecutiveId}
-                            disabled={savingId === client.id}
-                            onChange={(event) => {
-                              handlePendingExecutiveChange(
-                                client.id,
-                                event.target.value,
-                              );
-                            }}
-                            className={joinClasses(
-                              "h-9 w-full min-w-[10rem] rounded-lg px-2 text-sm",
-                              ui.input,
-                              hasPendingChange ? "ring-2 ring-primary/25" : "",
-                            )}
-                            aria-label={`Asignar ejecutivo a ${client.fullName}`}
-                          >
-                            <option value="">Sin asignar</option>
-                            {executives.map((executive) => (
-                              <option key={executive.id} value={executive.id}>
-                                {formatExecutiveOptionLabel({
-                                  fullName: executive.fullName,
-                                  executiveKind: executive.executiveKind,
-                                  realm: executive.realm,
-                                })}
-                              </option>
-                            ))}
-                          </select>
-
-                          {hasPendingChange ? (
-                            <div className="space-y-2 rounded-lg border border-primary/20 bg-primary/5 p-2.5">
-                              <p className="text-[11px] leading-snug text-muted">
-                                {selectedExecutiveId
-                                  ? `¿Confirmas asignar a ${client.fullName} a ${resolveExecutiveLabel(selectedExecutiveId)}?`
-                                  : `¿Confirmas dejar a ${client.fullName} sin ejecutivo asignado?`}
-                              </p>
-                              <div className="flex flex-wrap gap-2">
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="primary"
-                                  disabled={savingId === client.id}
-                                  onClick={() => {
-                                    void handleAssignExecutive(
-                                      client,
-                                      selectedExecutiveId || null,
-                                    );
-                                  }}
-                                >
-                                  Confirmar
-                                </Button>
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="ghost"
-                                  disabled={savingId === client.id}
-                                  onClick={() =>
-                                    cancelPendingExecutiveChange(client.id)
-                                  }
-                                >
-                                  Cancelar
-                                </Button>
-                              </div>
-                            </div>
-                          ) : null}
-                        </TableCellStack>
-                      );
-                    })()}
-                  </AdminTableCell>
-                ) : null}
-                <AdminTableCell className="whitespace-nowrap">
-                  <TableCellStack>
-                    <span className="text-sm tabular-nums">
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <ClientRutCell rut={client.rut} />
+                    <span className="text-xs tabular-nums text-muted">
                       {formatDate(client.createdAt)}
                     </span>
-                  </TableCellStack>
-                </AdminTableCell>
-                <AdminTableCell>
-                  <AdminRowActions className="flex-nowrap">
-                    {client.phone ? (
-                      <a
-                        href={buildWhatsAppUrl(
-                          client.phone,
-                          buildClientWhatsAppMessage(client.fullName),
-                        )}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <Button size="sm" variant="whatsapp">
-                          <IconWhatsApp className="mr-1.5 size-3.5" />
-                          WhatsApp
-                        </Button>
-                      </a>
-                    ) : (
-                      <Button size="sm" variant="ghost" disabled className="opacity-50">
-                        <IconWhatsApp className="mr-1.5 size-3.5" />
-                        WhatsApp
-                      </Button>
-                    )}
-                    <Button
-                      size="sm"
-                      variant="primary"
-                      onClick={() => openClientFicha(client.id)}
-                    >
-                      <IconEye className="mr-1.5 size-3.5" />
-                      Ver ficha
-                    </Button>
-                  </AdminRowActions>
-                </AdminTableCell>
-              </AdminTableRow>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <p className="mb-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted">
+                        Registró
+                      </p>
+                      <p className="leading-tight text-foreground">
+                        {resolveRegisteredByLabel(client)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="mb-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted">
+                        Asignado
+                      </p>
+                      <p className="leading-tight text-foreground">
+                        {resolveAssignedExecutiveLabel(client)}
+                      </p>
+                    </div>
+                  </div>
+                  {isAdmin ? (
+                    <div>
+                      <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted">
+                        Cotizador
+                      </p>
+                      <CotizadorSourceBadge
+                        source={client.cotizadorSource}
+                        compact
+                      />
+                    </div>
+                  ) : null}
+                  <div>
+                    <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted">
+                      Plan
+                    </p>
+                    <ClientPlanSummary
+                      requestedPlan={client.requestedPlan}
+                      advisedPlan={client.advisedPlan}
+                      compact
+                    />
+                  </div>
+                  {isAdmin ? (
+                    <div>
+                      <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted">
+                        Reasignar
+                      </p>
+                      {renderExecutiveAssign(client)}
+                    </div>
+                  ) : null}
+                </div>
+
+                <div className="mt-auto border-t border-border/70 pt-3">
+                  {renderClientActions(client)}
+                </div>
+              </article>
             ))}
-          </AdminTableBody>
-        </AdminTable>
+          </div>
+        )}
       </AdminTableCard>
 
       <AdminFormModal
