@@ -480,7 +480,7 @@ export function AdminFormModal({
   children,
   size = "lg",
   headerAside,
-  headerTone = "default",
+  headerTone = "navy",
 }: {
   open: boolean;
   title: string;
@@ -490,7 +490,7 @@ export function AdminFormModal({
   size?: "md" | "lg" | "xl";
   /** Contenido extra en el header (p. ej. filtros), a la izquierda de Cerrar. */
   headerAside?: ReactNode;
-  /** `navy` = cabecera azul oscuro (header ejecutivo) con texto blanco. */
+  /** `navy` = cabecera azul oscuro (header ejecutivo) con texto blanco. Default. */
   headerTone?: "default" | "navy";
 }) {
   if (!open) return null;

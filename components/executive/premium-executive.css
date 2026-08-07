@@ -297,3 +297,10 @@
   background: color-mix(in srgb, var(--dash-navy) 4%, #f8fafc);
   border-top-color: color-mix(in srgb, var(--dash-navy) 12%, transparent);
 }
+
+/* Formularios de cliente — labels y títulos de sección en navy */
+[data-premium-surface] .premium-client-form label > span.font-medium,
+[data-premium-surface] .premium-client-form .premium-form-section-title,
+[data-premium-surface] .premium-client-form p.text-xs.font-semibold.uppercase.tracking-wide {
+  color: var(--dash-navy);
+}

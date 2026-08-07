@@ -599,7 +599,7 @@ export function ClientProfileForm({
     <fieldset
       disabled={readOnly}
       className={joinClasses(
-        "min-w-0 space-y-6 border-0 p-0",
+        "premium-client-form min-w-0 space-y-6 border-0 p-0",
         readOnly ? "opacity-95" : undefined,
       )}
     >
@@ -727,7 +727,7 @@ export function ClientProfileForm({
         }
       >
         <div className="rounded-xl border border-border bg-white p-3 shadow-sm">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-primary-dark">
             Titular 1 (principal)
           </p>
           <div className="grid gap-3 sm:grid-cols-2">
@@ -1082,7 +1082,7 @@ export function ClientProfileForm({
                 className="rounded-xl border border-border bg-white p-3 shadow-sm"
               >
                 <div className="mb-3 flex items-center justify-between gap-2">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-primary-dark">
                     Titular {index + 2}
                   </p>
                   <Button
@@ -1441,7 +1441,7 @@ export function ClientProfileForm({
                 className="rounded-xl border border-border bg-white p-3 shadow-sm"
               >
                 <div className="mb-3 flex items-center justify-between gap-2">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-primary-dark">
                     Carga {index + 1}
                   </p>
                   <Button

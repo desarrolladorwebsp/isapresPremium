@@ -141,9 +141,9 @@ export function CreateClientModal({
       description="Registra al titular principal. Al guardar se abre la ficha para completar el resto de datos."
       size="xl"
     >
-      <form className="space-y-4" onSubmit={(event) => void handleSubmit(event)}>
+      <form className="premium-client-form space-y-4" onSubmit={(event) => void handleSubmit(event)}>
         <label className="block space-y-2">
-          <span className="text-sm font-medium">Origen *</span>
+          <span className="text-sm font-medium text-primary-dark">Origen *</span>
           <Select
             required
             value={clientOrigin}
