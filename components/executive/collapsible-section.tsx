@@ -32,6 +32,8 @@ export interface CollapsibleSectionProps {
   className?: string;
   bodyClassName?: string;
   headerRight?: ReactNode;
+  /** Oculta título/descripcion (p. ej. modales de ficha que ya tienen cabecera). */
+  hideIntro?: boolean;
   children: ReactNode;
 }
 
@@ -42,10 +44,22 @@ export function CollapsibleSection({
   className,
   bodyClassName,
   headerRight,
+  hideIntro = false,
   children,
 }: CollapsibleSectionProps) {
   const [open, setOpen] = useState(defaultOpen);
   const panelId = useId();
+
+  if (hideIntro) {
+    return (
+      <div className={className}>
+        {headerRight ? (
+          <div className="mb-4 flex justify-end">{headerRight}</div>
+        ) : null}
+        <div className={bodyClassName}>{children}</div>
+      </div>
+    );
+  }
 
   return (
     <div className={className}>

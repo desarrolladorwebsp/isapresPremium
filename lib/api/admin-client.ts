@@ -395,8 +395,9 @@ export async function fetchExecutiveAccounts(): Promise<StaffAccountRecord[]> {
   return accounts
     .filter((account) => {
       if (!account.active) return false;
-      if (account.realm === "admin") return true;
+      // Membresía: solo cotizador — jamás en selectores de asignación de clientes.
       if (account.executiveKind === "MEMBRESIA_ISAPRES_PREMIUM") return false;
+      if (account.realm === "admin") return true;
       return (
         account.realm === "executive" && account.onboardingCompleted !== false
       );

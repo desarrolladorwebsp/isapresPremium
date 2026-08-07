@@ -12,6 +12,7 @@ import {
 import { issueSession } from "@/lib/auth/session";
 import {
   isAdminRole,
+  isClientAssignableExecutiveKind,
   isExecutiveRole,
   normalizeExecutiveKind,
   staffRealmToRole,
@@ -323,6 +324,10 @@ export async function updateStaffAccount(
     return mapStaffRecord(account);
   }
 
+  const becomingMembership =
+    input.executiveKind !== undefined &&
+    !isClientAssignableExecutiveKind(input.executiveKind);
+
   const account = await prisma.staffAccount.update({
     where: { id },
     data: {
@@ -335,8 +340,23 @@ export async function updateStaffAccount(
       ...(input.executiveKind !== undefined
         ? { executiveKind: input.executiveKind }
         : {}),
+      // Membresía no opera cartera: al pasar a ese kind se suspende recepción.
+      ...(becomingMembership ? { assignmentsSuspended: true } : {}),
     },
   });
+
+  if (becomingMembership) {
+    await prisma.$transaction([
+      prisma.user.updateMany({
+        where: { assignedExecutiveId: id },
+        data: { assignedExecutiveId: null },
+      }),
+      prisma.quote.updateMany({
+        where: { executiveAccountId: id },
+        data: { executiveAccountId: null },
+      }),
+    ]);
+  }
 
   return mapStaffRecord(account);
 }

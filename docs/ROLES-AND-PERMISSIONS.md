@@ -12,7 +12,7 @@ El acceso de staff usa `StaffAccount` con `role` (`ADMIN` | `EXECUTIVE`) y, en e
 | **Membresía Isapres Premium** | Solo cotizador (sin clientes ni otras vistas) | `/cotizador/ejecutivos?section=cotizador` |
 | **Cliente** | Solo cotiza en web (sin cuenta) | — |
 
-La membresía es para usuarios externos: no reciben asignación de clientes ni aparecen en selectores de cartera.
+La membresía es para usuarios externos: no reciben asignación de clientes ni aparecen en selectores de cartera. Cualquier intento de asignación manual (incluido por id/correo vía API) es rechazado.
 
 ---
 
@@ -86,6 +86,10 @@ La membresía es para usuarios externos: no reciben asignación de clientes ni a
 |---------|-------|--------------|
 | Cliente (`User`) | `assignedExecutiveId` | Solo admin (ejecutivos operativos, Zoom, o admin; no membresía) |
 | Cotización (`Quote`) | `executiveAccountId` | Admin o ejecutivo operativo |
+
+**Asignación automática (formulario / cotizador):** round-robin 1×1 entre el pool fijo
+`javiera.vega08@gmail.com`, `isidora.nwolves@gmail.com`, `catalinabelensaravia@gmail.com`
+(ver `lib/api/inbound-assignment-pool.ts`). No incluye membresía ni administradores.
 
 Los **administradores activos** aparecen en selectores de asignación manual y en redirecciones a Isapres Premium / Zoom, y pueden entrar al round-robin automático de esos kinds. No requieren suscripción de ejecutivo.
 

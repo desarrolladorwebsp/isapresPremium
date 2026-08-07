@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CollapsibleSection } from "@/components/executive/collapsible-section";
@@ -292,6 +292,14 @@ export function buildEmptyClientProfileFormValue(): ClientProfileFormValue {
   };
 }
 
+export type ClientProfileFormSection =
+  | "employer"
+  | "prevision"
+  | "titulares"
+  | "cargas"
+  /** Solo titular principal (sin titulares adicionales ni cargas). */
+  | "principal";
+
 export interface ClientProfileFormProps {
   value: ClientProfileFormValue;
   onChange: (value: ClientProfileFormValue) => void;
@@ -305,6 +313,15 @@ export interface ClientProfileFormProps {
     dependents?: Record<string, string>;
     additionalTitulares?: Record<string, string>;
   };
+  /**
+   * Si se omite, se muestra el formulario completo (comportamiento actual).
+   * Con valor, solo las secciones pedidas (empleador aparte de titulares).
+   * `principal` = solo titular 1, sin “Agregar titular” ni cargas.
+   */
+  sections?: ClientProfileFormSection[];
+  /** Al montar / cambiar, agrega titular o carga una vez. */
+  autoAdd?: "titular" | "carga" | null;
+  onAutoAddConsumed?: () => void;
 }
 
 export function ClientProfileForm({
@@ -314,12 +331,31 @@ export function ClientProfileForm({
   readOnly = false,
   requireTitularRut = false,
   rutErrors,
+  sections,
+  autoAdd = null,
+  onAutoAddConsumed,
 }: ClientProfileFormProps) {
+  const showAllSections = !sections;
+  const showEmployerBlock =
+    showAllSections === false && Boolean(sections?.includes("employer"));
+  const showPrevisionBlock =
+    showAllSections === false && Boolean(sections?.includes("prevision"));
+  const showTitulares =
+    showAllSections ||
+    Boolean(sections?.includes("titulares")) ||
+    Boolean(sections?.includes("principal"));
+  const showAdditionalTitulares =
+    showAllSections || Boolean(sections?.includes("titulares"));
+  const showCargas = showAllSections || Boolean(sections?.includes("cargas"));
+  /** En formulario completo el empleador vive dentro de titulares. */
+  const showEmployerInline = showAllSections;
+
   const [blurRutErrors, setBlurRutErrors] = useState<{
     titular?: string;
     dependents: Record<string, string>;
     additionalTitulares: Record<string, string>;
   }>({ dependents: {}, additionalTitulares: {} });
+  const autoAddConsumedRef = useRef<"titular" | "carga" | null>(null);
 
   const titularRutError = rutErrors?.titular ?? blurRutErrors.titular;
   const titularRutIsSoftWarning = Boolean(
@@ -496,6 +532,32 @@ export function ClientProfileForm({
     });
   }
 
+  useEffect(() => {
+    if (!autoAdd || readOnly) {
+      if (!autoAdd) autoAddConsumedRef.current = null;
+      return;
+    }
+    if (autoAddConsumedRef.current === autoAdd) return;
+    autoAddConsumedRef.current = autoAdd;
+    if (autoAdd === "titular") {
+      onChange({
+        ...value,
+        additionalTitulares: [
+          ...value.additionalTitulares,
+          buildEmptyAdditionalTitular(),
+        ],
+      });
+    } else {
+      onChange({
+        ...value,
+        dependents: [...value.dependents, buildEmptyDependent()],
+      });
+    }
+    onAutoAddConsumed?.();
+    // Solo al cambiar autoAdd / permiso de edición.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- evita re-disparar al editar el form
+  }, [autoAdd, readOnly]);
+
   function updateCoverageRegion(regionId: string) {
     onChange({
       ...value,
@@ -547,13 +609,112 @@ export function ClientProfileForm({
           asignado puede editarlos.
         </p>
       ) : null}
+
+      {showEmployerBlock ? (
+        <div className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <EmployerRutField
+              value={value.employerRut}
+              onChange={(next) => updateField("employerRut", next)}
+            />
+            <label className="block space-y-1.5">
+              <span className="text-xs font-medium">Renta imponible</span>
+              <Input
+                value={value.rentaImponible}
+                onChange={(event) =>
+                  updateField("rentaImponible", event.target.value)
+                }
+                placeholder="Ej. 1500000"
+              />
+            </label>
+          </div>
+        </div>
+      ) : null}
+
+      {showPrevisionBlock ? (
+        <div className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block space-y-1.5 sm:col-span-2">
+              <span className="text-xs font-medium">
+                Isapre / previsión actual
+              </span>
+              {renderIsapreSelect(value.currentIsapre, (next) =>
+                updateField("currentIsapre", next),
+              )}
+            </label>
+            <CurrencyAmountField
+              label="Precio del plan actual"
+              amount={value.currentPlanPrice}
+              currency={value.currentPlanPriceCurrency}
+              onAmountChange={(next) => updateField("currentPlanPrice", next)}
+              onCurrencyChange={(next) =>
+                updateField("currentPlanPriceCurrency", next)
+              }
+            />
+            <CurrencyAmountField
+              label="Adicional voluntario"
+              amount={value.voluntaryAdditional}
+              currency={value.voluntaryAdditionalCurrency}
+              onAmountChange={(next) =>
+                updateField("voluntaryAdditional", next)
+              }
+              onCurrencyChange={(next) =>
+                updateField("voluntaryAdditionalCurrency", next)
+              }
+            />
+            <div className="flex flex-col gap-3 sm:col-span-2 sm:flex-row sm:items-end">
+              <label className="flex h-10 shrink-0 cursor-pointer items-center gap-2 text-sm sm:pb-0">
+                <input
+                  type="checkbox"
+                  checked={value.anualidad}
+                  onChange={(event) =>
+                    onChange({
+                      ...value,
+                      anualidad: event.target.checked,
+                      anualidadComment: event.target.checked
+                        ? ""
+                        : value.anualidadComment,
+                    })
+                  }
+                />
+                <span className="font-medium">Anualidad</span>
+              </label>
+              {!value.anualidad ? (
+                <label className="min-w-0 flex-1 space-y-1.5">
+                  <span className="text-xs font-medium">
+                    Comentario (sin anualidad)
+                  </span>
+                  <Input
+                    value={value.anualidadComment}
+                    onChange={(event) =>
+                      updateField("anualidadComment", event.target.value)
+                    }
+                    placeholder="Agregar comentario…"
+                  />
+                </label>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {showTitulares ? (
       <CollapsibleSection
-        title="Datos de titulares"
-        description="Puedes registrar el titular principal y agregar titulares adicionales del grupo familiar."
-        className="rounded-xl border border-border bg-bg-layout/30 p-4"
+        title={showAdditionalTitulares ? "Datos de titulares" : "Datos del titular"}
+        description={
+          showAllSections
+            ? "Puedes registrar el titular principal y agregar titulares adicionales del grupo familiar."
+            : undefined
+        }
+        className={
+          showAllSections
+            ? "rounded-xl border border-border bg-bg-layout/30 p-4"
+            : "space-y-0"
+        }
+        hideIntro={!showAllSections}
         bodyClassName="space-y-4"
         headerRight={
-          readOnly ? undefined : (
+          readOnly || !showAdditionalTitulares ? undefined : (
           <Button
             type="button"
             variant="info"
@@ -649,10 +810,12 @@ export function ClientProfileForm({
               ) : null}
             </label>
 
-            <EmployerRutField
-              value={value.employerRut}
-              onChange={(next) => updateField("employerRut", next)}
-            />
+            {showEmployerInline ? (
+              <EmployerRutField
+                value={value.employerRut}
+                onChange={(next) => updateField("employerRut", next)}
+              />
+            ) : null}
 
             <label className="block space-y-1.5">
               <span className="text-xs font-medium">Fecha de nacimiento</span>
@@ -751,16 +914,18 @@ export function ClientProfileForm({
               }
             />
 
-            <label className="block space-y-1.5">
-              <span className="text-xs font-medium">Renta imponible</span>
-              <Input
-                value={value.rentaImponible}
-                onChange={(event) =>
-                  updateField("rentaImponible", event.target.value)
-                }
-                placeholder="Ej. 1500000"
-              />
-            </label>
+            {showEmployerInline ? (
+              <label className="block space-y-1.5">
+                <span className="text-xs font-medium">Renta imponible</span>
+                <Input
+                  value={value.rentaImponible}
+                  onChange={(event) =>
+                    updateField("rentaImponible", event.target.value)
+                  }
+                  placeholder="Ej. 1500000"
+                />
+              </label>
+            ) : null}
 
             <label className="block space-y-1.5">
               <span className="text-xs font-medium">Motivo de cotización</span>
@@ -909,12 +1074,7 @@ export function ClientProfileForm({
           </div>
         </div>
 
-        {value.additionalTitulares.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-border px-3 py-4 text-sm text-muted">
-            Sin titulares adicionales. Usa &quot;Agregar titular&quot; si el
-            grupo familiar tiene 2 o más titulares.
-          </p>
-        ) : (
+        {showAdditionalTitulares && value.additionalTitulares.length > 0 ? (
           <div className="space-y-3">
             {value.additionalTitulares.map((titular, index) => (
               <div
@@ -1241,13 +1401,24 @@ export function ClientProfileForm({
               </div>
             ))}
           </div>
-        )}
+        ) : null}
       </CollapsibleSection>
+      ) : null}
 
+      {showCargas ? (
       <CollapsibleSection
         title="Cargas familiares"
-        description="Agrega cada carga con sus datos básicos."
-        className="rounded-xl border border-border bg-bg-layout/30 p-4"
+        description={
+          showAllSections
+            ? "Agrega cada carga con sus datos básicos."
+            : undefined
+        }
+        className={
+          showAllSections
+            ? "rounded-xl border border-border bg-bg-layout/30 p-4"
+            : "space-y-0"
+        }
+        hideIntro={!showAllSections}
         bodyClassName="space-y-4"
         headerRight={
           readOnly ? undefined : (
@@ -1398,6 +1569,7 @@ export function ClientProfileForm({
           </div>
         )}
       </CollapsibleSection>
+      ) : null}
     </fieldset>
   );
 }

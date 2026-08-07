@@ -49,6 +49,8 @@ function useIsDesktop() {
 /** Force play from t=0. Needed because Safari/iOS often ignore native `loop`. */
 async function replayFromStart(video: HTMLVideoElement) {
   try {
+    video.muted = true;
+    video.playsInline = true;
     if (video.currentTime !== 0) {
       video.currentTime = 0;
     }
@@ -56,6 +58,7 @@ async function replayFromStart(video: HTMLVideoElement) {
   } catch {
     window.setTimeout(() => {
       try {
+        video.muted = true;
         video.currentTime = 0;
       } catch {
         // ignore seek errors
@@ -79,6 +82,8 @@ export function BackgroundSlideshow({
   const [activeReady, setActiveReady] = useState(false);
   /** After the first successful frame, clip crossfades skip the poster again. */
   const [bootstrapped, setBootstrapped] = useState(false);
+  /** Bumped on mobile↔desktop swaps so play/ready effects re-bind after remount. */
+  const [playlistEpoch, setPlaylistEpoch] = useState(0);
   const bootstrappedRef = useRef(false);
   const videoRefs = useRef<Array<HTMLVideoElement | null>>([]);
   const playlistKeyRef = useRef(isDesktop ? "desktop" : "mobile");
@@ -97,21 +102,23 @@ export function BackgroundSlideshow({
       setActiveReady(false);
       setBootstrapped(false);
       bootstrappedRef.current = false;
-      videoRefs.current = [];
       advancingRef.current = false;
+      setPlaylistEpoch((epoch) => epoch + 1);
     }
   }, [playlistKey]);
 
   // Mark the active clip ready as soon as it has a paintable frame.
   useEffect(() => {
+    let cancelled = false;
+    let retryId = 0;
+    let video: HTMLVideoElement | null = null;
+
     if (!bootstrappedRef.current) {
       setActiveReady(false);
     }
-    const video = videoRefs.current[currentIndex];
-    if (!video) return;
 
     const markReady = () => {
-      if (video.readyState < 2) return;
+      if (!video || video.readyState < 2) return;
       setActiveReady(true);
       if (!bootstrappedRef.current) {
         bootstrappedRef.current = true;
@@ -119,17 +126,33 @@ export function BackgroundSlideshow({
       }
     };
 
-    markReady();
-    video.addEventListener("loadeddata", markReady);
-    video.addEventListener("canplay", markReady);
-    video.addEventListener("playing", markReady);
+    const bindReady = () => {
+      video = videoRefs.current[currentIndex];
+      if (!video) {
+        retryId = window.setTimeout(() => {
+          if (!cancelled) bindReady();
+        }, 0);
+        return;
+      }
+
+      markReady();
+      video.addEventListener("loadeddata", markReady);
+      video.addEventListener("canplay", markReady);
+      video.addEventListener("playing", markReady);
+    };
+
+    bindReady();
 
     return () => {
-      video.removeEventListener("loadeddata", markReady);
-      video.removeEventListener("canplay", markReady);
-      video.removeEventListener("playing", markReady);
+      cancelled = true;
+      window.clearTimeout(retryId);
+      if (video) {
+        video.removeEventListener("loadeddata", markReady);
+        video.removeEventListener("canplay", markReady);
+        video.removeEventListener("playing", markReady);
+      }
     };
-  }, [currentIndex, playlistKey, activeVideos]);
+  }, [currentIndex, playlistKey, playlistEpoch, activeVideos]);
 
   /** Infinite playlist: after the last clip, wrap back to the first. */
   const goNext = useCallback(() => {
@@ -143,38 +166,16 @@ export function BackgroundSlideshow({
   }, [activeVideos.length, isSingleClip]);
 
   useEffect(() => {
-    const video = videoRefs.current[currentIndex];
-    if (!video) return;
-
-    videoRefs.current.forEach((other, index) => {
-      if (!other || index === currentIndex) return;
-      other.pause();
-      try {
-        other.currentTime = 0;
-      } catch {
-        // ignore
-      }
-    });
-
-    if (reducedMotion) {
-      video.pause();
-      try {
-        video.currentTime = 0;
-      } catch {
-        // ignore
-      }
-      return;
-    }
-
-    // Single clip: native loop + manual restart (Safari).
-    // Multi clip: no native loop — advance on end and wrap forever.
-    video.loop = isSingleClip;
+    let cancelled = false;
+    let retryId = 0;
+    let endFallbackId = 0;
+    let activeVideo: HTMLVideoElement | null = null;
 
     const handleClipFinished = () => {
-      if (advancingRef.current) return;
+      if (advancingRef.current || !activeVideo) return;
 
       if (isSingleClip) {
-        void replayFromStart(video);
+        void replayFromStart(activeVideo);
         return;
       }
 
@@ -185,17 +186,19 @@ export function BackgroundSlideshow({
       handleClipFinished();
     };
 
-    // Fallback when `ended` is skipped (some iOS/WebViews).
-    let endFallbackId = 0;
     const armEndFallback = () => {
       window.clearTimeout(endFallbackId);
+      const video = activeVideo;
+      if (!video) return;
       if (!Number.isFinite(video.duration) || video.duration <= 0) return;
 
-      const remainingMs = Math.max(0, (video.duration - video.currentTime) * 1000);
+      const remainingMs = Math.max(
+        0,
+        (video.duration - video.currentTime) * 1000,
+      );
       endFallbackId = window.setTimeout(() => {
         if (advancingRef.current) return;
         if (video !== videoRefs.current[currentIndex]) return;
-        // If still near the end or already ended/paused, finish the clip.
         if (
           video.ended ||
           video.paused ||
@@ -215,27 +218,70 @@ export function BackgroundSlideshow({
     };
 
     const onVisibility = () => {
-      if (document.visibilityState === "visible") {
-        void replayFromStart(video);
+      if (document.visibilityState === "visible" && activeVideo) {
+        void replayFromStart(activeVideo);
         armEndFallback();
       }
     };
 
-    void replayFromStart(video);
-    if (video.readyState >= 1) {
-      armEndFallback();
-    }
+    const bindActiveClip = () => {
+      const video = videoRefs.current[currentIndex];
+      if (!video) {
+        // Playlist remount can leave this effect a tick ahead of callback refs.
+        retryId = window.setTimeout(() => {
+          if (!cancelled) bindActiveClip();
+        }, 0);
+        return;
+      }
 
-    video.addEventListener("ended", onEnded);
-    video.addEventListener("loadedmetadata", onLoadedMetadata);
-    video.addEventListener("play", onPlay);
-    document.addEventListener("visibilitychange", onVisibility);
+      activeVideo = video;
+
+      videoRefs.current.forEach((other, index) => {
+        if (!other || index === currentIndex) return;
+        other.pause();
+        try {
+          other.currentTime = 0;
+        } catch {
+          // ignore
+        }
+      });
+
+      if (reducedMotion) {
+        video.pause();
+        try {
+          video.currentTime = 0;
+        } catch {
+          // ignore
+        }
+        return;
+      }
+
+      // Single clip: native loop + manual restart (Safari).
+      // Multi clip: no native loop — advance on end and wrap forever.
+      video.loop = isSingleClip;
+
+      void replayFromStart(video);
+      if (video.readyState >= 1) {
+        armEndFallback();
+      }
+
+      video.addEventListener("ended", onEnded);
+      video.addEventListener("loadedmetadata", onLoadedMetadata);
+      video.addEventListener("play", onPlay);
+      document.addEventListener("visibilitychange", onVisibility);
+    };
+
+    bindActiveClip();
 
     return () => {
+      cancelled = true;
+      window.clearTimeout(retryId);
       window.clearTimeout(endFallbackId);
-      video.removeEventListener("ended", onEnded);
-      video.removeEventListener("loadedmetadata", onLoadedMetadata);
-      video.removeEventListener("play", onPlay);
+      if (activeVideo) {
+        activeVideo.removeEventListener("ended", onEnded);
+        activeVideo.removeEventListener("loadedmetadata", onLoadedMetadata);
+        activeVideo.removeEventListener("play", onPlay);
+      }
       document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [
@@ -244,6 +290,7 @@ export function BackgroundSlideshow({
     activeVideos,
     goNext,
     playlistKey,
+    playlistEpoch,
     isSingleClip,
   ]);
 

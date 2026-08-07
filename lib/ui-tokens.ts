@@ -53,7 +53,7 @@ export const criteriaBar =
 
 /** Acentos de detalle (amarillo, azul, rojo) — no reemplazan el verde primario. */
 export const accent = {
-  iconPrimary: "bg-primary/12 text-primary-dark",
+  iconPrimary: "bg-primary/15 text-primary",
   iconSecondary: "bg-secondary-muted text-secondary",
   iconWarning: "bg-warning-muted text-accent-warning-foreground",
   iconDanger: "bg-danger-muted text-accent-danger",

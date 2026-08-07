@@ -393,7 +393,12 @@ async function syncClientQuotesExecutive(
   });
 }
 
-async function assertAssignableExecutive(
+/**
+ * Valida destino de cartera / cotización.
+ * Membresía Isapres Premium nunca puede recibir clientes ni cotizaciones asignadas,
+ * aunque se envíe su id o correo por API.
+ */
+export async function assertAssignableExecutive(
   executiveAccountId: string,
 ): Promise<void> {
   const executive = await prisma.staffAccount.findFirst({
@@ -418,9 +423,9 @@ async function assertAssignableExecutive(
     !isClientAssignableExecutiveKind(executive.executiveKind)
   ) {
     throw new ApiError(
-      "Las cuentas de membresía no pueden recibir clientes asignados.",
+      "Prohibido: Membresía Isapres Premium no puede recibir clientes ni cotizaciones asignadas.",
       400,
-      "INVALID_EXECUTIVE",
+      "MEMBERSHIP_ASSIGNMENT_FORBIDDEN",
     );
   }
 }

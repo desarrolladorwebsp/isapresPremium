@@ -17,7 +17,10 @@ import {
 } from "@/lib/api/lead-assignment";
 import { queueExecutiveClientAssignmentEmail } from "@/lib/email/notify-executive-client-assignment";
 import { isSubscriptionActive } from "@/lib/auth/subscription";
-import { adminCanReceiveAssignmentsForKind } from "@/lib/auth/staff-role";
+import {
+  adminCanReceiveAssignmentsForKind,
+  isClientAssignableExecutiveKind,
+} from "@/lib/auth/staff-role";
 import {
   canEditClientDataAsExecutive,
   canManageClientAsExecutive,
@@ -609,6 +612,14 @@ async function assertEligibleExecutiveOfKind(
   expectedKind: ExecutiveKind,
   label: string,
 ): Promise<void> {
+  if (!isClientAssignableExecutiveKind(expectedKind)) {
+    throw new ApiError(
+      "Prohibido: Membresía Isapres Premium no puede recibir clientes asignados.",
+      400,
+      "MEMBERSHIP_ASSIGNMENT_FORBIDDEN",
+    );
+  }
+
   const includeAdmin = adminCanReceiveAssignmentsForKind(expectedKind);
 
   const account = await prisma.staffAccount.findFirst({

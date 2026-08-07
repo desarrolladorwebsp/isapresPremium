@@ -22,12 +22,15 @@ export interface ClientAdvisedPlanSectionProps {
   client: UserRecord;
   onUpdated: (client: UserRecord) => void;
   onNotify: (message: string, tone?: "success" | "error") => void;
+  /** Sin card ni título (modal de ficha). */
+  bare?: boolean;
 }
 
 export function ClientAdvisedPlanSection({
   client,
   onUpdated,
   onNotify,
+  bare = false,
 }: ClientAdvisedPlanSectionProps) {
   const [plans, setPlans] = useState<HealthPlan[]>([]);
   const [loadingPlans, setLoadingPlans] = useState(true);
@@ -140,9 +143,16 @@ export function ClientAdvisedPlanSection({
   return (
     <CollapsibleSection
       title="Planes del cliente"
-      description="El plan solicitado viene de la cotización. Puedes registrar otro plan o Isapre que asesores al cliente."
-      defaultOpen={false}
-      className="rounded-xl border border-border bg-bg-layout/40 p-4"
+      description={
+        bare
+          ? undefined
+          : "El plan solicitado viene de la cotización. Puedes registrar otro plan o Isapre que asesores al cliente."
+      }
+      defaultOpen={bare ? true : false}
+      hideIntro={bare}
+      className={
+        bare ? undefined : "rounded-xl border border-border bg-bg-layout/40 p-4"
+      }
       bodyClassName="space-y-5"
     >
       <div className="grid gap-4 md:grid-cols-2">

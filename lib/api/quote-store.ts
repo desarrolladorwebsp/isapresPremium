@@ -12,7 +12,7 @@ import { queueExecutiveClientAssignmentEmail } from "@/lib/email/notify-executiv
 import type { QuoteActivityActor } from "@/types/quote-activity";
 import type { CreateQuoteInput, QuoteRecord, QuoteStatus } from "@/types/quote";
 import type { Quote as DbQuote, Plan, Isapre, StaffAccount } from "@prisma/client";
-import { upsertUserByEmail } from "./user-store";
+import { assertAssignableExecutive, upsertUserByEmail } from "./user-store";
 
 type QuoteWithRelations = DbQuote & {
   plan?: (Pick<Plan, "planName"> & { isapreRef: Pick<Isapre, "name"> }) | null;
@@ -113,8 +113,10 @@ export async function createQuote(
     role: "CLIENT",
   });
 
-  // Solo hereda un ejecutivo ya asignado manualmente; sin auto-asignación al cotizar.
-  const executiveAccountId = client.assignedExecutiveId;
+  // Si no tiene ejecutivo, round-robin 1×1 en el pool de formulario/cotizador.
+  const executiveAccountId =
+    client.assignedExecutiveId ??
+    (await autoAssignClientExecutive(client.id, { inboundPool: true }));
 
   const quote = await prisma.quote.create({
     data: {
@@ -184,6 +186,10 @@ export async function updateQuoteAssignment(input: {
   status?: QuoteStatus;
   actor?: QuoteActivityActor;
 }): Promise<QuoteRecord> {
+  if (input.executiveAccountId) {
+    await assertAssignableExecutive(input.executiveAccountId);
+  }
+
   const existing = await readQuoteById(input.quoteId);
   const previousClientExecutiveId = existing?.userId
     ? (

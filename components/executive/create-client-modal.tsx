@@ -11,8 +11,6 @@ import {
 } from "@/components/executive/client-profile-form";
 import { createExecutiveClient } from "@/lib/api/admin-client";
 import { getClientManagementRutErrors } from "@/lib/client-profile/validate-client-ruts";
-import { ui } from "@/lib/ui-tokens";
-import { joinClasses } from "@/lib/utils";
 import {
   MANUAL_CLIENT_ORIGIN_OPTIONS,
   type UserRecord,
@@ -37,29 +35,26 @@ export function CreateClientModal({
   const [clientOrigin, setClientOrigin] = useState<
     (typeof MANUAL_CLIENT_ORIGIN_OPTIONS)[number]["value"]
   >("MANUAL");
-  const [pipelineNotes, setPipelineNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [rutErrors, setRutErrors] = useState<{
     titular?: string;
-    dependents?: Record<string, string>;
-    additionalTitulares?: Record<string, string>;
   }>({});
 
   function handleClose() {
     setProfile(buildEmptyClientProfileFormValue());
     setClientOrigin("MANUAL");
-    setPipelineNotes("");
     setRutErrors({});
     onClose();
   }
 
   function handleProfileChange(next: ClientProfileFormValue) {
-    setProfile(next);
-    if (
-      rutErrors.titular ||
-      rutErrors.dependents ||
-      rutErrors.additionalTitulares
-    ) {
+    setProfile({
+      ...next,
+      // Alta rápida: solo titular principal; el resto se completa en la ficha.
+      dependents: [],
+      additionalTitulares: [],
+    });
+    if (rutErrors.titular) {
       setRutErrors({});
     }
   }
@@ -70,16 +65,14 @@ export function CreateClientModal({
     const errors = getClientManagementRutErrors(
       {
         rut: profile.rut,
-        dependents: profile.dependents,
-        additionalTitulares: profile.additionalTitulares,
+        dependents: [],
+        additionalTitulares: [],
       },
       { requireTitularRut: false },
     );
     if (errors.firstMessage) {
       setRutErrors({
         titular: errors.titular,
-        dependents: errors.dependents,
-        additionalTitulares: errors.additionalTitulares,
       });
       onNotify(errors.firstMessage, "error");
       return;
@@ -122,13 +115,13 @@ export function CreateClientModal({
           : profile.anualidadComment.trim() || null,
         segurosComplementarios: profile.segurosComplementarios.trim() || null,
         preexistenciasMedicas: profile.preexistenciasMedicas.trim() || null,
-        dependents: profile.dependents,
-        additionalTitulares: profile.additionalTitulares,
-        pipelineNotes: pipelineNotes.trim() || null,
+        dependents: [],
+        additionalTitulares: [],
+        pipelineNotes: null,
         clientOrigin,
       });
+      onNotify("Cliente registrado. Completa el resto en la ficha.");
       onCreated(created);
-      onNotify("Cliente registrado.");
       handleClose();
     } catch (error) {
       onNotify(
@@ -145,7 +138,7 @@ export function CreateClientModal({
       open={open}
       onClose={handleClose}
       title="Agregar cliente"
-      description="Registra los datos del titular y sus cargas. Esta información la gestiona el ejecutivo, independiente del cotizador."
+      description="Registra al titular principal. Al guardar se abre la ficha para completar el resto de datos."
       size="xl"
     >
       <form className="space-y-4" onSubmit={(event) => void handleSubmit(event)}>
@@ -171,25 +164,15 @@ export function CreateClientModal({
           value={profile}
           onChange={handleProfileChange}
           rutErrors={rutErrors}
+          sections={["principal"]}
         />
-
-        <label className="block space-y-2">
-          <span className="text-sm font-medium">Notas iniciales</span>
-          <textarea
-            value={pipelineNotes}
-            onChange={(event) => setPipelineNotes(event.target.value)}
-            rows={3}
-            placeholder="Ej. Referido por un cliente actual, interesado en plan familiar…"
-            className={joinClasses("w-full rounded-xl px-3 py-2 text-sm", ui.input)}
-          />
-        </label>
 
         <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
           <Button type="button" variant="ghost" onClick={handleClose}>
             Cancelar
           </Button>
           <Button type="submit" disabled={saving} variant="success">
-            {saving ? "Guardando…" : "Registrar cliente"}
+            {saving ? "Guardando…" : "Guardar y abrir ficha"}
           </Button>
         </div>
       </form>

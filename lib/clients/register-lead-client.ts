@@ -180,8 +180,10 @@ export async function registerLeadClient(
     let assignedExecutiveId = created.assignedExecutiveId;
     if (autoAssign) {
       assignedExecutiveId =
-        (await autoAssignClientExecutive(created.id, { executiveKind })) ??
-        assignedExecutiveId;
+        (await autoAssignClientExecutive(created.id, {
+          inboundPool: true,
+          executiveKind,
+        })) ?? assignedExecutiveId;
     }
 
     return {
@@ -222,7 +224,10 @@ export async function registerLeadClient(
   let assignedExecutiveId = updated.assignedExecutiveId;
   if (autoAssign && !assignedExecutiveId) {
     assignedExecutiveId =
-      (await autoAssignClientExecutive(updated.id, { executiveKind })) ?? null;
+      (await autoAssignClientExecutive(updated.id, {
+        inboundPool: true,
+        executiveKind,
+      })) ?? null;
   }
 
   return {

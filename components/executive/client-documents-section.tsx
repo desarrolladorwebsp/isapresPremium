@@ -40,10 +40,13 @@ export function ClientDocumentsSection({
   clientId,
   canEdit,
   onNotify,
+  bare = false,
 }: {
   clientId: string;
   canEdit: boolean;
   onNotify: (message: string, tone?: "success" | "error") => void;
+  /** Sin cards envolventes (modal de ficha). */
+  bare?: boolean;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [documents, setDocuments] = useState<ClientDocumentRecord[]>([]);
@@ -148,15 +151,19 @@ export function ClientDocumentsSection({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between gap-3">
-        <h3 className="text-sm font-semibold text-foreground">
-          Documentos adjuntos
-        </h3>
-        <span className="text-xs text-muted">PDF o imagen · máx. 12 MB</span>
-      </div>
+      {!bare ? (
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="text-sm font-semibold text-foreground">
+            Documentos adjuntos
+          </h3>
+          <span className="text-xs text-muted">PDF o imagen · máx. 12 MB</span>
+        </div>
+      ) : (
+        <p className="text-xs text-muted">PDF o imagen · máx. 12 MB</p>
+      )}
 
       {canEdit ? (
-        <div className="space-y-3 rounded-xl border border-border bg-bg-layout/40 p-3">
+        <div className={bare ? "space-y-3" : "space-y-3 rounded-xl border border-border bg-bg-layout/40 p-3"}>
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="block space-y-1.5">
               <span className="text-xs font-medium">Tipo de documento</span>
@@ -228,11 +235,23 @@ export function ClientDocumentsSection({
       {loading ? (
         <p className="text-sm text-muted">Cargando documentos…</p>
       ) : documents.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-border bg-bg-layout/30 px-3 py-4 text-xs text-muted">
+        <p
+          className={
+            bare
+              ? "text-xs text-muted"
+              : "rounded-xl border border-dashed border-border bg-bg-layout/30 px-3 py-4 text-xs text-muted"
+          }
+        >
           Aún no hay documentos adjuntos en esta ficha.
         </p>
       ) : (
-        <ul className="space-y-2 rounded-xl border border-border bg-bg-layout/40 p-3">
+        <ul
+          className={
+            bare
+              ? "space-y-2"
+              : "space-y-2 rounded-xl border border-border bg-bg-layout/40 p-3"
+          }
+        >
           {documents.map((doc) => (
             <li
               key={doc.id}

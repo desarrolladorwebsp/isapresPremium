@@ -12,11 +12,14 @@ export function AdminPanel({ children, className }: { children: ReactNode; class
 export function AdminPanelHeader({
   title,
   description,
+  middle,
   actions,
   compactMobile = false,
 }: {
   title: string;
   description?: string;
+  /** Contenido flexible entre título y acciones (p. ej. buscador). */
+  middle?: ReactNode;
   actions?: ReactNode;
   /** Título e acciones en una sola fila en mobile (izq / der). */
   compactMobile?: boolean;
@@ -25,28 +28,49 @@ export function AdminPanelHeader({
     <div
       className={
         compactMobile
-          ? "flex items-center justify-between gap-2 lg:items-end"
+          ? joinClasses(
+              "flex gap-2",
+              middle
+                ? "flex-col sm:flex-row sm:items-center"
+                : "items-center justify-between lg:items-end",
+            )
           : "flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between"
       }
     >
-      <div className={compactMobile ? "min-w-0" : undefined}>
-        <h2 className="text-xl font-bold text-primary-dark">{title}</h2>
-        {description ? (
-          <p
-            className={joinClasses(
-              "mt-1 max-w-3xl text-sm text-muted",
-              compactMobile && "hidden lg:block",
-            )}
-          >
-            {description}
-          </p>
+      <div
+        className={joinClasses(
+          compactMobile ? "min-w-0" : undefined,
+          compactMobile && middle
+            ? "flex items-center justify-between gap-2"
+            : undefined,
+        )}
+      >
+        <div className={compactMobile ? "min-w-0" : undefined}>
+          <h2 className="text-xl font-bold text-primary-dark">{title}</h2>
+          {description ? (
+            <p
+              className={joinClasses(
+                "mt-1 max-w-3xl text-sm text-muted",
+                compactMobile && "hidden lg:block",
+              )}
+            >
+              {description}
+            </p>
+          ) : null}
+        </div>
+        {compactMobile && middle && actions ? (
+          <div className="flex shrink-0 flex-nowrap gap-2 sm:hidden">{actions}</div>
         ) : null}
       </div>
+      {middle ? (
+        <div className="min-w-0 w-full flex-1 sm:px-1">{middle}</div>
+      ) : null}
       {actions ? (
         <div
           className={joinClasses(
             "flex gap-2",
             compactMobile ? "shrink-0 flex-nowrap" : "flex-wrap",
+            compactMobile && middle ? "hidden sm:flex" : undefined,
           )}
         >
           {actions}
@@ -72,6 +96,9 @@ export function AdminTableCard({
   footer,
   /** `scroll` = tabla con overflow horizontal; `stack` = contenido sin scroll lateral (p. ej. cards). */
   contentLayout = "scroll",
+  /** Si false, sin fondo/borde del contenedor (útil en vista cards). */
+  framed = true,
+  className,
 }: {
   loading?: boolean;
   empty?: boolean;
@@ -81,13 +108,20 @@ export function AdminTableCard({
   children: ReactNode;
   footer?: ReactNode;
   contentLayout?: "scroll" | "stack";
+  framed?: boolean;
+  className?: string;
 }) {
   return (
     <div
-      className={joinClasses(
-        "overflow-hidden rounded-2xl border bg-white shadow-sm",
-        ui.border,
-      )}
+      className={
+        framed
+          ? joinClasses(
+              "overflow-hidden rounded-2xl border bg-white shadow-sm",
+              ui.border,
+              className,
+            )
+          : joinClasses("min-w-0", className)
+      }
     >
       {loading ? (
         <p className="px-6 py-16 text-center text-sm text-muted">{loadingMessage}</p>
@@ -109,13 +143,20 @@ export function AdminTableCard({
                     horizontalScrollRail,
                     "max-w-full overflow-x-auto overscroll-x-contain",
                   )
-                : "p-3 sm:p-4"
+                : framed
+                  ? "p-3 sm:p-4"
+                  : undefined
             }
           >
             {children}
           </div>
           {footer ? (
-            <div className="border-t bg-bg-layout/40 px-4 py-3 text-xs text-muted">
+            <div
+              className={joinClasses(
+                "px-1 py-3 text-xs text-muted sm:px-0",
+                framed ? "border-t bg-bg-layout/40 px-4" : "pt-4",
+              )}
+            >
               {footer}
             </div>
           ) : null}
@@ -136,7 +177,7 @@ export function AdminTable({
 }) {
   return (
     <table
-      className={joinClasses("w-max min-w-full text-left text-sm", className)}
+      className={joinClasses("w-full text-left text-sm", className)}
       style={{ minWidth }}
     >
       {children}
@@ -144,9 +185,20 @@ export function AdminTable({
   );
 }
 
-export function AdminTableHead({ children }: { children: ReactNode }) {
+export function AdminTableHead({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
   return (
-    <thead className="sticky top-0 z-10 border-b bg-bg-layout/95 text-xs uppercase tracking-wide text-muted backdrop-blur-sm">
+    <thead
+      className={joinClasses(
+        "sticky top-0 z-10 border-b bg-bg-layout/95 text-xs uppercase tracking-wide text-muted backdrop-blur-sm",
+        className,
+      )}
+    >
       {children}
     </thead>
   );
@@ -160,10 +212,12 @@ export function AdminTableRow({
   children,
   selected,
   onClick,
+  className,
 }: {
   children: ReactNode;
   selected?: boolean;
   onClick?: () => void;
+  className?: string;
 }) {
   return (
     <tr
@@ -172,6 +226,7 @@ export function AdminTableRow({
         "border-b transition last:border-b-0",
         onClick ? "cursor-pointer" : "",
         selected ? "bg-primary/5" : "hover:bg-bg-layout/40",
+        className,
       )}
     >
       {children}
@@ -424,6 +479,8 @@ export function AdminFormModal({
   onClose,
   children,
   size = "lg",
+  headerAside,
+  headerTone = "default",
 }: {
   open: boolean;
   title: string;
@@ -431,6 +488,10 @@ export function AdminFormModal({
   onClose: () => void;
   children: ReactNode;
   size?: "md" | "lg" | "xl";
+  /** Contenido extra en el header (p. ej. filtros), a la izquierda de Cerrar. */
+  headerAside?: ReactNode;
+  /** `navy` = cabecera azul oscuro (header ejecutivo) con texto blanco. */
+  headerTone?: "default" | "navy";
 }) {
   if (!open) return null;
 
@@ -440,11 +501,13 @@ export function AdminFormModal({
     xl: "max-w-5xl",
   }[size];
 
+  const isNavy = headerTone === "navy";
+
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4">
       <div
         className={joinClasses(
-          "flex max-h-[92vh] w-full flex-col rounded-t-2xl border bg-white shadow-xl sm:rounded-2xl",
+          "flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-2xl border bg-white shadow-xl sm:rounded-2xl",
           sizeClass,
           ui.border,
         )}
@@ -452,26 +515,51 @@ export function AdminFormModal({
         aria-modal="true"
         aria-labelledby="admin-form-modal-title"
       >
-        <div className="flex shrink-0 items-start justify-between gap-4 border-b px-5 py-4 sm:px-6">
-          <div className="min-w-0">
+        <div
+          className={joinClasses(
+            "flex shrink-0 items-start justify-between gap-3 px-5 py-4 sm:gap-4 sm:px-6",
+            isNavy
+              ? "border-b border-white/10 bg-[color:var(--dash-navy,#092558)] text-white"
+              : "border-b",
+          )}
+        >
+          <div className="min-w-0 flex-1">
             <h3
               id="admin-form-modal-title"
-              className="text-lg font-bold text-primary-dark"
+              className={joinClasses(
+                "text-lg font-bold",
+                isNavy ? "text-white" : "text-primary-dark",
+              )}
             >
               {title}
             </h3>
             {description ? (
-              <p className="mt-1 text-sm text-muted">{description}</p>
+              <p
+                className={joinClasses(
+                  "mt-1 text-sm",
+                  isNavy ? "text-white/75" : "text-muted",
+                )}
+              >
+                {description}
+              </p>
             ) : null}
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="shrink-0 rounded-lg px-2 py-1 text-sm font-semibold text-muted hover:bg-bg-layout"
-            aria-label="Cerrar"
-          >
-            Cerrar
-          </button>
+          <div className="flex shrink-0 items-start gap-2 sm:gap-3">
+            {headerAside}
+            <button
+              type="button"
+              onClick={onClose}
+              className={joinClasses(
+                "shrink-0 rounded-lg px-2 py-1 text-sm font-semibold transition",
+                isNavy
+                  ? "text-white/85 hover:bg-white/10 hover:text-white"
+                  : "text-muted hover:bg-bg-layout",
+              )}
+              aria-label="Cerrar"
+            >
+              Cerrar
+            </button>
+          </div>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-5 py-4 sm:px-6">
           {children}

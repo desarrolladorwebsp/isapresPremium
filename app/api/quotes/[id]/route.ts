@@ -5,11 +5,13 @@ import {
   updateQuoteAssignment,
   updateQuoteStatus,
 } from "@/lib/api/quote-store";
-import { apiErrorResponse, parseJsonBody } from "@/lib/api/api-error";
+import { ApiError, apiErrorResponse, parseJsonBody } from "@/lib/api/api-error";
 import {
   requireAdminSession,
   requireExecutiveSession,
 } from "@/lib/auth/require-auth";
+import { isClientAssignableExecutiveKind } from "@/lib/auth/staff-role";
+import type { ExecutiveKind } from "@prisma/client";
 import type { QuoteActivityActor } from "@/types/quote-activity";
 import type { QuoteStatus } from "@/types/quote";
 import { QUOTE_STATUS_OPTIONS } from "@/lib/quote-status";
@@ -45,6 +47,7 @@ export async function PATCH(request: Request, context: RouteContext) {
 
     let isAdmin = false;
     let executiveId: string | null = null;
+    let executiveKind: ExecutiveKind | null = null;
     let actor: QuoteActivityActor = { realm: "system", name: "Sistema" };
 
     try {
@@ -54,6 +57,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     } catch {
       const executive = await requireExecutiveSession(request);
       executiveId = executive.user.id;
+      executiveKind = executive.user.executiveKind;
       actor = {
         realm: "executive",
         id: executive.user.id,
@@ -75,6 +79,15 @@ export async function PATCH(request: Request, context: RouteContext) {
     if (payload.assignToMe === true) {
       if (!executiveId) {
         return NextResponse.json({ error: "No autorizado." }, { status: 403 });
+      }
+
+      // Membresía solo cotiza: no puede autoasignarse prospectos/clientes.
+      if (!isClientAssignableExecutiveKind(executiveKind)) {
+        throw new ApiError(
+          "Prohibido: Membresía Isapres Premium no puede recibir clientes ni cotizaciones asignadas.",
+          403,
+          "MEMBERSHIP_ASSIGNMENT_FORBIDDEN",
+        );
       }
 
       const updated = await assignQuoteToExecutive(id, executiveId, actor);

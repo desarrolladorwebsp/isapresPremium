@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import {
@@ -8,23 +8,34 @@ import {
   AdminPanelHeader,
 } from "@/components/admin/admin-data-table";
 import { Button } from "@/components/ui/button";
-import { ClientPipelineDrawer } from "@/components/executive/client-pipeline-drawer";
-import { ClientOriginEditor } from "@/components/executive/client-origin-editor";
+import { ClientFichaCapsule } from "@/components/executive/client-ficha-capsule";
+import { ClientFichaPdfModal } from "@/components/executive/client-ficha-pdf-modal";
+import {
+  ClientPipelineDrawer,
+  type ClientFichaModal,
+} from "@/components/executive/client-pipeline-drawer";
 import { ClientPipelineStatusBadge } from "@/components/executive/client-pipeline-status-badge";
-import { ClientContactMethodBadge } from "@/components/executive/client-contact-method-badge";
 import { ClientRutCell } from "@/components/executive/client-rut-cell";
 import {
   IconArrowLeft,
+  IconUserPlus,
+  IconUsers,
 } from "@/components/executive/executive-icons";
 import { useStaffSession } from "@/hooks/use-auth-session";
 import { useExecutiveClientsQuery } from "@/hooks/query/use-executive-clients-query";
-import { getStaffRoleLabel } from "@/lib/auth/staff-role";
-import { CLIENT_PIPELINE_STATUS_DESCRIPTIONS } from "@/lib/client-pipeline/constants";
-import { canEditClientDataAsExecutive, isTrackingOnlyForExecutive } from "@/lib/client-pipeline/tracking";
+import { isValidRut } from "@/lib/auth/rut";
+import { resolveClientChecklist } from "@/lib/client-pipeline/constants";
+import {
+  canEditClientDataAsExecutive,
+  isTrackingOnlyForExecutive,
+} from "@/lib/client-pipeline/tracking";
+import { CURRENT_COVERAGE_OPTIONS } from "@/lib/filter-options";
+import { formatPersonDisplayName } from "@/lib/format-person-name";
 import { syncClientMutationCache } from "@/lib/query/executive-cache";
 import { staffExecutiveHref } from "@/lib/staff/staff-sections";
 import { touchTarget, ui } from "@/lib/ui-tokens";
 import { joinClasses } from "@/lib/utils";
+import type { CompanyAgreementLookupResult } from "@/types/company-agreement";
 import type { ClientPipelineStatus } from "@/types/client-pipeline";
 import type { UserRecord } from "@/types/user";
 
@@ -53,12 +64,170 @@ function SummaryField({
 }) {
   return (
     <div className="min-w-0 space-y-1">
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-primary-dark/70">
         {label}
       </p>
-      <div className="text-sm text-foreground">{children}</div>
+      <div className="text-sm font-medium text-foreground">{children}</div>
     </div>
   );
+}
+
+function IconBuilding({ className = "size-7" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+      <path d="M4 21V5a1 1 0 011-1h8a1 1 0 011 1v16M14 9h5a1 1 0 011 1v11M9 8h.01M9 12h.01M9 16h.01M17 13h.01M17 17h.01" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function IconFamily({ className = "size-7" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+      <circle cx="9" cy="7" r="3" />
+      <circle cx="17" cy="8" r="2.5" />
+      <path d="M3 20v-1a5 5 0 0110 0v1M14.5 20v-.8a4 4 0 013.5-3.95" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function IconPlan({ className = "size-7" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+      <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" strokeLinecap="round" />
+      <rect x="9" y="3" width="6" height="4" rx="1" />
+      <path d="M9 12h6M9 16h4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function IconDocs({ className = "size-7" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+      <path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8l-5-5z" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M14 3v5h5M9 13h6M9 17h4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function IconHistory({ className = "size-7" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+      <path d="M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M3 3v5h5M12 7v5l3 2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconPrevision({ className = "size-7" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+      <path d="M12 3l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V7l8-4z" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M9.5 12.5l1.8 1.8 3.7-3.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconNotes({ className = "size-7" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+      <path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8l-5-5z" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M14 3v5h5M9 13h6M9 17h4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function buildCapsuleBullets(
+  client: UserRecord,
+  convenioLabel: string,
+): {
+  employer: string[];
+  prevision: string[];
+  family: string[];
+  plan: string[];
+  docs: string[];
+  historial: string[];
+  notas: string[];
+} {
+  const profile = client.clientProfile;
+  const titulares =
+    1 + (profile?.additionalTitulares?.length ?? 0);
+  const cargas = profile?.dependents?.length ?? 0;
+  const plan = client.advisedPlan ?? client.requestedPlan;
+  const checklist = resolveClientChecklist(client.checklist);
+  const docsDone = checklist.items.filter((item) => item.checked).length;
+  const docsTotal = checklist.items.length;
+  const noteLines =
+    client.pipelineNotes
+      ?.split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean) ?? [];
+  const lastNote = noteLines[noteLines.length - 1];
+  const previsionId = profile?.currentIsapre?.trim() ?? "";
+  const previsionLabel =
+    CURRENT_COVERAGE_OPTIONS.find((option) => option.id === previsionId)
+      ?.label ??
+    (previsionId || "Sin previsión registrada");
+  const planPrice = profile?.currentPlanPrice?.trim();
+  const planPriceLabel = planPrice
+    ? `${planPrice} ${profile?.currentPlanPriceCurrency === "CLP" ? "CLP" : "UF"}`
+    : "Sin precio del plan";
+  const voluntario = profile?.voluntaryAdditional?.trim();
+  const voluntarioLabel = voluntario
+    ? `Voluntario: ${voluntario} ${profile?.voluntaryAdditionalCurrency === "CLP" ? "CLP" : "UF"}`
+    : "Sin adicional voluntario";
+
+  return {
+    employer: [
+      profile?.employerRut?.trim()
+        ? `RUT: ${profile.employerRut.trim()}`
+        : "Sin RUT empleador",
+      profile?.rentaImponible?.trim()
+        ? `Renta: ${profile.rentaImponible.trim()}`
+        : "Sin renta imponible",
+      convenioLabel,
+    ],
+    prevision: [
+      previsionLabel,
+      planPriceLabel,
+      voluntarioLabel,
+      profile?.anualidad ? "Con anualidad" : "Sin anualidad",
+    ],
+    family: [
+      `${titulares} titular${titulares === 1 ? "" : "es"}`,
+      `${cargas} carga${cargas === 1 ? "" : "s"}`,
+      profile?.firstNames?.trim() || profile?.lastNames?.trim()
+        ? `Titular: ${[profile?.firstNames, profile?.lastNames].filter(Boolean).join(" ") || client.fullName}`
+        : `Titular: ${client.fullName}`,
+    ],
+    plan: [
+      plan?.isapre?.trim() || "Sin isapre",
+      plan?.planName?.trim() || "Sin plan elegido",
+      plan?.basePriceUf != null
+        ? `UF ${plan.basePriceUf}`
+        : plan?.finalPriceUf != null
+          ? `UF ${plan.finalPriceUf}`
+          : "Sin precio UF",
+    ],
+    docs: [
+      `Checklist ${docsDone}/${docsTotal}`,
+      "RUT, liquidación, plan u otros",
+      "Vista previa en la ficha",
+    ],
+    historial: [
+      noteLines.length === 0
+        ? "Sin movimientos aún"
+        : `${noteLines.length} registro${noteLines.length === 1 ? "" : "s"}`,
+      lastNote
+        ? `Último: ${lastNote.length > 48 ? `${lastNote.slice(0, 48)}…` : lastNote}`
+        : "Solo lectura del sistema",
+      "Contacto, reagendar, derivaciones",
+    ],
+    notas: [
+      "Comentarios post-reunión",
+      "Quedan en el historial al guardar",
+      "Con tu nombre y fecha",
+    ],
+  };
 }
 
 export function ExecutiveClientDetailView({
@@ -71,12 +240,76 @@ export function ExecutiveClientDetailView({
   const queryClient = useQueryClient();
   const { isAdmin, user, executiveKind } = useStaffSession();
   const clientsQuery = useExecutiveClientsQuery();
+  const [fichaModal, setFichaModal] = useState<ClientFichaModal>(null);
+  const [pendingFamilyAdd, setPendingFamilyAdd] = useState<
+    "titular" | "carga" | null
+  >(null);
+  const [fichaPdfOpen, setFichaPdfOpen] = useState(false);
+  const [convenioLabel, setConvenioLabel] = useState("Sin RUT empleador");
 
   const client = useMemo(
     () =>
       (clientsQuery.data ?? []).find((row) => row.id === clientId) ?? null,
     [clientsQuery.data, clientId],
   );
+
+  const employerRut = client?.clientProfile?.employerRut?.trim() ?? "";
+
+  useEffect(() => {
+    if (!employerRut) {
+      setConvenioLabel("Sin RUT empleador");
+      return;
+    }
+    if (!isValidRut(employerRut)) {
+      setConvenioLabel("RUT empleador inválido");
+      return;
+    }
+
+    let cancelled = false;
+    setConvenioLabel("Verificando convenio…");
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const params = new URLSearchParams({ rut: employerRut });
+          const response = await fetch(
+            `/api/company-agreements/lookup?${params}`,
+          );
+          const payload = (await response.json().catch(() => null)) as
+            | (CompanyAgreementLookupResult & { error?: string })
+            | null;
+          if (cancelled) return;
+          if (!response.ok) {
+            setConvenioLabel("No se pudo verificar convenio");
+            return;
+          }
+          const match = payload?.matches[0] ?? null;
+          if (!match) {
+            setConvenioLabel("Sin convenio");
+            return;
+          }
+          const name = match.companyName.trim() || "Empresa con convenio";
+          const discount =
+            match.discountPercent == null
+              ? null
+              : Number.isInteger(match.discountPercent)
+                ? `${match.discountPercent}%`
+                : `${match.discountPercent.toLocaleString("es-CL", {
+                    maximumFractionDigits: 2,
+                  })}%`;
+          setConvenioLabel(
+            discount ? `En convenio · ${name} · ${discount}` : `En convenio · ${name}`,
+          );
+        } catch {
+          if (!cancelled) setConvenioLabel("No se pudo verificar convenio");
+        }
+      })();
+    }, 300);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [employerRut]);
 
   const loading = clientsQuery.isLoading && !clientsQuery.data;
 
@@ -106,6 +339,21 @@ export function ExecutiveClientDetailView({
     onNotify("Cliente reasignado. Ya no aparece en tu cartera.");
     onLeftPortfolio?.();
     onBack();
+  }
+
+  function openFamilyModal() {
+    setPendingFamilyAdd(null);
+    setFichaModal("family");
+  }
+
+  function openAddTitularModal() {
+    setPendingFamilyAdd("titular");
+    setFichaModal("addTitular");
+  }
+
+  function openAddCargaModal() {
+    setPendingFamilyAdd("carga");
+    setFichaModal("addCarga");
   }
 
   if (loading) {
@@ -167,33 +415,82 @@ export function ExecutiveClientDetailView({
   const pipelineStatus = (client.pipelineStatus ??
     "NUEVO") as ClientPipelineStatus;
   const isTrackingOnly = Boolean(
-    user?.id &&
-      !isAdmin &&
-      isTrackingOnlyForExecutive(client, user.id),
+    user?.id && !isAdmin && isTrackingOnlyForExecutive(client, user.id),
   );
   const canEditClientData = Boolean(
     user?.id &&
-      canEditClientDataAsExecutive(
-        client,
-        user.id,
-        isAdmin,
-        executiveKind,
-      ),
+      canEditClientDataAsExecutive(client, user.id, isAdmin, executiveKind),
   );
-  const executiveRoleLabel = client.assignedExecutiveName
-    ? getStaffRoleLabel({
-        realm: "executive",
-        executiveKind: client.assignedExecutiveKind,
-      })
-    : null;
+  const bullets = buildCapsuleBullets(client, convenioLabel);
+  const assignedLabel = formatPersonDisplayName(
+    client.assignedExecutiveName,
+    "Sin ejecutivo asignado",
+  );
 
   return (
     <AdminPanel>
-      <AdminPanelHeader
-        compactMobile
-        title={client.fullName}
-        description="Ficha completa: revisa datos, gestiona el pipeline y guarda los cambios sin salir de la vista."
-        actions={
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
+        <div className="flex w-full shrink-0 flex-col gap-3 lg:sticky lg:top-4 lg:w-56">
+          <aside
+            className={joinClasses(
+              "flex flex-col gap-3 rounded-2xl border bg-white p-4 shadow-card",
+              ui.border,
+            )}
+          >
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-primary-dark">
+              Acciones rápidas
+            </p>
+            <div className="flex flex-row gap-2 overflow-x-auto lg:flex-col lg:overflow-visible">
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                disabled={!canEditClientData}
+                className={joinClasses(
+                  touchTarget,
+                  "justify-start gap-2 border border-primary-dark/15 bg-primary-dark/5 text-primary-dark hover:border-primary-dark/30 hover:bg-primary-dark/10",
+                )}
+                onClick={() => openAddTitularModal()}
+              >
+                <IconUserPlus className="size-4 text-primary-dark" />
+                Agregar titular
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                disabled={!canEditClientData}
+                className={joinClasses(
+                  touchTarget,
+                  "justify-start gap-2 border border-primary-dark/15 bg-primary-dark/5 text-primary-dark hover:border-primary-dark/30 hover:bg-primary-dark/10",
+                )}
+                onClick={() => openAddCargaModal()}
+              >
+                <IconUsers className="size-4 text-primary-dark" />
+                Agregar carga
+              </Button>
+            </div>
+            {!canEditClientData ? (
+              <p className="text-[11px] leading-snug text-muted">
+                Solo lectura
+                {isTrackingOnly ? " · seguimiento post-derivación" : ""}.
+              </p>
+            ) : null}
+          </aside>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            aria-label="Ficha PDF"
+            title="Ficha PDF"
+            onClick={() => setFichaPdfOpen(true)}
+            className={joinClasses(
+              touchTarget,
+              "w-full justify-start gap-2 border border-primary-dark/15 bg-white text-primary-dark shadow-sm hover:border-primary-dark/30 hover:bg-primary-dark/5",
+            )}
+          >
+            Ficha PDF
+          </Button>
           <Button
             type="button"
             size="sm"
@@ -203,96 +500,164 @@ export function ExecutiveClientDetailView({
             title="Volver a clientes"
             className={joinClasses(
               touchTarget,
-              "px-0 sm:h-9 sm:min-h-9 sm:min-w-0 sm:gap-1.5 sm:px-3",
+              "w-full justify-start gap-2 border border-border bg-white shadow-sm hover:border-primary-dark/25 hover:bg-primary-dark/5",
             )}
           >
-            <IconArrowLeft className="size-4" />
-            <span className="hidden sm:inline">Volver</span>
+            <IconArrowLeft className="size-4 text-primary-dark" />
+            Volver
           </Button>
-        }
-      />
-
-      <div
-        className={joinClasses(
-          "space-y-4 rounded-2xl border bg-white px-4 py-4 shadow-sm",
-          ui.border,
-        )}
-      >
-        <div className="grid gap-4 sm:grid-cols-3">
-          <SummaryField label="Ejecutivo asignado">
-            {client.assignedExecutiveName && client.assignedExecutiveId ? (
-              <button
-                type="button"
-                onClick={() =>
-                  router.push(staffExecutiveHref(client.assignedExecutiveId!))
-                }
-                className="text-left font-semibold text-primary-dark underline-offset-2 hover:underline"
-              >
-                {client.assignedExecutiveName}
-              </button>
-            ) : client.assignedExecutiveName ? (
-              <span className="font-semibold">{client.assignedExecutiveName}</span>
-            ) : (
-              <span className="text-muted">Sin ejecutivo asignado</span>
-            )}
-          </SummaryField>
-
-          <SummaryField label="Rol del ejecutivo">
-            {executiveRoleLabel ? (
-              <span className="font-medium">{executiveRoleLabel}</span>
-            ) : (
-              <span className="text-muted">Sin rol</span>
-            )}
-          </SummaryField>
-
-          <SummaryField label="Etapa del cliente">
-            <div className="space-y-1.5">
-              <ClientPipelineStatusBadge status={pipelineStatus} />
-              {user?.id &&
-              isTrackingOnlyForExecutive(client, user.id) &&
-              !isAdmin ? (
-                <span className="inline-flex w-fit rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 ring-1 ring-amber-200">
-                  Derivado · seguimiento
-                </span>
-              ) : null}
-              <p className="text-xs leading-snug text-muted">
-                {CLIENT_PIPELINE_STATUS_DESCRIPTIONS[pipelineStatus]}
-              </p>
-            </div>
-          </SummaryField>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
-          <ClientContactMethodBadge method={client.preferredContactMethod} />
-          <ClientOriginEditor
-            client={client}
-            onUpdated={handleUpdated}
-            onNotify={onNotify}
-            readOnly={!canEditClientData}
-          />
-          <span className="text-xs text-muted">
-            Registro: {formatDate(client.createdAt)}
-          </span>
-          <div className="ml-auto min-w-0">
-            <ClientRutCell rut={client.rut} />
+        <div className="min-w-0 flex-1 space-y-5">
+          <div
+            className={joinClasses(
+              "rounded-2xl border bg-white px-4 py-4 shadow-card sm:px-5",
+              ui.border,
+            )}
+          >
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
+              <div className="min-w-0 space-y-1">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-primary-dark/65">
+                  Ficha del cliente
+                </p>
+                <h2 className="truncate text-xl font-bold text-primary-dark sm:text-2xl">
+                  {client.fullName}
+                </h2>
+                {isTrackingOnly ? (
+                  <span className="inline-flex w-fit rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 ring-1 ring-amber-200">
+                    Derivado · seguimiento
+                  </span>
+                ) : null}
+              </div>
+
+              <div className="grid min-w-0 grid-cols-1 gap-3 rounded-xl border border-primary-dark/10 bg-primary-dark/[0.03] p-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4 lg:border-0 lg:bg-transparent lg:p-0 lg:border-l lg:border-primary-dark/15 lg:pl-6">
+                <SummaryField label="Estado">
+                  <ClientPipelineStatusBadge status={pipelineStatus} />
+                </SummaryField>
+                <SummaryField label="RUT">
+                  <ClientRutCell rut={client.rut} />
+                </SummaryField>
+                <SummaryField label="Ejecutivo asignado">
+                  {client.assignedExecutiveName && client.assignedExecutiveId ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        router.push(
+                          staffExecutiveHref(client.assignedExecutiveId!),
+                        )
+                      }
+                      className="text-left font-semibold text-primary-dark underline-offset-2 hover:underline"
+                    >
+                      {assignedLabel}
+                    </button>
+                  ) : (
+                    <span
+                      className={
+                        client.assignedExecutiveName
+                          ? "font-semibold"
+                          : "text-muted"
+                      }
+                    >
+                      {assignedLabel}
+                    </span>
+                  )}
+                </SummaryField>
+                <SummaryField label="Fecha de creación">
+                  <span className="tabular-nums text-primary-dark">
+                    {formatDate(client.createdAt)}
+                  </span>
+                </SummaryField>
+              </div>
+            </div>
           </div>
-          {client.email ? (
-            <p className="w-full truncate text-sm text-muted sm:w-auto">
-              {client.email}
-              {client.phone ? ` · ${client.phone}` : ""}
-            </p>
-          ) : null}
+
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <ClientFichaCapsule
+              icon={<IconFamily />}
+              title="Grupo familiar"
+              description="Titulares y cargas del grupo familiar."
+              bullets={bullets.family}
+              ctaLabel={
+                canEditClientData ? "Editar grupo familiar" : "Ver grupo familiar"
+              }
+              onClick={() => openFamilyModal()}
+            />
+            <ClientFichaCapsule
+              icon={<IconBuilding />}
+              title="Empleador"
+              description="RUT del empleador, convenio y renta imponible."
+              bullets={bullets.employer}
+              ctaLabel={canEditClientData ? "Editar empleador" : "Ver empleador"}
+              onClick={() => setFichaModal("employer")}
+            />
+            <ClientFichaCapsule
+              icon={<IconPrevision />}
+              title="Previsión actual"
+              description="Isapre, Fonasa o sin previsión, costo y anualidad."
+              bullets={bullets.prevision}
+              ctaLabel={
+                canEditClientData ? "Editar previsión" : "Ver previsión"
+              }
+              onClick={() => setFichaModal("prevision")}
+            />
+            <ClientFichaCapsule
+              icon={<IconPlan />}
+              title="Plan elegido"
+              description="Plan asesorado o cotizado para este cliente."
+              bullets={bullets.plan}
+              ctaLabel={canEditClientData ? "Editar plan" : "Ver plan"}
+              onClick={() => setFichaModal("plan")}
+            />
+            <ClientFichaCapsule
+              icon={<IconDocs />}
+              title="Documentos"
+              description="Checklist y archivos adjuntos de la ficha."
+              bullets={bullets.docs}
+              ctaLabel={
+                canEditClientData ? "Gestionar documentos" : "Ver documentos"
+              }
+              onClick={() => setFichaModal("docs")}
+            />
+            <ClientFichaCapsule
+              icon={<IconHistory />}
+              title="Historial modificaciones"
+              description="Registro de contacto, reagendar, derivaciones y cierres."
+              bullets={bullets.historial}
+              ctaLabel="Ver historial"
+              onClick={() => setFichaModal("historial")}
+            />
+            <ClientFichaCapsule
+              icon={<IconNotes />}
+              title="Notas cliente"
+              description="Comentarios post-reunión que quedan en el historial."
+              bullets={bullets.notas}
+              ctaLabel={canEditClientData ? "Agregar nota" : "Ver notas"}
+              onClick={() => setFichaModal("notas")}
+            />
+          </div>
+
+          <ClientPipelineDrawer
+            client={client}
+            open
+            variant="page"
+            layout="operations"
+            closeAfterSave={false}
+            fichaModal={fichaModal}
+            onFichaModalChange={setFichaModal}
+            pendingFamilyAdd={pendingFamilyAdd}
+            onPendingFamilyAddConsumed={() => setPendingFamilyAdd(null)}
+            onClose={onBack}
+            onUpdated={handleUpdated}
+            onRedirected={handleRedirected}
+            onNotify={onNotify}
+          />
         </div>
       </div>
 
-      <ClientPipelineDrawer
+      <ClientFichaPdfModal
         client={client}
-        open
-        variant="page"
-        closeAfterSave={false}
-        onClose={onBack}
-        onUpdated={handleUpdated}
-        onRedirected={handleRedirected}
+        open={fichaPdfOpen}
+        onClose={() => setFichaPdfOpen(false)}
         onNotify={onNotify}
       />
     </AdminPanel>

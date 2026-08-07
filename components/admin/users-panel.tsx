@@ -129,6 +129,16 @@ type ExecutiveDirectoryRow =
   | { kind: "account"; account: StaffAccountRecord; sortAt: string }
   | { kind: "invite"; invite: PendingStaffInviteRecord; sortAt: string };
 
+type UsersSortKey =
+  | "usuario"
+  | "rol"
+  | "contacto"
+  | "clientes"
+  | "estado"
+  | "acceso";
+
+type SortDirection = "asc" | "desc";
+
 function formatDate(value: string | null): string {
   if (!value) return "—";
   return new Intl.DateTimeFormat("es-CL", {
@@ -157,6 +167,57 @@ function getAccountStatus(account: StaffAccountRecord): {
   return { label: "Activo", tone: "success" };
 }
 
+function compareText(a: string, b: string): number {
+  return a.localeCompare(b, "es", { sensitivity: "base", numeric: true });
+}
+
+function usersSortValue(
+  row: ExecutiveDirectoryRow,
+  key: UsersSortKey,
+  assignmentCounts: Record<string, number>,
+): string | number {
+  if (row.kind === "invite") {
+    switch (key) {
+      case "usuario":
+        return row.invite.email;
+      case "rol":
+        return getInviteRoleLabel(row.invite);
+      case "contacto":
+        return row.invite.email;
+      case "clientes":
+        return -1;
+      case "estado":
+        return "Pendiente por activar";
+      case "acceso":
+        return 0;
+      default:
+        return "";
+    }
+  }
+
+  const { account } = row;
+  switch (key) {
+    case "usuario":
+      return account.fullName || account.email;
+    case "rol":
+      return getAccountRoleLabel(account);
+    case "contacto":
+      return account.email;
+    case "clientes":
+      return account.onboardingCompleted && account.active
+        ? assignmentCounts[account.id] ?? 0
+        : -1;
+    case "estado":
+      return getAccountStatus(account).label;
+    case "acceso":
+      return account.lastLoginAt
+        ? new Date(account.lastLoginAt).getTime()
+        : 0;
+    default:
+      return "";
+  }
+}
+
 export function UsersPanel({
   onNotify,
   executivesOnly = false,
@@ -168,6 +229,8 @@ export function UsersPanel({
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [sortKey, setSortKey] = useState<UsersSortKey | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [modalOpen, setModalOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<StaffAccountRecord | null>(null);
   const [roleTarget, setRoleTarget] = useState<StaffAccountRecord | null>(null);
@@ -263,6 +326,38 @@ export function UsersPanel({
         .some((value) => String(value).toLowerCase().includes(query));
     });
   }, [directoryRows, search]);
+
+  const sortedRows = useMemo(() => {
+    if (!sortKey) return filteredRows;
+    const rows = [...filteredRows];
+    const direction = sortDirection === "asc" ? 1 : -1;
+    rows.sort((left, right) => {
+      const a = usersSortValue(left, sortKey, assignmentCounts);
+      const b = usersSortValue(right, sortKey, assignmentCounts);
+      if (typeof a === "number" && typeof b === "number") {
+        return (a - b) * direction;
+      }
+      return compareText(String(a), String(b)) * direction;
+    });
+    return rows;
+  }, [filteredRows, sortKey, sortDirection, assignmentCounts]);
+
+  function handleSort(nextKey: UsersSortKey) {
+    if (sortKey === nextKey) {
+      setSortDirection((current) => (current === "asc" ? "desc" : "asc"));
+      return;
+    }
+    setSortKey(nextKey);
+    setSortDirection(nextKey === "acceso" || nextKey === "clientes" ? "desc" : "asc");
+  }
+
+  function sortProps(key: UsersSortKey) {
+    return {
+      sortable: true as const,
+      sortDirection: sortKey === key ? sortDirection : null,
+      onSort: () => handleSort(key),
+    };
+  }
 
   function openModal() {
     setDraft({ email: "", role: "isapres_premium" });
@@ -462,7 +557,7 @@ export function UsersPanel({
 
       <AdminTableCard
         loading={loading}
-        empty={!loading && filteredRows.length === 0}
+        empty={!loading && sortedRows.length === 0}
         emptyTitle={executivesOnly ? "No hay ejecutivos registrados" : "No hay usuarios registrados"}
         emptyDescription={
           executivesOnly
@@ -470,24 +565,36 @@ export function UsersPanel({
             : "Invita a un administrador o ejecutivo. Aparecerán como pendientes hasta que activen su cuenta."
         }
         loadingMessage="Cargando usuarios…"
-        footer={`Mostrando ${filteredRows.length} de ${directoryRows.length} registros.`}
+        footer={`Mostrando ${sortedRows.length} de ${directoryRows.length} registros.`}
       >
         <AdminTable minWidth="56rem">
           <AdminTableHead>
             <tr>
-              <AdminTableHeaderCell>Usuario</AdminTableHeaderCell>
-              <AdminTableHeaderCell>Rol</AdminTableHeaderCell>
-              <AdminTableHeaderCell>Contacto</AdminTableHeaderCell>
+              <AdminTableHeaderCell {...sortProps("usuario")}>
+                Usuario
+              </AdminTableHeaderCell>
+              <AdminTableHeaderCell {...sortProps("rol")}>
+                Rol
+              </AdminTableHeaderCell>
+              <AdminTableHeaderCell {...sortProps("contacto")}>
+                Contacto
+              </AdminTableHeaderCell>
               {executivesOnly ? (
-                <AdminTableHeaderCell>Clientes</AdminTableHeaderCell>
+                <AdminTableHeaderCell {...sortProps("clientes")}>
+                  Clientes
+                </AdminTableHeaderCell>
               ) : null}
-              <AdminTableHeaderCell>Estado</AdminTableHeaderCell>
-              <AdminTableHeaderCell>Último acceso</AdminTableHeaderCell>
+              <AdminTableHeaderCell {...sortProps("estado")}>
+                Estado
+              </AdminTableHeaderCell>
+              <AdminTableHeaderCell {...sortProps("acceso")}>
+                Último acceso
+              </AdminTableHeaderCell>
               <AdminTableHeaderCell align="right">Acciones</AdminTableHeaderCell>
             </tr>
           </AdminTableHead>
           <AdminTableBody>
-            {filteredRows.map((row) => {
+            {sortedRows.map((row) => {
               if (row.kind === "invite") {
                 const { invite } = row;
 
@@ -719,6 +826,12 @@ export function UsersPanel({
                 La promoción o degradación a administrador no está disponible desde aquí
                 (requiere nueva invitación de administrador).
               </p>
+              {roleDraft === "MEMBRESIA_ISAPRES_PREMIUM" ? (
+                <p className="text-xs font-medium text-amber-700 dark:text-amber-400">
+                  Membresía solo usa el cotizador: se liberarán todos sus clientes y
+                  cotizaciones asignadas, y no podrá recibir cartera.
+                </p>
+              ) : null}
             </label>
 
             <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">

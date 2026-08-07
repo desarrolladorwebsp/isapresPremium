@@ -1,14 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  IconCalendar,
+  IconClock,
   IconEye,
   IconLayoutCards,
   IconLayoutTable,
+  IconMail,
+  IconPhone,
   IconUserPlus,
   IconUsers,
   IconWhatsApp,
@@ -25,7 +29,6 @@ import {
   AdminTableHeaderCell,
   AdminTableRow,
   AdminRowActions,
-  AdminToolbar,
   AdminFormModal,
   TableCellStack,
 } from "@/components/admin/admin-data-table";
@@ -41,16 +44,27 @@ import {
   upsertExecutiveClientCache,
 } from "@/lib/query/executive-cache";
 import { isTrackingOnlyForExecutive } from "@/lib/client-pipeline/tracking";
+import {
+  CLIENT_GESTION_FILTER_OPTIONS,
+  DEFAULT_CLIENT_GESTION_FILTERS,
+  clientMatchesGestionFilters,
+  type ClientGestionFilter,
+} from "@/lib/client-pipeline/client-gestion-filter";
 import { ClientPipelineStatusBadge } from "@/components/executive/client-pipeline-status-badge";
 import { ClientPlanSummary } from "@/components/executive/client-plan-summary";
 import { ClientOriginBadge } from "@/components/executive/client-origin-badge";
-import { ClientContactMethodBadge } from "@/components/executive/client-contact-method-badge";
 import { ClientRutCell } from "@/components/executive/client-rut-cell";
-import { CotizadorSourceBadge } from "@/components/executive/cotizador-source-badge";
 import { CreateClientModal } from "@/components/executive/create-client-modal";
 import { ExecutiveAccountDetailView } from "@/components/executive/executive-account-detail-view";
 import { ExecutiveClientDetailView } from "@/components/executive/executive-client-detail-view";
+import { ClientPortfolioCard } from "@/components/executive/client-portfolio-card";
 import { buildClientWhatsAppMessage } from "@/lib/client-pipeline/constants";
+import {
+  AGENDA_URGENCY_LABELS,
+  agendaUrgencyChipClasses,
+  agendaUrgencyFromIso,
+  type AgendaUrgency,
+} from "@/lib/client-pipeline/agenda-urgency";
 import { buildWhatsAppUrl } from "@/lib/partner-entity/theme";
 import {
   STAFF_CLIENT_ID_QUERY,
@@ -71,8 +85,8 @@ export interface ExecutiveClientsPanelProps {
 
 type ClientsSortKey =
   | "cliente"
+  | "zoom"
   | "origen"
-  | "cotizador"
   | "plan"
   | "contacto"
   | "rut"
@@ -89,8 +103,8 @@ const CLIENTS_VIEW_MODE_KEY = "executive-clients-view-mode";
 const CLIENTS_SORT_OPTIONS: { key: ClientsSortKey; label: string; adminOnly?: boolean }[] = [
   { key: "registro", label: "Fecha registro" },
   { key: "cliente", label: "Cliente" },
+  { key: "zoom", label: "Zoom" },
   { key: "origen", label: "Origen" },
-  { key: "cotizador", label: "Cotizador", adminOnly: true },
   { key: "plan", label: "Plan" },
   { key: "contacto", label: "Contacto" },
   { key: "rut", label: "RUT" },
@@ -99,22 +113,108 @@ const CLIENTS_SORT_OPTIONS: { key: ClientsSortKey; label: string; adminOnly?: bo
 ];
 
 function readStoredClientsViewMode(): ClientsViewMode {
-  if (typeof window === "undefined") return "table";
+  if (typeof window === "undefined") return "cards";
   try {
     const stored = window.localStorage.getItem(CLIENTS_VIEW_MODE_KEY);
     if (stored === "table" || stored === "cards") return stored;
   } catch {
     /* ignore */
   }
-  return "table";
+  return "cards";
+}
+
+function formatDateParts(value: string): { date: string; time: string } {
+  const date = new Date(value);
+  return {
+    date: new Intl.DateTimeFormat("es-CL", {
+      timeZone: "America/Santiago",
+      dateStyle: "short",
+    }).format(date),
+    time: new Intl.DateTimeFormat("es-CL", {
+      timeZone: "America/Santiago",
+      timeStyle: "short",
+    }).format(date),
+  };
 }
 
 function formatDate(value: string): string {
-  return new Intl.DateTimeFormat("es-CL", {
-    timeZone: "America/Santiago",
-    dateStyle: "short",
-    timeStyle: "short",
-  }).format(new Date(value));
+  const { date, time } = formatDateParts(value);
+  return `${date}, ${time}`;
+}
+
+function RegistroDateTime({ value }: { value: string }) {
+  const { date, time } = formatDateParts(value);
+  return (
+    <span className="flex flex-col leading-tight tabular-nums">
+      <span className="text-xs font-semibold text-primary-dark sm:text-sm">
+        {date}
+      </span>
+      <span className="text-[11px] font-medium text-primary/80 sm:text-xs">
+        {time}
+      </span>
+    </span>
+  );
+}
+
+function TableScheduleChip({
+  icon,
+  label,
+  value,
+  urgency,
+}: {
+  icon: ReactNode;
+  label: string;
+  value?: string | null;
+  urgency: AgendaUrgency;
+}) {
+  const tone = agendaUrgencyChipClasses(urgency);
+  return (
+    <div
+      className={joinClasses(
+        "inline-flex max-w-full items-start gap-1.5 rounded-md px-1 py-0.5",
+        tone.shell,
+      )}
+      title={`${label}: ${AGENDA_URGENCY_LABELS[urgency]}`}
+    >
+      <span
+        className={joinClasses(
+          "mt-0.5 inline-flex size-5 shrink-0 items-center justify-center rounded-full",
+          tone.icon,
+        )}
+      >
+        {icon}
+      </span>
+      <span className="min-w-0">
+        <span
+          className={joinClasses(
+            "block truncate text-[10px] font-semibold uppercase tracking-wide",
+            tone.label,
+          )}
+        >
+          {label}
+        </span>
+        {value ? (
+          <span
+            className={joinClasses(
+              "block truncate text-[11px] font-semibold tabular-nums leading-snug",
+              tone.value,
+            )}
+          >
+            {value}
+          </span>
+        ) : null}
+      </span>
+    </div>
+  );
+}
+
+function scheduleUrgencyForClient(
+  iso: string | null | undefined,
+  pipelineStatus: UserRecord["pipelineStatus"],
+): AgendaUrgency {
+  const closed =
+    pipelineStatus === "CERRADO" || pipelineStatus === "PERDIDO";
+  return agendaUrgencyFromIso(iso, closed);
 }
 
 function formatNextCallAt(value: string | null | undefined): string | null {
@@ -156,6 +256,15 @@ function clientSortValue(client: UserRecord, key: ClientsSortKey): string | numb
   switch (key) {
     case "cliente":
       return client.fullName?.trim() || "";
+    case "zoom": {
+      const confirmation = client.confirmationCallAt
+        ? new Date(client.confirmationCallAt).getTime()
+        : Number.POSITIVE_INFINITY;
+      const nextCall = client.nextCallAt
+        ? new Date(client.nextCallAt).getTime()
+        : Number.POSITIVE_INFINITY;
+      return Math.min(confirmation, nextCall);
+    }
     case "origen": {
       const origin = client.clientOrigin ?? "MANUAL";
       if (origin === "FORMULARIO_WEB" && client.webFormSource?.trim()) {
@@ -163,12 +272,6 @@ function clientSortValue(client: UserRecord, key: ClientsSortKey): string | numb
       }
       return CLIENT_ORIGIN_LABELS[origin] ?? origin;
     }
-    case "cotizador":
-      return (
-        client.cotizadorSource?.label?.trim() ||
-        client.cotizadorSource?.slug?.trim() ||
-        ""
-      );
     case "plan":
       return (
         client.advisedPlan?.planName?.trim() ||
@@ -213,9 +316,14 @@ export function ExecutiveClientsPanel({
 
   const [search, setSearch] = useState("");
   const [segment, setSegment] = useState<"cartera" | "derivados">("cartera");
-  const [viewMode, setViewMode] = useState<ClientsViewMode>("table");
+  const [viewMode, setViewMode] = useState<ClientsViewMode>("cards");
   const [sortKey, setSortKey] = useState<ClientsSortKey>("registro");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+  const [gestionFilters, setGestionFilters] = useState<ClientGestionFilter[]>(
+    () => [...DEFAULT_CLIENT_GESTION_FILTERS],
+  );
+  const [gestionFilterOpen, setGestionFilterOpen] = useState(false);
+  const gestionFilterRef = useRef<HTMLDivElement | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [distributing, setDistributing] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -227,6 +335,22 @@ export function ExecutiveClientsPanel({
   useEffect(() => {
     setViewMode(readStoredClientsViewMode());
   }, []);
+
+  useEffect(() => {
+    if (!gestionFilterOpen) return;
+    function handlePointerDown(event: MouseEvent) {
+      const target = event.target as Node | null;
+      if (
+        target &&
+        gestionFilterRef.current &&
+        !gestionFilterRef.current.contains(target)
+      ) {
+        setGestionFilterOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, [gestionFilterOpen]);
 
   function handleViewModeChange(mode: ClientsViewMode) {
     setViewMode(mode);
@@ -288,7 +412,9 @@ export function ExecutiveClientsPanel({
   }, [clients, isAdmin, user?.id]);
 
   const filteredClients = useMemo(() => {
-    const rows = segmentedClients;
+    const rows = segmentedClients.filter((client) =>
+      clientMatchesGestionFilters(client, gestionFilters),
+    );
     const query = search.trim().toLowerCase();
     if (!query) return rows;
 
@@ -306,7 +432,36 @@ export function ExecutiveClientsPanel({
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(query)),
     );
-  }, [segmentedClients, search]);
+  }, [segmentedClients, search, gestionFilters]);
+
+  const gestionFilterLabel = useMemo(() => {
+    if (gestionFilters.length === 0) return "Gestión: ninguna";
+    if (
+      gestionFilters.length === DEFAULT_CLIENT_GESTION_FILTERS.length &&
+      DEFAULT_CLIENT_GESTION_FILTERS.every((value) =>
+        gestionFilters.includes(value),
+      ) &&
+      !gestionFilters.includes("gestionadas")
+    ) {
+      return "Gestión: pendientes";
+    }
+    if (gestionFilters.length === CLIENT_GESTION_FILTER_OPTIONS.length) {
+      return "Gestión: todas";
+    }
+    const labels = CLIENT_GESTION_FILTER_OPTIONS.filter((option) =>
+      gestionFilters.includes(option.value),
+    ).map((option) => option.label);
+    return `Gestión: ${labels.join(", ")}`;
+  }, [gestionFilters]);
+
+  function toggleGestionFilter(value: ClientGestionFilter) {
+    setGestionFilters((current) => {
+      if (current.includes(value)) {
+        return current.filter((item) => item !== value);
+      }
+      return [...current, value];
+    });
+  }
 
   const sortedClients = useMemo(() => {
     const rows = [...filteredClients];
@@ -517,6 +672,45 @@ export function ExecutiveClientsPanel({
   }
 
   function renderClientActions(client: UserRecord, { compact = false } = {}) {
+    if (compact) {
+      return (
+        <AdminRowActions className="!flex-nowrap justify-center gap-1.5">
+          {client.phone ? (
+            <a
+              href={buildWhatsAppUrl(
+                client.phone,
+                buildClientWhatsAppMessage(client.fullName),
+              )}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="WhatsApp"
+              aria-label={`WhatsApp a ${client.fullName}`}
+              className="inline-flex size-9 items-center justify-center rounded-xl bg-[#25D366]/12 text-[#1da851] transition hover:bg-[#25D366]/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366]/35"
+            >
+              <IconWhatsApp className="size-4" />
+            </a>
+          ) : (
+            <span
+              title="Sin teléfono"
+              aria-label="WhatsApp no disponible"
+              className="inline-flex size-9 cursor-not-allowed items-center justify-center rounded-xl bg-zinc-100 opacity-40"
+            >
+              <IconWhatsApp className="size-4 text-[#25D366]" />
+            </span>
+          )}
+          <button
+            type="button"
+            title="Ver ficha"
+            aria-label={`Ver ficha de ${client.fullName}`}
+            className="inline-flex size-9 items-center justify-center rounded-xl bg-[var(--dash-navy,#092558)] text-white shadow-sm transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35"
+            onClick={() => openClientFicha(client.id)}
+          >
+            <IconEye className="size-4 text-white" />
+          </button>
+        </AdminRowActions>
+      );
+    }
+
     return (
       <AdminRowActions className="flex-nowrap">
         {client.phone ? (
@@ -527,26 +721,36 @@ export function ExecutiveClientsPanel({
             )}
             target="_blank"
             rel="noopener noreferrer"
+            title="WhatsApp"
+            aria-label={`WhatsApp a ${client.fullName}`}
           >
-            <Button size="sm" variant="whatsapp" className={compact ? "px-2.5" : undefined}>
-              <IconWhatsApp className={joinClasses("size-3.5", compact ? "sm:mr-1" : "mr-1.5")} />
-              {compact ? <span className="hidden sm:inline">WhatsApp</span> : "WhatsApp"}
+            <Button size="sm" variant="whatsapp">
+              <IconWhatsApp className="mr-1.5 size-3.5" />
+              WhatsApp
             </Button>
           </a>
         ) : (
-          <Button size="sm" variant="ghost" disabled className={joinClasses("opacity-50", compact && "px-2.5")}>
-            <IconWhatsApp className={joinClasses("size-3.5", compact ? "sm:mr-1" : "mr-1.5")} />
-            {compact ? <span className="hidden sm:inline">WhatsApp</span> : "WhatsApp"}
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled
+            title="Sin teléfono"
+            aria-label="WhatsApp no disponible"
+            className="opacity-50"
+          >
+            <IconWhatsApp className="mr-1.5 size-3.5" />
+            WhatsApp
           </Button>
         )}
         <Button
           size="sm"
           variant="primary"
-          className={compact ? "px-2.5" : undefined}
+          title="Ver ficha"
+          aria-label={`Ver ficha de ${client.fullName}`}
           onClick={() => openClientFicha(client.id)}
         >
-          <IconEye className={joinClasses("size-3.5", compact ? "sm:mr-1" : "mr-1.5")} />
-          {compact ? <span className="hidden sm:inline">Ver ficha</span> : "Ver ficha"}
+          <IconEye className="mr-1.5 size-3.5" />
+          Ver ficha
         </Button>
       </AdminRowActions>
     );
@@ -554,28 +758,55 @@ export function ExecutiveClientsPanel({
 
   function renderClientIdentity(client: UserRecord) {
     return (
-      <TableCellStack className="min-h-0 gap-1">
-        <p className="truncate font-semibold leading-tight text-foreground">
+      <TableCellStack className="min-h-0 gap-1.5">
+        <p className="truncate text-sm font-bold capitalize leading-tight text-primary-dark">
           {client.fullName}
         </p>
-        <ClientPipelineStatusBadge status={client.pipelineStatus} />
-        {!isAdmin &&
-        user?.id &&
-        isTrackingOnlyForExecutive(client, user.id) ? (
-          <span className="inline-flex w-fit rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 ring-1 ring-amber-200">
-            Derivado · seguimiento
-          </span>
+        <div className="flex flex-wrap items-center gap-1">
+          <ClientPipelineStatusBadge status={client.pipelineStatus} />
+          {!isAdmin &&
+          user?.id &&
+          isTrackingOnlyForExecutive(client, user.id) ? (
+            <span className="inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 ring-1 ring-amber-200">
+              Derivado · seguimiento
+            </span>
+          ) : null}
+        </div>
+      </TableCellStack>
+    );
+  }
+
+  function renderZoomSchedule(client: UserRecord) {
+    const confirmationAt = formatNextCallAt(client.confirmationCallAt);
+    const nextCallAt = formatNextCallAt(client.nextCallAt);
+
+    if (!confirmationAt && !nextCallAt) {
+      return <span className="text-xs text-muted">—</span>;
+    }
+
+    return (
+      <TableCellStack className="min-h-0 gap-1">
+        {confirmationAt ? (
+          <TableScheduleChip
+            icon={<IconCalendar className="size-2.5" />}
+            label="Confirmación Zoom"
+            value={confirmationAt}
+            urgency={scheduleUrgencyForClient(
+              client.confirmationCallAt,
+              client.pipelineStatus,
+            )}
+          />
         ) : null}
-        <ClientContactMethodBadge method={client.preferredContactMethod} />
-        {formatNextCallAt(client.confirmationCallAt) ? (
-          <p className="text-[11px] leading-tight text-amber-800">
-            Confirmación Zoom: {formatNextCallAt(client.confirmationCallAt)}
-          </p>
-        ) : null}
-        {formatNextCallAt(client.nextCallAt) ? (
-          <p className="text-[11px] leading-tight text-primary-dark">
-            Próximo llamado: {formatNextCallAt(client.nextCallAt)}
-          </p>
+        {nextCallAt ? (
+          <TableScheduleChip
+            icon={<IconClock className="size-2.5" />}
+            label="Próximo llamado"
+            value={nextCallAt}
+            urgency={scheduleUrgencyForClient(
+              client.nextCallAt,
+              client.pipelineStatus,
+            )}
+          />
         ) : null}
       </TableCellStack>
     );
@@ -586,6 +817,136 @@ export function ExecutiveClientsPanel({
       <AdminPanelHeader
         title="Clientes"
         compactMobile
+        middle={
+          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
+            <Input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Buscar por nombre, correo, teléfono o RUT…"
+              aria-label="Buscar clientes"
+              className={joinClasses("h-9 min-w-0 flex-1", ui.input)}
+            />
+            <div ref={gestionFilterRef} className="relative shrink-0">
+              <button
+                type="button"
+                onClick={() => setGestionFilterOpen((open) => !open)}
+                aria-expanded={gestionFilterOpen}
+                aria-haspopup="listbox"
+                className={joinClasses(
+                  "flex h-9 min-w-[10.5rem] max-w-[16rem] items-center justify-between gap-2 rounded-lg px-2.5 text-left text-sm",
+                  ui.input,
+                )}
+              >
+                <span className="truncate">{gestionFilterLabel}</span>
+                <span className="text-[10px] text-muted" aria-hidden>
+                  ▾
+                </span>
+              </button>
+              {gestionFilterOpen ? (
+                <div
+                  role="listbox"
+                  aria-multiselectable="true"
+                  className="absolute right-0 z-30 mt-1 w-56 rounded-xl border border-border bg-white p-2 shadow-lg"
+                >
+                  <p className="px-2 pb-1.5 text-[11px] font-medium text-muted">
+                    Filtrar por gestión
+                  </p>
+                  <ul className="space-y-0.5">
+                    {CLIENT_GESTION_FILTER_OPTIONS.map((option) => {
+                      const checked = gestionFilters.includes(option.value);
+                      return (
+                        <li key={option.value}>
+                          <label className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-surface-hover">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => toggleGestionFilter(option.value)}
+                              className="size-3.5 rounded border-border"
+                            />
+                            <span>{option.label}</span>
+                          </label>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  <div className="mt-1.5 flex gap-1 border-t border-border pt-1.5">
+                    <button
+                      type="button"
+                      className="flex-1 rounded-md px-2 py-1 text-[11px] font-medium text-muted hover:bg-surface-hover"
+                      onClick={() =>
+                        setGestionFilters([...DEFAULT_CLIENT_GESTION_FILTERS])
+                      }
+                    >
+                      Solo pendientes
+                    </button>
+                    <button
+                      type="button"
+                      className="flex-1 rounded-md px-2 py-1 text-[11px] font-medium text-muted hover:bg-surface-hover"
+                      onClick={() =>
+                        setGestionFilters(
+                          CLIENT_GESTION_FILTER_OPTIONS.map(
+                            (option) => option.value,
+                          ),
+                        )
+                      }
+                    >
+                      Todas
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+            {viewMode === "cards" ? (
+              <div className="flex shrink-0 flex-wrap items-center gap-2">
+                <label className="sr-only" htmlFor="clients-sort-key">
+                  Ordenar por
+                </label>
+                <select
+                  id="clients-sort-key"
+                  value={sortKey}
+                  onChange={(event) => {
+                    const nextKey = event.target.value as ClientsSortKey;
+                    setSortKey(nextKey);
+                    setSortDirection(nextKey === "registro" ? "desc" : "asc");
+                  }}
+                  className={joinClasses(
+                    "h-9 min-w-[9rem] rounded-lg px-2.5 text-sm",
+                    ui.input,
+                  )}
+                >
+                  {CLIENTS_SORT_OPTIONS.filter(
+                    (option) => isAdmin || !option.adminOnly,
+                  ).map((option) => (
+                    <option key={option.key} value={option.key}>
+                      Ordenar: {option.label}
+                    </option>
+                  ))}
+                </select>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() =>
+                    setSortDirection((current) =>
+                      current === "asc" ? "desc" : "asc",
+                    )
+                  }
+                  className={joinClasses(touchTarget, "h-9 px-2.5")}
+                  aria-label={
+                    sortDirection === "asc"
+                      ? "Orden ascendente"
+                      : "Orden descendente"
+                  }
+                  title={
+                    sortDirection === "asc" ? "Ascendente" : "Descendente"
+                  }
+                >
+                  {sortDirection === "asc" ? "A→Z" : "Z→A"}
+                </Button>
+              </div>
+            ) : null}
+          </div>
+        }
         actions={
           <>
             <div
@@ -684,55 +1045,6 @@ export function ExecutiveClientsPanel({
         }
       />
 
-      <AdminToolbar className="sm:grid-cols-[minmax(0,1fr)_auto]">
-        <Input
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Buscar por nombre, correo, teléfono o RUT…"
-          className={joinClasses("h-11", ui.input)}
-        />
-        {viewMode === "cards" ? (
-          <div className="flex flex-wrap items-center gap-2">
-            <label className="sr-only" htmlFor="clients-sort-key">
-              Ordenar por
-            </label>
-            <select
-              id="clients-sort-key"
-              value={sortKey}
-              onChange={(event) => {
-                const nextKey = event.target.value as ClientsSortKey;
-                setSortKey(nextKey);
-                setSortDirection(nextKey === "registro" ? "desc" : "asc");
-              }}
-              className={joinClasses("h-11 min-w-[10rem] rounded-lg px-3 text-sm", ui.input)}
-            >
-              {CLIENTS_SORT_OPTIONS.filter(
-                (option) => isAdmin || !option.adminOnly,
-              ).map((option) => (
-                <option key={option.key} value={option.key}>
-                  Ordenar: {option.label}
-                </option>
-              ))}
-            </select>
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              onClick={() =>
-                setSortDirection((current) => (current === "asc" ? "desc" : "asc"))
-              }
-              className={joinClasses(touchTarget, "h-11 px-3")}
-              aria-label={
-                sortDirection === "asc" ? "Orden ascendente" : "Orden descendente"
-              }
-              title={sortDirection === "asc" ? "Ascendente" : "Descendente"}
-            >
-              {sortDirection === "asc" ? "A→Z" : "Z→A"}
-            </Button>
-          </div>
-        ) : null}
-      </AdminToolbar>
-
       {!isAdmin ? (
         <div className="flex flex-wrap gap-2">
           <Button
@@ -774,22 +1086,27 @@ export function ExecutiveClientsPanel({
         loadingMessage="Cargando clientes…"
         footer={listFooter}
         contentLayout={viewMode === "cards" ? "stack" : "scroll"}
+        framed={viewMode !== "cards"}
+        className={
+          viewMode === "table" ? "premium-clients-table-card" : undefined
+        }
       >
         {viewMode === "table" ? (
-          <AdminTable minWidth={isAdmin ? "70rem" : "62rem"}>
+          <AdminTable
+            minWidth={isAdmin ? "72rem" : "70rem"}
+            className="premium-clients-table"
+          >
             <AdminTableHead>
               <tr>
                 <AdminTableHeaderCell {...sortProps("cliente")}>
                   Cliente
                 </AdminTableHeaderCell>
+                <AdminTableHeaderCell {...sortProps("zoom")}>
+                  Zoom
+                </AdminTableHeaderCell>
                 <AdminTableHeaderCell {...sortProps("origen")}>
                   Origen
                 </AdminTableHeaderCell>
-                {isAdmin ? (
-                  <AdminTableHeaderCell {...sortProps("cotizador")}>
-                    Cotizador
-                  </AdminTableHeaderCell>
-                ) : null}
                 <AdminTableHeaderCell {...sortProps("plan")}>
                   Plan
                 </AdminTableHeaderCell>
@@ -808,18 +1125,30 @@ export function ExecutiveClientsPanel({
                 <AdminTableHeaderCell {...sortProps("registro")}>
                   Registro
                 </AdminTableHeaderCell>
-                <AdminTableHeaderCell>Acciones</AdminTableHeaderCell>
+                <AdminTableHeaderCell align="center" className="w-[1%]">
+                  Acciones
+                </AdminTableHeaderCell>
               </tr>
             </AdminTableHead>
             <AdminTableBody>
               {sortedClients.map((client) => (
-                <AdminTableRow key={client.id}>
-                  <AdminTableCell className="max-w-[9.5rem] min-w-[8.5rem]">
-                    <div className="min-w-0 [&>div]:min-h-0 [&>div]:gap-0.5">
-                      {renderClientIdentity(client)}
-                    </div>
+                <AdminTableRow key={client.id} className="hover:bg-transparent">
+                  <AdminTableCell
+                    valign="top"
+                    className="max-w-[12rem] min-w-[10.5rem] py-3.5"
+                  >
+                    <div className="min-w-0">{renderClientIdentity(client)}</div>
                   </AdminTableCell>
-                  <AdminTableCell className="max-w-[7.5rem] min-w-[6.5rem]">
+                  <AdminTableCell
+                    valign="top"
+                    className="max-w-[11.5rem] min-w-[10rem] py-3.5"
+                  >
+                    {renderZoomSchedule(client)}
+                  </AdminTableCell>
+                  <AdminTableCell
+                    valign="top"
+                    className="max-w-[7.5rem] min-w-[6.5rem] py-3.5"
+                  >
                     <div className="min-w-0 overflow-hidden">
                       <ClientOriginBadge
                         origin={client.clientOrigin}
@@ -828,17 +1157,10 @@ export function ExecutiveClientsPanel({
                       />
                     </div>
                   </AdminTableCell>
-                  {isAdmin ? (
-                    <AdminTableCell className="max-w-[7rem] min-w-[6rem]">
-                      <div className="min-w-0 overflow-hidden">
-                        <CotizadorSourceBadge
-                          source={client.cotizadorSource}
-                          compact
-                        />
-                      </div>
-                    </AdminTableCell>
-                  ) : null}
-                  <AdminTableCell className="max-w-[9rem] min-w-[7.5rem]">
+                  <AdminTableCell
+                    valign="top"
+                    className="max-w-[9rem] min-w-[7.5rem] py-3.5"
+                  >
                     <div className="min-w-0 overflow-hidden">
                       <ClientPlanSummary
                         requestedPlan={client.requestedPlan}
@@ -847,44 +1169,67 @@ export function ExecutiveClientsPanel({
                       />
                     </div>
                   </AdminTableCell>
-                  <AdminTableCell className="max-w-[9rem] min-w-[7.5rem]">
-                    <TableCellStack className="min-h-0 gap-0.5">
-                      <p className="truncate text-xs leading-tight sm:text-sm">
-                        {client.email}
+                  <AdminTableCell
+                    valign="top"
+                    className="max-w-[10rem] min-w-[8rem] py-3.5"
+                  >
+                    <TableCellStack className="min-h-0 gap-1.5">
+                      <p className="flex min-w-0 items-center gap-1.5 text-xs leading-tight text-foreground sm:text-sm">
+                        <IconMail className="size-3.5 shrink-0 text-primary" />
+                        <span className="truncate font-medium">
+                          {client.email}
+                        </span>
                       </p>
-                      <p className="truncate text-[11px] leading-tight text-muted">
-                        {client.phone ?? "Sin teléfono"}
+                      <p className="flex min-w-0 items-center gap-1.5 text-[11px] leading-tight text-muted sm:text-xs">
+                        <IconPhone className="size-3.5 shrink-0 text-primary" />
+                        <span className="truncate">
+                          {client.phone ?? "Sin teléfono"}
+                        </span>
                       </p>
                     </TableCellStack>
                   </AdminTableCell>
-                  <AdminTableCell className="min-w-[6rem] whitespace-nowrap">
+                  <AdminTableCell
+                    valign="top"
+                    className="min-w-[6rem] whitespace-nowrap py-3.5"
+                  >
                     <ClientRutCell rut={client.rut} />
                   </AdminTableCell>
-                  <AdminTableCell className="max-w-[7rem] min-w-[6rem]">
-                    <span className="block truncate text-xs text-foreground sm:text-sm">
+                  <AdminTableCell
+                    valign="top"
+                    className="max-w-[7rem] min-w-[6rem] py-3.5"
+                  >
+                    <span className="block truncate text-xs font-semibold uppercase text-primary-dark sm:text-sm">
                       {resolveRegisteredByLabel(client)}
                     </span>
                   </AdminTableCell>
-                  <AdminTableCell className="max-w-[9.5rem] min-w-[8rem]">
+                  <AdminTableCell
+                    valign="top"
+                    className="max-w-[9.5rem] min-w-[8rem] py-3.5"
+                  >
                     {isAdmin ? (
                       <TableCellStack className="min-h-0 gap-1.5">
-                        <p className="truncate text-xs font-medium text-foreground sm:text-sm">
+                        <p className="truncate text-xs font-semibold text-primary-dark sm:text-sm">
                           {resolveAssignedExecutiveLabel(client)}
                         </p>
                         {renderExecutiveAssign(client)}
                       </TableCellStack>
                     ) : (
-                      <span className="block truncate text-xs text-foreground sm:text-sm">
+                      <span className="block truncate text-xs font-semibold text-primary-dark sm:text-sm">
                         {resolveAssignedExecutiveLabel(client)}
                       </span>
                     )}
                   </AdminTableCell>
-                  <AdminTableCell className="min-w-[6rem] whitespace-nowrap">
-                    <span className="text-xs tabular-nums sm:text-sm">
-                      {formatDate(client.createdAt)}
-                    </span>
+                  <AdminTableCell
+                    valign="top"
+                    className="w-[1%] whitespace-nowrap py-3.5"
+                  >
+                    <RegistroDateTime value={client.createdAt} />
                   </AdminTableCell>
-                  <AdminTableCell className="min-w-[7.5rem] whitespace-nowrap">
+                  <AdminTableCell
+                    align="center"
+                    valign="middle"
+                    className="w-[1%] whitespace-nowrap px-1.5 py-3.5 sm:px-2"
+                  >
                     {renderClientActions(client, { compact: true })}
                   </AdminTableCell>
                 </AdminTableRow>
@@ -892,92 +1237,24 @@ export function ExecutiveClientsPanel({
             </AdminTableBody>
           </AdminTable>
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {sortedClients.map((client) => (
-              <article
+              <ClientPortfolioCard
                 key={client.id}
-                className="flex flex-col gap-3 rounded-xl border border-border bg-bg-layout/40 p-4 transition hover:border-primary/30 hover:bg-bg-layout/60"
-              >
-                <header className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">{renderClientIdentity(client)}</div>
-                  <ClientOriginBadge
-                    origin={client.clientOrigin}
-                    cotizadorSource={client.cotizadorSource}
-                    webFormSource={client.webFormSource}
-                  />
-                </header>
-
-                <div className="space-y-2 text-sm">
-                  <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
-                      Contacto
-                    </p>
-                    <p className="truncate leading-tight text-foreground">
-                      {client.email}
-                    </p>
-                    <p className="text-xs leading-tight text-muted">
-                      {client.phone ?? "Sin teléfono"}
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                    <ClientRutCell rut={client.rut} />
-                    <span className="text-xs tabular-nums text-muted">
-                      {formatDate(client.createdAt)}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <p className="mb-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted">
-                        Registró
-                      </p>
-                      <p className="leading-tight text-foreground">
-                        {resolveRegisteredByLabel(client)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="mb-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted">
-                        Asignado
-                      </p>
-                      <p className="leading-tight text-foreground">
-                        {resolveAssignedExecutiveLabel(client)}
-                      </p>
-                    </div>
-                  </div>
-                  {isAdmin ? (
-                    <div>
-                      <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted">
-                        Cotizador
-                      </p>
-                      <CotizadorSourceBadge
-                        source={client.cotizadorSource}
-                        compact
-                      />
-                    </div>
-                  ) : null}
-                  <div>
-                    <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted">
-                      Plan
-                    </p>
-                    <ClientPlanSummary
-                      requestedPlan={client.requestedPlan}
-                      advisedPlan={client.advisedPlan}
-                      compact
-                    />
-                  </div>
-                  {isAdmin ? (
-                    <div>
-                      <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted">
-                        Reasignar
-                      </p>
-                      {renderExecutiveAssign(client)}
-                    </div>
-                  ) : null}
-                </div>
-
-                <div className="mt-auto border-t border-border/70 pt-3">
-                  {renderClientActions(client)}
-                </div>
-              </article>
+                client={client}
+                isAdmin={isAdmin}
+                isTrackingOnly={Boolean(
+                  !isAdmin &&
+                    user?.id &&
+                    isTrackingOnlyForExecutive(client, user.id),
+                )}
+                registeredByLabel={resolveRegisteredByLabel(client)}
+                assignedLabel={resolveAssignedExecutiveLabel(client)}
+                assignControl={
+                  isAdmin ? renderExecutiveAssign(client) : undefined
+                }
+                onOpenFicha={() => openClientFicha(client.id)}
+              />
             ))}
           </div>
         )}

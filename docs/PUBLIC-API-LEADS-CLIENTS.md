@@ -57,7 +57,7 @@ Campos **obligatorios**: `fullName`, `email`, `phone`.
 | `preferenciaContacto` | string | — | `whatsapp` \| `telefono` \| `email` \| `video-llamada` |
 | `metadata` | object | — | Máx. 20 claves; valores string/number/boolean/null |
 | `executiveKind` | string | `ISAPRES_PREMIUM` | `ISAPRES_PREMIUM` \| `ISAPRES` \| `ZOOM` |
-| `autoAssign` | boolean | `false` | Round-robin a ejecutivo elegible del kind |
+| `autoAssign` | boolean | `false` | Round-robin 1×1 al pool inbound (Javiera, Isidora, Catalina) si `true` |
 | `notifyAdmin` | boolean | `false` | Aviso interno Resend (TO cotizaciones + CC `premiumisapres@gmail.com`) |
 
 ### Ejemplo curl

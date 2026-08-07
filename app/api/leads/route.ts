@@ -70,8 +70,7 @@ async function registerLeadFromMarketingForm(data: LeadPayload) {
         "renta imponible": data.rentaImponible,
       },
       executiveKind: "ISAPRES_PREMIUM",
-      // Por ahora los leads del formulario quedan sin ejecutivo; se asignan a mano.
-      autoAssign: false,
+      autoAssign: true,
       clientOrigin: "FORMULARIO_WEB",
     });
   } catch (error) {
