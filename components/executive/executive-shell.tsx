@@ -1,7 +1,11 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { UserMenu } from "@/components/auth/user-menu";
+import {
+  ExecutiveNavDropdown,
+  ExecutiveNavDropdownItem,
+} from "@/components/executive/executive-nav-dropdown";
 import {
   ExecutiveMenuIcon,
   ExecutiveMobileNavDrawer,
@@ -9,6 +13,11 @@ import {
 import { LandingLogo } from "@/components/platform/landing/landing-logo";
 import { useStaffSession } from "@/hooks/use-auth-session";
 import { getStaffRoleLabel } from "@/lib/auth/staff-role";
+import {
+  buildStaffNav,
+  staffNavGroupIsActive,
+  type StaffNavGroupId,
+} from "@/lib/staff/staff-nav";
 import {
   type StaffSection,
 } from "@/lib/staff/staff-sections";
@@ -154,6 +163,24 @@ const SECTION_ICONS: Record<StaffSection, ReactNode> = {
   ),
 };
 
+const GROUP_ICONS: Record<StaffNavGroupId, ReactNode> = {
+  catalogo: (
+    <NavIcon>
+      <rect x="3" y="3" width="7" height="7" rx="1.5" />
+      <rect x="14" y="3" width="7" height="7" rx="1.5" />
+      <rect x="3" y="14" width="7" height="7" rx="1.5" />
+      <rect x="14" y="14" width="7" height="7" rx="1.5" />
+    </NavIcon>
+  ),
+  equipo: (
+    <NavIcon>
+      <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2" strokeLinecap="round" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" strokeLinecap="round" />
+    </NavIcon>
+  ),
+};
+
 export interface ExecutiveShellProps {
   activeSection: ExecutiveSection;
   onSectionChange: (section: ExecutiveSection) => void;
@@ -170,17 +197,24 @@ export function ExecutiveShell({
 }: ExecutiveShellProps) {
   const { user: staffUser, isAdmin, realm, executiveKind } = useStaffSession();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [openGroup, setOpenGroup] = useState<StaffNavGroupId | null>(null);
   const isFullBleed = activeSection === "cotizador";
 
-  const navItems = allowedSections.map((id) => ({
-    id,
-    ...SECTION_LABELS[id],
-  }));
+  const navItems = allowedSections
+    .filter((id) => id !== "perfil")
+    .map((id) => ({
+      id,
+      ...SECTION_LABELS[id],
+    }));
 
-  const activeSectionLabel = useMemo(
-    () => navItems.find((item) => item.id === activeSection)?.label ?? "Inicio",
-    [activeSection, navItems],
+  const navEntries = useMemo(
+    () => buildStaffNav(allowedSections),
+    [allowedSections],
   );
+
+  const closeGroup = useCallback(() => setOpenGroup(null), []);
+
+  const activeSectionLabel = SECTION_LABELS[activeSection]?.label ?? "Inicio";
 
   const userSubtitle = getStaffRoleLabel({
     realm: realm ?? (isAdmin ? "admin" : "executive"),
@@ -215,14 +249,47 @@ export function ExecutiveShell({
                 "flex gap-1 py-0.5",
               )}
             >
-              {navItems.map((item) => {
-                const isActive = activeSection === item.id;
+              {navEntries.map((entry) => {
+                if (entry.kind === "group") {
+                  const groupActive = staffNavGroupIsActive(entry, activeSection);
+
+                  return (
+                    <ExecutiveNavDropdown
+                      key={entry.id}
+                      label={entry.label}
+                      icon={GROUP_ICONS[entry.id]}
+                      open={openGroup === entry.id}
+                      active={groupActive}
+                      onToggle={() =>
+                        setOpenGroup((current) =>
+                          current === entry.id ? null : entry.id,
+                        )
+                      }
+                      onClose={closeGroup}
+                    >
+                      {entry.sections.map((sectionId) => (
+                        <ExecutiveNavDropdownItem
+                          key={sectionId}
+                          active={activeSection === sectionId}
+                          icon={SECTION_ICONS[sectionId]}
+                          label={SECTION_LABELS[sectionId].label}
+                          onSelect={() => {
+                            onSectionChange(sectionId);
+                            closeGroup();
+                          }}
+                        />
+                      ))}
+                    </ExecutiveNavDropdown>
+                  );
+                }
+
+                const isActive = activeSection === entry.id;
 
                 return (
                   <button
-                    key={item.id}
+                    key={entry.id}
                     type="button"
-                    onClick={() => onSectionChange(item.id)}
+                    onClick={() => onSectionChange(entry.id)}
                     className={joinClasses(
                       "premium-executive-tab shrink-0 px-2.5 py-1.5 text-xs xl:px-3 xl:text-sm",
                       touchTarget,
@@ -230,8 +297,8 @@ export function ExecutiveShell({
                     )}
                     aria-current={isActive ? "page" : undefined}
                   >
-                    {SECTION_ICONS[item.id]}
-                    <span>{item.label}</span>
+                    {SECTION_ICONS[entry.id]}
+                    <span>{SECTION_LABELS[entry.id].label}</span>
                   </button>
                 );
               })}
@@ -271,6 +338,7 @@ export function ExecutiveShell({
       <ExecutiveMobileNavDrawer
         open={mobileNavOpen}
         onClose={() => setMobileNavOpen(false)}
+        navEntries={navEntries}
         navItems={navItems}
         activeSection={activeSection}
         onSectionChange={onSectionChange}

@@ -11,6 +11,7 @@ import {
   uploadStaffAvatar,
   withAvatarCacheBust,
 } from "@/lib/auth/staff-avatar-client";
+import type { StaffNavEntry } from "@/lib/staff/staff-nav";
 import type { StaffSection } from "@/lib/staff/staff-sections";
 import { touchTarget, ui } from "@/lib/ui-tokens";
 import { joinClasses } from "@/lib/utils";
@@ -25,6 +26,7 @@ export interface ExecutiveNavItem {
 export interface ExecutiveMobileNavDrawerProps {
   open: boolean;
   onClose: () => void;
+  navEntries: StaffNavEntry[];
   navItems: ExecutiveNavItem[];
   activeSection: StaffSection;
   onSectionChange: (section: StaffSection) => void;
@@ -32,6 +34,36 @@ export interface ExecutiveMobileNavDrawerProps {
   userFullName?: string | null;
   userSubtitle?: string | null;
   userAvatarUrl?: string | null;
+}
+
+function MobileNavButton({
+  item,
+  active,
+  icon,
+  onSelect,
+}: {
+  item: ExecutiveNavItem;
+  active: boolean;
+  icon?: ReactNode;
+  onSelect: (section: StaffSection) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(item.id)}
+      className={joinClasses(
+        "flex w-full items-center gap-2.5 rounded-md px-3.5 py-3 text-left text-sm font-semibold transition",
+        touchTarget,
+        active
+          ? "premium-executive-tab-active"
+          : "text-foreground hover:bg-[color:var(--dash-cyan)]/10 hover:text-[color:var(--dash-navy)]",
+      )}
+      aria-current={active ? "page" : undefined}
+    >
+      {icon ?? null}
+      <span className="flex-1">{item.label}</span>
+    </button>
+  );
 }
 
 function CloseIcon() {
@@ -50,6 +82,7 @@ function CloseIcon() {
 export function ExecutiveMobileNavDrawer({
   open,
   onClose,
+  navEntries,
   navItems,
   activeSection,
   onSectionChange,
@@ -194,38 +227,44 @@ export function ExecutiveMobileNavDrawer({
           aria-label="Secciones del panel"
         >
           <ul className="space-y-1">
-            {navItems.map((item) => {
-              const isActive = activeSection === item.id;
+            {navEntries.map((entry) => {
+              if (entry.kind === "group") {
+                return (
+                  <li key={entry.id} className="pt-2">
+                    <p className="px-3.5 pb-1 text-[10px] font-bold uppercase tracking-wide text-muted">
+                      {entry.label}
+                    </p>
+                    <ul className="space-y-1">
+                      {entry.sections.map((sectionId) => {
+                        const item = navItems.find((navItem) => navItem.id === sectionId);
+                        if (!item) return null;
+                        return (
+                          <li key={sectionId}>
+                            <MobileNavButton
+                              item={item}
+                              active={activeSection === sectionId}
+                              icon={sectionIcons?.[sectionId]}
+                              onSelect={handleSelect}
+                            />
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </li>
+                );
+              }
+
+              const item = navItems.find((navItem) => navItem.id === entry.id);
+              if (!item) return null;
 
               return (
-                <li key={item.id}>
-                  <button
-                    type="button"
-                    onClick={() => handleSelect(item.id)}
-                    className={joinClasses(
-                      "flex w-full items-center gap-2.5 rounded-md px-3.5 py-3 text-left text-sm font-semibold transition",
-                      touchTarget,
-                      isActive
-                        ? "premium-executive-tab-active"
-                        : "text-foreground hover:bg-[color:var(--dash-cyan)]/10 hover:text-[color:var(--dash-navy)]",
-                    )}
-                    aria-current={isActive ? "page" : undefined}
-                  >
-                    {sectionIcons?.[item.id] ?? null}
-                    <span className="flex-1">{item.label}</span>
-                    {item.adminOnly ? (
-                      <span
-                        className={joinClasses(
-                          "rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide",
-                          isActive
-                            ? "bg-white/20 text-white"
-                            : "bg-[color:var(--dash-royal)]/10 text-[color:var(--dash-royal)]",
-                        )}
-                      >
-                        Admin
-                      </span>
-                    ) : null}
-                  </button>
+                <li key={entry.id}>
+                  <MobileNavButton
+                    item={item}
+                    active={activeSection === entry.id}
+                    icon={sectionIcons?.[entry.id]}
+                    onSelect={handleSelect}
+                  />
                 </li>
               );
             })}
@@ -233,6 +272,18 @@ export function ExecutiveMobileNavDrawer({
         </nav>
 
         <div className={joinClasses("shrink-0 space-y-2 border-t px-4 py-4", ui.border)}>
+          <button
+            type="button"
+            onClick={() => handleSelect("perfil")}
+            className={joinClasses(
+              "flex w-full items-center justify-center rounded-md border px-4 py-3 text-sm font-semibold text-[color:var(--dash-navy)] transition hover:bg-bg-layout",
+              ui.border,
+              touchTarget,
+              activeSection === "perfil" && "premium-executive-tab-active",
+            )}
+          >
+            Mi perfil
+          </button>
           <Link
             href="/"
             onClick={onClose}
