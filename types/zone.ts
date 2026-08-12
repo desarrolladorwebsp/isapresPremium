@@ -16,4 +16,5 @@ export const RM_ZONE_IDS = [
   "rm-centro",
 ] as const satisfies readonly ZoneId[];
 
-export const NORTE_ZONE_IDS = ["norte", "octava"] as const satisfies readonly ZoneId[];
+/** Solo Zona Norte (Arica–Coquimbo). No mezclar con Octava. */
+export const NORTE_ZONE_IDS = ["norte"] as const satisfies readonly ZoneId[];

@@ -11,10 +11,8 @@ export const CLIENT_PIPELINE_STATUS_LABELS: Record<ClientPipelineStatus, string>
     CONTACTADO: "Contactado",
     NO_CONTESTA: "No contesta",
     EN_SEGUIMIENTO: "En seguimiento",
-    PROPUESTA_ENVIADA: "Propuesta enviada",
-    DOCUMENTACION: "Documentación",
     ENVIADO_ISAPRE: "Enviado a Isapre",
-    CERRADO: "Cerrado",
+    RECEPCIONADO: "Recepcionado",
     PERDIDO: "Perdido",
   };
 
@@ -26,10 +24,8 @@ export const CLIENT_PIPELINE_STATUS_DESCRIPTIONS: Record<
   CONTACTADO: "Primer contacto realizado",
   NO_CONTESTA: "Se intentó contactar y no respondió",
   EN_SEGUIMIENTO: "Conversación activa con el cliente",
-  PROPUESTA_ENVIADA: "Plan o propuesta enviada al cliente",
-  DOCUMENTACION: "Recolectando documentos para la Isapre",
-  ENVIADO_ISAPRE: "Expediente enviado a la Isapre",
-  CERRADO: "Contrato cerrado exitosamente",
+  ENVIADO_ISAPRE: "Expediente enviado / en gestión Isapre",
+  RECEPCIONADO: "Negocio recepcionado en Isapre",
   PERDIDO: "No prosperó la contratación",
 };
 
@@ -41,10 +37,8 @@ export const CLIENT_PIPELINE_STATUS_TONES: Record<
   CONTACTADO: "info",
   NO_CONTESTA: "warning",
   EN_SEGUIMIENTO: "info",
-  PROPUESTA_ENVIADA: "info",
-  DOCUMENTACION: "warning",
   ENVIADO_ISAPRE: "info",
-  CERRADO: "success",
+  RECEPCIONADO: "success",
   PERDIDO: "danger",
 };
 
@@ -53,10 +47,8 @@ export const CLIENT_PIPELINE_STATUS_OPTIONS: ClientPipelineStatus[] = [
   "CONTACTADO",
   "NO_CONTESTA",
   "EN_SEGUIMIENTO",
-  "PROPUESTA_ENVIADA",
-  "DOCUMENTACION",
   "ENVIADO_ISAPRE",
-  "CERRADO",
+  "RECEPCIONADO",
   "PERDIDO",
 ];
 
@@ -75,24 +67,26 @@ const PIPELINE_FUNNEL_RANK: Record<ClientPipelineStatus, number> = {
   NO_CONTESTA: 1,
   CONTACTADO: 2,
   EN_SEGUIMIENTO: 3,
-  PROPUESTA_ENVIADA: 4,
-  DOCUMENTACION: 5,
-  ENVIADO_ISAPRE: 6,
-  CERRADO: 7,
+  ENVIADO_ISAPRE: 4,
+  RECEPCIONADO: 5,
   PERDIDO: -1,
 };
 
 /**
  * Avanza el estado solo hacia adelante en el embudo.
- * No mueve CERRADO ni PERDIDO; tampoco degrada un estado más avanzado.
+ * No mueve RECEPCIONADO ni PERDIDO; tampoco degrada un estado más avanzado.
  */
 export function advancePipelineStatus(
   current: ClientPipelineStatus | null | undefined,
   target: ClientPipelineStatus,
 ): ClientPipelineStatus {
   const from = current ?? "NUEVO";
-  if (from === "CERRADO" || from === "PERDIDO") return from;
-  if (target === "PERDIDO" || target === "NO_CONTESTA" || target === "CERRADO") {
+  if (from === "RECEPCIONADO" || from === "PERDIDO") return from;
+  if (
+    target === "PERDIDO" ||
+    target === "NO_CONTESTA" ||
+    target === "RECEPCIONADO"
+  ) {
     return target;
   }
   const fromRank = PIPELINE_FUNNEL_RANK[from];

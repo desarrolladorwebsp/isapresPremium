@@ -1,5 +1,7 @@
 export interface ClientDependentProfile {
   id: string;
+  /** Nombre completo de la carga. */
+  fullName: string;
   rut: string;
   birthDate: string;
   /** Edad; se puede recalcular desde birthDate, pero es editable. */
@@ -35,9 +37,12 @@ export interface ClientAdditionalTitularProfile {
   voluntaryAdditionalCurrency: ClientMoneyCurrency;
   /** Renta imponible (texto libre / monto). */
   rentaImponible: string;
-  /** Motivo de cotización. */
+  /**
+   * Motivo(s) de cotización.
+   * Uno o varios ids separados por coma (ej. `cobertura,otros`).
+   */
   motivoCotizacion: string;
-  /** Detalle cuando motivoCotizacion = otros. */
+  /** Detalle cuando entre los motivos está `otros`. */
   motivoCotizacionOther: string;
   /** Preexistencias médicas (texto libre). */
   preexistenciasMedicas: string;
@@ -67,11 +72,19 @@ export interface ClientExecutiveProfile {
   maritalStatus: string;
   /** RUT del empleador (para detectar convenio empresa). */
   employerRut: string;
+  /**
+   * Calidad de cliente / tipo de cotizante:
+   * dependiente | independiente | voluntario.
+   */
+  contributorType: string;
   /** Renta imponible (texto libre / monto). */
   rentaImponible: string;
-  /** Motivo de cotización. */
+  /**
+   * Motivo(s) de cotización.
+   * Uno o varios ids separados por coma (ej. `cobertura,otros`).
+   */
   motivoCotizacion: string;
-  /** Detalle cuando motivoCotizacion = otros. */
+  /** Detalle cuando entre los motivos está `otros`. */
   motivoCotizacionOther: string;
   address: string;
   commune: string;
@@ -111,6 +124,7 @@ export interface ClientProfileInput {
   weightKg?: string | null;
   maritalStatus?: string | null;
   employerRut?: string | null;
+  contributorType?: string | null;
   rentaImponible?: string | null;
   motivoCotizacion?: string | null;
   motivoCotizacionOther?: string | null;

@@ -7,8 +7,10 @@ import { ClientPlanHistoryTimeline } from "@/components/executive/client-plan-hi
 import { ClientPlanSummary } from "@/components/executive/client-plan-summary";
 import { CollapsibleSection } from "@/components/executive/collapsible-section";
 import {
+  assignClientPlan,
   fetchClientActivities,
   fetchPlans,
+  unassignClientPlan,
   updateClientAdvisedPlan,
 } from "@/lib/api/admin-client";
 import { ui } from "@/lib/ui-tokens";
@@ -35,18 +37,17 @@ export function ClientAdvisedPlanSection({
   const [plans, setPlans] = useState<HealthPlan[]>([]);
   const [loadingPlans, setLoadingPlans] = useState(true);
   const [search, setSearch] = useState("");
-  const [selectedPlanCode, setSelectedPlanCode] = useState<string | null>(
-    client.advisedPlan?.planCode ?? null,
-  );
   const [notes, setNotes] = useState("");
-  const [saving, setSaving] = useState(false);
+  const [busyCode, setBusyCode] = useState<string | null>(null);
   const [activities, setActivities] = useState<ClientActivityRecord[]>([]);
   const [loadingActivities, setLoadingActivities] = useState(true);
 
+  const assignedPlans = client.assignedPlans ?? [];
+  const chosenCode = client.advisedPlan?.planCode ?? null;
+
   useEffect(() => {
-    setSelectedPlanCode(client.advisedPlan?.planCode ?? null);
     setNotes("");
-  }, [client.id, client.advisedPlan?.planCode]);
+  }, [client.id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -78,11 +79,17 @@ export function ClientAdvisedPlanSection({
     };
   }, [client.id, onNotify]);
 
+  const assignedCodes = useMemo(
+    () => new Set(assignedPlans.map((plan) => plan.planCode)),
+    [assignedPlans],
+  );
+
   const filteredPlans = useMemo(() => {
     const query = search.trim().toLowerCase();
-    if (!query) return plans.slice(0, 8);
+    const pool = plans.filter((plan) => !assignedCodes.has(plan.unique_code));
+    if (!query) return pool.slice(0, 8);
 
-    return plans
+    return pool
       .filter((plan) =>
         [plan.plan_name, plan.unique_code, plan.isapre]
           .join(" ")
@@ -90,53 +97,104 @@ export function ClientAdvisedPlanSection({
           .includes(query),
       )
       .slice(0, 8);
-  }, [plans, search]);
+  }, [plans, search, assignedCodes]);
 
-  const selectedPlan = useMemo(
-    () => plans.find((plan) => plan.unique_code === selectedPlanCode) ?? null,
-    [plans, selectedPlanCode],
-  );
+  async function refreshActivities() {
+    const nextActivities = await fetchClientActivities(client.id);
+    setActivities(nextActivities);
+  }
 
-  const selectedPlanSnapshot = useMemo((): ClientPlanSnapshot | null => {
-    if (!selectedPlan) return null;
-    return {
-      planCode: selectedPlan.unique_code,
-      planName: selectedPlan.plan_name,
-      isapre: selectedPlan.isapre,
-      basePriceUf: selectedPlan.base_price_uf,
-      finalPriceUf:
-        client.requestedPlan?.planCode === selectedPlan.unique_code
-          ? client.requestedPlan.finalPriceUf
-          : null,
-      finalPriceClp:
-        client.requestedPlan?.planCode === selectedPlan.unique_code
-          ? client.requestedPlan.finalPriceClp
-          : null,
-    };
-  }, [selectedPlan, client.requestedPlan]);
+  async function handleAddPlan(planCode: string, setAsChosen: boolean) {
+    setBusyCode(planCode);
+    try {
+      const updated = await assignClientPlan(client.id, {
+        planCode,
+        notes: notes.trim() || null,
+        setAsChosen,
+      });
+      onUpdated(updated);
+      setNotes("");
+      setSearch("");
+      await refreshActivities();
+      onNotify(
+        setAsChosen
+          ? "Plan agregado y marcado como elegido."
+          : "Plan agregado a la propuesta.",
+      );
+    } catch (error) {
+      onNotify(
+        error instanceof Error ? error.message : "No se pudo agregar el plan.",
+        "error",
+      );
+    } finally {
+      setBusyCode(null);
+    }
+  }
 
-  const hasChanges =
-    selectedPlanCode !== (client.advisedPlan?.planCode ?? null);
-
-  async function handleSavePlan() {
-    setSaving(true);
+  async function handleChoosePlan(plan: ClientPlanSnapshot) {
+    if (plan.planCode === chosenCode) return;
+    setBusyCode(plan.planCode);
     try {
       const updated = await updateClientAdvisedPlan(client.id, {
-        planCode: selectedPlanCode,
+        planCode: plan.planCode,
         notes: notes.trim() || null,
       });
       onUpdated(updated);
       setNotes("");
-      const nextActivities = await fetchClientActivities(client.id);
-      setActivities(nextActivities);
-      onNotify("Plan asesorado actualizado.");
+      await refreshActivities();
+      onNotify("Plan elegido actualizado.");
     } catch (error) {
       onNotify(
-        error instanceof Error ? error.message : "No se pudo actualizar el plan.",
+        error instanceof Error
+          ? error.message
+          : "No se pudo marcar el plan elegido.",
         "error",
       );
     } finally {
-      setSaving(false);
+      setBusyCode(null);
+    }
+  }
+
+  async function handleRemovePlan(plan: ClientPlanSnapshot) {
+    setBusyCode(plan.planCode);
+    try {
+      const updated = await unassignClientPlan(client.id, plan.planCode);
+      onUpdated(updated);
+      await refreshActivities();
+      onNotify("Plan eliminado de la propuesta.");
+    } catch (error) {
+      onNotify(
+        error instanceof Error
+          ? error.message
+          : "No se pudo eliminar el plan.",
+        "error",
+      );
+    } finally {
+      setBusyCode(null);
+    }
+  }
+
+  async function handleClearChosen() {
+    if (!chosenCode) return;
+    setBusyCode(chosenCode);
+    try {
+      const updated = await updateClientAdvisedPlan(client.id, {
+        planCode: null,
+        notes: notes.trim() || null,
+      });
+      onUpdated(updated);
+      setNotes("");
+      await refreshActivities();
+      onNotify("Se quitó el plan elegido (los demás planes siguen asignados).");
+    } catch (error) {
+      onNotify(
+        error instanceof Error
+          ? error.message
+          : "No se pudo quitar el plan elegido.",
+        "error",
+      );
+    } finally {
+      setBusyCode(null);
     }
   }
 
@@ -146,7 +204,7 @@ export function ClientAdvisedPlanSection({
       description={
         bare
           ? undefined
-          : "El plan solicitado viene de la cotización. Puedes registrar otro plan o Isapre que asesores al cliente."
+          : "Puedes asignar varios planes a la propuesta y marcar uno como elegido."
       }
       defaultOpen={bare ? true : false}
       hideIntro={bare}
@@ -167,16 +225,10 @@ export function ClientAdvisedPlanSection({
 
         <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
           <p className="text-xs font-semibold uppercase tracking-wide text-primary-dark">
-            Plan asesorado
+            Plan elegido
           </p>
           <div className="mt-2">
-            {selectedPlanSnapshot ? (
-              <ClientPlanSummary
-                requestedPlan={client.requestedPlan}
-                advisedPlan={selectedPlanSnapshot}
-                compact
-              />
-            ) : client.advisedPlan ? (
+            {client.advisedPlan ? (
               <ClientPlanSummary
                 requestedPlan={client.requestedPlan}
                 advisedPlan={client.advisedPlan}
@@ -184,16 +236,106 @@ export function ClientAdvisedPlanSection({
               />
             ) : (
               <p className="text-sm text-muted">
-                Igual al solicitado hasta que registres un cambio.
+                Sin plan elegido. Marca uno de la lista de propuestos.
               </p>
             )}
           </div>
+          {client.advisedPlan ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="mt-2"
+              disabled={Boolean(busyCode)}
+              onClick={() => void handleClearChosen()}
+            >
+              Quitar elegido
+            </Button>
+          ) : null}
         </div>
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <h4 className="text-sm font-semibold text-foreground">
+            Planes en la propuesta
+          </h4>
+          <span className="text-xs text-muted">
+            {assignedPlans.length} plan
+            {assignedPlans.length === 1 ? "" : "es"}
+          </span>
+        </div>
+
+        {assignedPlans.length === 0 ? (
+          <p className="rounded-xl border border-dashed border-border bg-white px-3 py-4 text-sm text-muted">
+            Aún no hay planes asignados. Agrégalos desde el catálogo o el
+            cotizador.
+          </p>
+        ) : (
+          <ul className="space-y-2">
+            {assignedPlans.map((plan) => {
+              const isChosen = plan.planCode === chosenCode;
+              const busy = busyCode === plan.planCode;
+              return (
+                <li
+                  key={plan.planCode}
+                  className={joinClasses(
+                    "rounded-xl border bg-white p-3",
+                    isChosen
+                      ? "border-primary/35 bg-primary/5"
+                      : "border-border",
+                  )}
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-foreground">
+                        {plan.isapre} · {plan.planName}
+                      </p>
+                      <p className="text-xs text-muted">
+                        {plan.planCode}
+                        {plan.basePriceUf != null
+                          ? ` · UF ${plan.basePriceUf}`
+                          : ""}
+                      </p>
+                      {isChosen ? (
+                        <span className="mt-1 inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-800">
+                          Elegido
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {!isChosen ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="primary"
+                          disabled={Boolean(busyCode)}
+                          onClick={() => void handleChoosePlan(plan)}
+                        >
+                          {busy ? "…" : "Elegir"}
+                        </Button>
+                      ) : null}
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="danger"
+                        disabled={Boolean(busyCode)}
+                        onClick={() => void handleRemovePlan(plan)}
+                      >
+                        {busy ? "…" : "Eliminar"}
+                      </Button>
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </div>
 
       <div className="space-y-3">
         <label className="block space-y-2">
-          <span className="text-sm font-medium">Buscar plan del catálogo</span>
+          <span className="text-sm font-medium">Agregar plan del catálogo</span>
           <Input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
@@ -202,24 +344,29 @@ export function ClientAdvisedPlanSection({
           />
         </label>
 
+        <label className="block space-y-2">
+          <span className="text-sm font-medium">Nota (opcional)</span>
+          <textarea
+            value={notes}
+            onChange={(event) => setNotes(event.target.value)}
+            rows={2}
+            placeholder="Ej. Cliente pidió comparar estas opciones…"
+            className={joinClasses("w-full rounded-xl px-3 py-2 text-sm", ui.input)}
+          />
+        </label>
+
         {loadingPlans ? (
           <p className="text-sm text-muted">Cargando catálogo…</p>
         ) : filteredPlans.length > 0 ? (
           <ul className="max-h-48 space-y-1 overflow-y-auto rounded-xl border border-border bg-white p-2">
             {filteredPlans.map((plan) => {
-              const isSelected = selectedPlanCode === plan.unique_code;
+              const busy = busyCode === plan.unique_code;
               return (
-                <li key={plan.unique_code}>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedPlanCode(plan.unique_code)}
-                    className={joinClasses(
-                      "w-full rounded-lg px-3 py-2 text-left text-sm transition",
-                      isSelected
-                        ? "bg-primary/10 text-primary-dark"
-                        : "hover:bg-surface-hover",
-                    )}
-                  >
+                <li
+                  key={plan.unique_code}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg px-2 py-1.5 hover:bg-surface-hover"
+                >
+                  <div className="min-w-0 text-sm">
                     <span className="font-medium">
                       {plan.isapre} · {plan.plan_name}
                     </span>
@@ -232,46 +379,38 @@ export function ClientAdvisedPlanSection({
                           })} UF`
                         : ""}
                     </span>
-                  </button>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      disabled={Boolean(busyCode)}
+                      onClick={() => void handleAddPlan(plan.unique_code, false)}
+                    >
+                      {busy ? "…" : "Agregar"}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="success"
+                      disabled={Boolean(busyCode)}
+                      onClick={() => void handleAddPlan(plan.unique_code, true)}
+                    >
+                      {busy ? "…" : "Agregar y elegir"}
+                    </Button>
+                  </div>
                 </li>
               );
             })}
           </ul>
         ) : (
-          <p className="text-sm text-muted">No hay planes que coincidan.</p>
+          <p className="text-sm text-muted">
+            {search.trim()
+              ? "No hay planes que coincidan (o ya están asignados)."
+              : "Todos los planes del catálogo reciente ya están asignados, o busca por nombre."}
+          </p>
         )}
-
-        {selectedPlanCode ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => setSelectedPlanCode(null)}
-          >
-            Usar plan solicitado
-          </Button>
-        ) : null}
-
-        <label className="block space-y-2">
-          <span className="text-sm font-medium">Motivo del cambio</span>
-          <textarea
-            value={notes}
-            onChange={(event) => setNotes(event.target.value)}
-            rows={2}
-            placeholder="Ej. Cliente prefirió otra Isapre con mejor red en su zona…"
-            className={joinClasses("w-full rounded-xl px-3 py-2 text-sm", ui.input)}
-          />
-        </label>
-
-        <Button
-          type="button"
-          size="sm"
-          disabled={saving || !hasChanges}
-          variant="success"
-          onClick={() => void handleSavePlan()}
-        >
-          {saving ? "Guardando plan…" : "Registrar plan asesorado"}
-        </Button>
       </div>
 
       <div className="space-y-2 border-t border-border pt-4">

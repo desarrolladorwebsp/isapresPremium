@@ -46,18 +46,83 @@ const VALID_MOTIVO_COTIZACION_IDS = new Set<string>(
   CLIENT_MOTIVO_COTIZACION_OPTIONS.map((option) => option.id),
 );
 
-function resolveMotivoCotizacion(value: unknown): string {
-  if (typeof value === "string" && VALID_MOTIVO_COTIZACION_IDS.has(value.trim())) {
-    return value.trim();
+/** Orden canónico de ids de motivo (para serializar estable). */
+const MOTIVO_COTIZACION_ORDER = CLIENT_MOTIVO_COTIZACION_OPTIONS.map(
+  (option) => option.id,
+);
+
+/**
+ * Lee uno o varios motivos desde string.
+ * Compatible con valor único (`"cobertura"`) o lista (`"otro-plan,cobertura,otros"`).
+ */
+export function parseMotivoCotizacionIds(value: unknown): string[] {
+  if (typeof value !== "string") return [];
+  const trimmed = value.trim();
+  if (!trimmed) return [];
+
+  if (trimmed.startsWith("[")) {
+    try {
+      const parsed = JSON.parse(trimmed) as unknown;
+      if (Array.isArray(parsed)) {
+        const ids = parsed
+          .filter((item): item is string => typeof item === "string")
+          .map((item) => item.trim())
+          .filter((id) => VALID_MOTIVO_COTIZACION_IDS.has(id));
+        return MOTIVO_COTIZACION_ORDER.filter((id) => ids.includes(id));
+      }
+    } catch {
+      /* fall through */
+    }
   }
-  return "";
+
+  const ids = trimmed
+    .split(/[,|;]/)
+    .map((part) => part.trim())
+    .filter((id) => VALID_MOTIVO_COTIZACION_IDS.has(id));
+  return MOTIVO_COTIZACION_ORDER.filter((id) => ids.includes(id));
+}
+
+export function serializeMotivoCotizacionIds(ids: Iterable<string>): string {
+  const selected = new Set(
+    [...ids].filter((id) => VALID_MOTIVO_COTIZACION_IDS.has(id)),
+  );
+  return MOTIVO_COTIZACION_ORDER.filter((id) => selected.has(id)).join(",");
+}
+
+export function motivoCotizacionIncludes(
+  value: unknown,
+  motivoId: string,
+): boolean {
+  return parseMotivoCotizacionIds(value).includes(motivoId);
+}
+
+export function motivoCotizacionIncludesOtros(value: unknown): boolean {
+  return motivoCotizacionIncludes(value, "otros");
+}
+
+export function toggleMotivoCotizacionId(
+  current: unknown,
+  motivoId: string,
+): string {
+  if (!VALID_MOTIVO_COTIZACION_IDS.has(motivoId)) {
+    return serializeMotivoCotizacionIds(parseMotivoCotizacionIds(current));
+  }
+  const ids = parseMotivoCotizacionIds(current);
+  const next = ids.includes(motivoId)
+    ? ids.filter((id) => id !== motivoId)
+    : [...ids, motivoId];
+  return serializeMotivoCotizacionIds(next);
+}
+
+function resolveMotivoCotizacion(value: unknown): string {
+  return serializeMotivoCotizacionIds(parseMotivoCotizacionIds(value));
 }
 
 function resolveMotivoCotizacionOther(
   motivo: string,
   otherValue: unknown,
 ): string {
-  if (motivo !== "otros") return "";
+  if (!motivoCotizacionIncludesOtros(motivo)) return "";
   return typeof otherValue === "string" ? otherValue.trim() : "";
 }
 
@@ -102,6 +167,7 @@ function createLocalId(prefix: string): string {
 export function buildEmptyDependent(): ClientDependentProfile {
   return {
     id: createLocalId("dep"),
+    fullName: "",
     rut: "",
     birthDate: "",
     age: "",
@@ -150,6 +216,7 @@ export function buildEmptyClientProfile(): ClientExecutiveProfile {
     weightKg: "",
     maritalStatus: "",
     employerRut: "",
+    contributorType: "",
     rentaImponible: "",
     motivoCotizacion: "",
     motivoCotizacionOther: "",
@@ -323,6 +390,17 @@ export function resolveClientProfile(
       typeof profile.maritalStatus === "string" ? profile.maritalStatus : "",
     employerRut:
       typeof profile.employerRut === "string" ? profile.employerRut : "",
+    contributorType: (() => {
+      const raw =
+        typeof profile.contributorType === "string"
+          ? profile.contributorType
+          : "";
+      return raw === "dependiente" ||
+        raw === "independiente" ||
+        raw === "voluntario"
+        ? raw
+        : "";
+    })(),
     rentaImponible:
       typeof profile.rentaImponible === "string" ? profile.rentaImponible : "",
     motivoCotizacion: resolveMotivoCotizacion(profile.motivoCotizacion),
@@ -355,10 +433,15 @@ export function resolveClientProfile(
       ? profile.dependents.filter(isDependent).map((dependent) => {
           const rawDependent = dependent as ClientDependentProfile & {
             age?: string;
+            fullName?: string;
             preexistenciasMedicas?: string;
           };
           return {
             ...dependent,
+            fullName:
+              typeof rawDependent.fullName === "string"
+                ? rawDependent.fullName
+                : "",
             age: resolveAge(rawDependent.age, dependent.birthDate),
             preexistenciasMedicas:
               typeof rawDependent.preexistenciasMedicas === "string"
@@ -497,6 +580,7 @@ export function normalizeClientProfileInput(
     const ageRaw = (dependent.age ?? "").trim();
     return {
       id: dependent.id || buildEmptyDependent().id,
+      fullName: (dependent.fullName ?? "").trim(),
       rut: rutRaw ? formatRut(rutRaw) : "",
       birthDate,
       age: ageRaw || calculateAgeFromBirthDate(birthDate),
@@ -568,6 +652,14 @@ export function normalizeClientProfileInput(
       weightKg: input.weightKg?.trim() || "",
       maritalStatus: input.maritalStatus?.trim() || "",
       employerRut: formatOptionalClientRut(input.employerRut) ?? "",
+      contributorType: (() => {
+        const raw = (input.contributorType ?? "").trim();
+        return raw === "dependiente" ||
+          raw === "independiente" ||
+          raw === "voluntario"
+          ? raw
+          : "";
+      })(),
       rentaImponible: (input.rentaImponible ?? "").trim(),
       motivoCotizacion: resolveMotivoCotizacion(input.motivoCotizacion),
       motivoCotizacionOther: resolveMotivoCotizacionOther(

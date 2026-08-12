@@ -2,25 +2,21 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   AdminPanel,
   AdminPanelHeader,
 } from "@/components/admin/admin-data-table";
 import { Button } from "@/components/ui/button";
 import { ClientFichaCapsule } from "@/components/executive/client-ficha-capsule";
-import { ClientFichaPdfModal } from "@/components/executive/client-ficha-pdf-modal";
 import {
   ClientPipelineDrawer,
   type ClientFichaModal,
+  type ClientPipelineLaunchRequest,
 } from "@/components/executive/client-pipeline-drawer";
 import { ClientPipelineStatusBadge } from "@/components/executive/client-pipeline-status-badge";
 import { ClientRutCell } from "@/components/executive/client-rut-cell";
-import {
-  IconArrowLeft,
-  IconUserPlus,
-  IconUsers,
-} from "@/components/executive/executive-icons";
+import { IconArrowLeft } from "@/components/executive/executive-icons";
 import { useStaffSession } from "@/hooks/use-auth-session";
 import { useExecutiveClientsQuery } from "@/hooks/query/use-executive-clients-query";
 import { isValidRut } from "@/lib/auth/rut";
@@ -29,10 +25,23 @@ import {
   canEditClientDataAsExecutive,
   isTrackingOnlyForExecutive,
 } from "@/lib/client-pipeline/tracking";
+import {
+  clientNoteDisplayText,
+  listClientNoteLines,
+  listPipelineModificationLines,
+} from "@/lib/client-pipeline/note-stamp";
 import { CURRENT_COVERAGE_OPTIONS } from "@/lib/filter-options";
 import { formatPersonDisplayName } from "@/lib/format-person-name";
 import { syncClientMutationCache } from "@/lib/query/executive-cache";
-import { staffExecutiveHref } from "@/lib/staff/staff-sections";
+import {
+  isStaffClientFlowId,
+  isStaffClientGestionAction,
+  staffClientHref,
+  staffExecutiveHref,
+  STAFF_CLIENT_FLOW_QUERY,
+  STAFF_CLIENT_GESTION_QUERY,
+  STAFF_EXECUTIVE_ID_QUERY,
+} from "@/lib/staff/staff-sections";
 import { touchTarget, ui } from "@/lib/ui-tokens";
 import { joinClasses } from "@/lib/utils";
 import type { CompanyAgreementLookupResult } from "@/types/company-agreement";
@@ -46,6 +55,9 @@ export interface ExecutiveClientDetailViewProps {
   /** Tras redirección fuera de la cartera (no admin). */
   onLeftPortfolio?: () => void;
 }
+
+/** Toggle temporal: las cápsulas de ficha quedan en el código pero ocultas. */
+const SHOW_FICHA_CAPSULES = false;
 
 function formatDate(value: string): string {
   return new Intl.DateTimeFormat("es-CL", {
@@ -156,12 +168,12 @@ function buildCapsuleBullets(
   const checklist = resolveClientChecklist(client.checklist);
   const docsDone = checklist.items.filter((item) => item.checked).length;
   const docsTotal = checklist.items.length;
-  const noteLines =
-    client.pipelineNotes
-      ?.split("\n")
-      .map((line) => line.trim())
-      .filter(Boolean) ?? [];
-  const lastNote = noteLines[noteLines.length - 1];
+  const noteLines = listClientNoteLines(client.pipelineNotes);
+  const modificationLines = listPipelineModificationLines(client.pipelineNotes);
+  const lastNote = noteLines[0];
+  const lastNotePreview = lastNote
+    ? clientNoteDisplayText(lastNote)
+    : null;
   const previsionId = profile?.currentIsapre?.trim() ?? "";
   const previsionLabel =
     CURRENT_COVERAGE_OPTIONS.find((option) => option.id === previsionId)
@@ -214,18 +226,20 @@ function buildCapsuleBullets(
       "Vista previa en la ficha",
     ],
     historial: [
-      noteLines.length === 0
+      modificationLines.length === 0
         ? "Sin movimientos aún"
-        : `${noteLines.length} registro${noteLines.length === 1 ? "" : "s"}`,
-      lastNote
-        ? `Último: ${lastNote.length > 48 ? `${lastNote.slice(0, 48)}…` : lastNote}`
-        : "Solo lectura del sistema",
+        : `${modificationLines.length} movimiento${modificationLines.length === 1 ? "" : "s"}`,
       "Contacto, reagendar, derivaciones",
+      "Sin incluir notas libres",
     ],
     notas: [
-      "Comentarios post-reunión",
-      "Quedan en el historial al guardar",
-      "Con tu nombre y fecha",
+      noteLines.length === 0
+        ? "Sin notas aún"
+        : `${noteLines.length} nota${noteLines.length === 1 ? "" : "s"}`,
+      lastNotePreview
+        ? `Última: ${lastNotePreview.length > 42 ? `${lastNotePreview.slice(0, 42)}…` : lastNotePreview}`
+        : "Agrega comentarios del ejecutivo",
+      "Distintas del historial de sistema",
     ],
   };
 }
@@ -237,6 +251,7 @@ export function ExecutiveClientDetailView({
   onLeftPortfolio,
 }: ExecutiveClientDetailViewProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const { isAdmin, user, executiveKind } = useStaffSession();
   const clientsQuery = useExecutiveClientsQuery();
@@ -244,8 +259,36 @@ export function ExecutiveClientDetailView({
   const [pendingFamilyAdd, setPendingFamilyAdd] = useState<
     "titular" | "carga" | null
   >(null);
-  const [fichaPdfOpen, setFichaPdfOpen] = useState(false);
   const [convenioLabel, setConvenioLabel] = useState("Sin RUT empleador");
+  const [protocolFlowActive, setProtocolFlowActive] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [launchRequest, setLaunchRequest] =
+    useState<ClientPipelineLaunchRequest | null>(null);
+
+  useEffect(() => {
+    const flowRaw = searchParams.get(STAFF_CLIENT_FLOW_QUERY)?.trim() ?? "";
+    const gestionRaw =
+      searchParams.get(STAFF_CLIENT_GESTION_QUERY)?.trim() ?? "";
+    if (!isStaffClientFlowId(flowRaw) && !isStaffClientGestionAction(gestionRaw)) {
+      return;
+    }
+
+    const flow = isStaffClientFlowId(flowRaw)
+      ? flowRaw
+      : executiveKind === "ZOOM"
+        ? "zoom"
+        : executiveKind === "ISAPRES"
+          ? "isapres"
+          : "premium";
+    const gestion = isStaffClientGestionAction(gestionRaw) ? gestionRaw : null;
+    setLaunchRequest({ flow, gestion });
+
+    const executiveId =
+      searchParams.get(STAFF_EXECUTIVE_ID_QUERY)?.trim() || undefined;
+    router.replace(staffClientHref(clientId, { executiveId }), {
+      scroll: false,
+    });
+  }, [clientId, executiveKind, router, searchParams]);
 
   const client = useMemo(
     () =>
@@ -254,6 +297,32 @@ export function ExecutiveClientDetailView({
   );
 
   const employerRut = client?.clientProfile?.employerRut?.trim() ?? "";
+
+  useEffect(() => {
+    setProtocolFlowActive(false);
+    setHasUnsavedChanges(false);
+  }, [clientId]);
+
+  useEffect(() => {
+    if (!hasUnsavedChanges) return;
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [hasUnsavedChanges]);
+
+  function requestLeave(leave: () => void) {
+    if (!hasUnsavedChanges) {
+      leave();
+      return;
+    }
+    const confirmed = window.confirm(
+      "Hay cambios sin guardar. Si sales ahora, se perderán. ¿Salir de todos modos?",
+    );
+    if (confirmed) leave();
+  }
 
   useEffect(() => {
     if (!employerRut) {
@@ -346,16 +415,6 @@ export function ExecutiveClientDetailView({
     setFichaModal("family");
   }
 
-  function openAddTitularModal() {
-    setPendingFamilyAdd("titular");
-    setFichaModal("addTitular");
-  }
-
-  function openAddCargaModal() {
-    setPendingFamilyAdd("carga");
-    setFichaModal("addCarga");
-  }
-
   if (loading) {
     return (
       <AdminPanel>
@@ -422,93 +481,21 @@ export function ExecutiveClientDetailView({
       canEditClientDataAsExecutive(client, user.id, isAdmin, executiveKind),
   );
   const bullets = buildCapsuleBullets(client, convenioLabel);
+  const noteLinesCount = listClientNoteLines(client.pipelineNotes).length;
   const assignedLabel = formatPersonDisplayName(
     client.assignedExecutiveName,
     "Sin ejecutivo asignado",
   );
 
   return (
-    <AdminPanel>
-      <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
-        <div className="flex w-full shrink-0 flex-col gap-3 lg:sticky lg:top-4 lg:w-56">
-          <aside
-            className={joinClasses(
-              "flex flex-col gap-3 rounded-2xl border bg-white p-4 shadow-card",
-              ui.border,
-            )}
-          >
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-primary-dark">
-              Acciones rápidas
-            </p>
-            <div className="flex flex-row gap-2 overflow-x-auto lg:flex-col lg:overflow-visible">
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                disabled={!canEditClientData}
-                className={joinClasses(
-                  touchTarget,
-                  "justify-start gap-2 border border-primary-dark/15 bg-primary-dark/5 text-primary-dark hover:border-primary-dark/30 hover:bg-primary-dark/10",
-                )}
-                onClick={() => openAddTitularModal()}
-              >
-                <IconUserPlus className="size-4 text-primary-dark" />
-                Agregar titular
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                disabled={!canEditClientData}
-                className={joinClasses(
-                  touchTarget,
-                  "justify-start gap-2 border border-primary-dark/15 bg-primary-dark/5 text-primary-dark hover:border-primary-dark/30 hover:bg-primary-dark/10",
-                )}
-                onClick={() => openAddCargaModal()}
-              >
-                <IconUsers className="size-4 text-primary-dark" />
-                Agregar carga
-              </Button>
-            </div>
-            {!canEditClientData ? (
-              <p className="text-[11px] leading-snug text-muted">
-                Solo lectura
-                {isTrackingOnly ? " · seguimiento post-derivación" : ""}.
-              </p>
-            ) : null}
-          </aside>
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            aria-label="Ficha PDF"
-            title="Ficha PDF"
-            onClick={() => setFichaPdfOpen(true)}
-            className={joinClasses(
-              touchTarget,
-              "w-full justify-start gap-2 border border-primary-dark/15 bg-white text-primary-dark shadow-sm hover:border-primary-dark/30 hover:bg-primary-dark/5",
-            )}
-          >
-            Ficha PDF
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            onClick={onBack}
-            aria-label="Volver a clientes"
-            title="Volver a clientes"
-            className={joinClasses(
-              touchTarget,
-              "w-full justify-start gap-2 border border-border bg-white shadow-sm hover:border-primary-dark/25 hover:bg-primary-dark/5",
-            )}
-          >
-            <IconArrowLeft className="size-4 text-primary-dark" />
-            Volver
-          </Button>
-        </div>
-
-        <div className="min-w-0 flex-1 space-y-5">
+    <AdminPanel className={protocolFlowActive ? "space-y-0" : undefined}>
+      <div
+        className={joinClasses(
+          "min-w-0",
+          protocolFlowActive ? "" : "space-y-5",
+        )}
+      >
+          {protocolFlowActive ? null : (
           <div
             className={joinClasses(
               "rounded-2xl border bg-white px-4 py-4 shadow-card sm:px-5",
@@ -570,7 +557,10 @@ export function ExecutiveClientDetailView({
               </div>
             </div>
           </div>
+          )}
 
+          {/* Cápsulas de ficha: ocultas temporalmente (no borrar). */}
+          {SHOW_FICHA_CAPSULES && !protocolFlowActive ? (
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             <ClientFichaCapsule
               icon={<IconFamily />}
@@ -629,12 +619,19 @@ export function ExecutiveClientDetailView({
             <ClientFichaCapsule
               icon={<IconNotes />}
               title="Notas cliente"
-              description="Comentarios post-reunión que quedan en el historial."
+              description="Notas libres del ejecutivo. Distintas del historial de modificaciones."
               bullets={bullets.notas}
-              ctaLabel={canEditClientData ? "Agregar nota" : "Ver notas"}
+              ctaLabel={
+                canEditClientData
+                  ? noteLinesCount > 0
+                    ? "Ver y agregar notas"
+                    : "Agregar nota"
+                  : "Ver notas"
+              }
               onClick={() => setFichaModal("notas")}
             />
           </div>
+          ) : null}
 
           <ClientPipelineDrawer
             client={client}
@@ -646,20 +643,16 @@ export function ExecutiveClientDetailView({
             onFichaModalChange={setFichaModal}
             pendingFamilyAdd={pendingFamilyAdd}
             onPendingFamilyAddConsumed={() => setPendingFamilyAdd(null)}
-            onClose={onBack}
+            onActiveFlowChange={(flow) => setProtocolFlowActive(Boolean(flow))}
+            onUnsavedChangesChange={setHasUnsavedChanges}
+            launchRequest={launchRequest}
+            onLaunchConsumed={() => setLaunchRequest(null)}
+            onClose={() => requestLeave(onBack)}
             onUpdated={handleUpdated}
             onRedirected={handleRedirected}
             onNotify={onNotify}
           />
-        </div>
       </div>
-
-      <ClientFichaPdfModal
-        client={client}
-        open={fichaPdfOpen}
-        onClose={() => setFichaPdfOpen(false)}
-        onNotify={onNotify}
-      />
     </AdminPanel>
   );
 }

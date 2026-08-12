@@ -1,16 +1,18 @@
 import type { ClientPipelineStatus } from "@/types/client-pipeline";
 import type { ExecutiveKind } from "@/types/staff-account";
 
-/** Evento de calendario derivado de `User.nextCallAt` o `confirmationCallAt`. */
+/** Evento de calendario derivado de nextCallAt, confirmationCallAt o reminderAt. */
 export interface CalendarCallEvent {
   id: string;
   clientId: string;
   clientName: string;
   startsAt: string;
   title: string;
-  kind: "call" | "confirmation";
+  kind: "call" | "confirmation" | "reminder";
   /** Canal preferido (Zoom / WhatsApp) para colorear el evento. */
   contactMethod?: "ZOOM" | "WHATSAPP" | null;
+  /** Nota libre del recordatorio / gestión. */
+  reminderNote?: string | null;
   /** Equipo Calendly si hay booking / asignación. */
   calendlyTeam?: "EQUIPO_1" | "EQUIPO_2" | "EQUIPO_3" | null;
   /** Link Zoom para unirse (si el webhook lo sincronizó). */

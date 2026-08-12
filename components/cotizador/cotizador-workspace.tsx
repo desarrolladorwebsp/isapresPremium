@@ -8,7 +8,7 @@ import {
   useState,
   type CSSProperties,
 } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { FiltersFab, FiltersSidebar } from "@/components/filters";
 import {
@@ -21,7 +21,11 @@ import { CotizadorHeader, type CotizadorHeaderVariant } from "@/components/cotiz
 import { CotizadorNav } from "@/components/cotizador/cotizador-nav";
 import { AssignPlanToClientModal } from "@/components/executive/assign-plan-to-client-modal";
 import { PlanCompareModal } from "@/components/executive/plan-compare-modal";
-import { IconWhatsApp } from "@/components/executive/executive-icons";
+import {
+  IconEye,
+  IconWhatsApp,
+} from "@/components/executive/executive-icons";
+import { staffClientHref } from "@/lib/staff/staff-sections";
 import { useStaffSession } from "@/hooks/use-auth-session";
 import { useCotizadorDashboard } from "@/hooks/use-cotizador-dashboard";
 import { usePlansCatalog } from "@/hooks/use-plans-catalog";
@@ -204,6 +208,7 @@ function CotizadorWorkspaceInner({
   const { allowedSections } = useStaffSession();
   /** Membresía y roles sin sección clientes: no cargar cartera ni mostrar picker. */
   const canUseClients = !isExecutive || allowedSections.includes("clientes");
+  const router = useRouter();
   const searchParams = useSearchParams();
   const clientPickerRef = useRef<HTMLDivElement>(null);
   const selectionBarRef = useRef<HTMLDivElement>(null);
@@ -812,7 +817,7 @@ function CotizadorWorkspaceInner({
                 {isExecutive && canUseClients ? (
                   <div
                     ref={clientPickerRef}
-                    className="relative min-w-0 w-full sm:w-52 sm:flex-none"
+                    className="relative min-w-0 w-full sm:w-auto sm:flex-none"
                   >
                     <label
                       htmlFor="active-client-search"
@@ -820,40 +825,60 @@ function CotizadorWorkspaceInner({
                     >
                       Cliente activo
                     </label>
-                    <div className="relative">
-                      <input
-                        id="active-client-search"
-                        type="search"
-                        autoComplete="off"
-                        value={
-                          clientPickerOpen
-                            ? clientSearch
-                            : (activeClientRecord?.fullName ?? "")
-                        }
-                        placeholder="Buscar cliente…"
-                        onFocus={() => {
-                          setClientPickerOpen(true);
-                          setClientSearch("");
-                        }}
-                        onChange={(event) => {
-                          setClientPickerOpen(true);
-                          setClientSearch(event.target.value);
-                        }}
-                        className={joinClasses(
-                          "h-10 w-full rounded-lg py-2 pl-3 pr-16 text-sm",
-                          ui.input,
-                        )}
-                        aria-expanded={clientPickerOpen}
-                        aria-controls="active-client-results"
-                        aria-autocomplete="list"
-                      />
+                    <div className="flex items-center gap-1.5">
+                      <div className="relative min-w-0 flex-1 sm:w-52">
+                        <input
+                          id="active-client-search"
+                          type="search"
+                          autoComplete="off"
+                          value={
+                            clientPickerOpen
+                              ? clientSearch
+                              : (activeClientRecord?.fullName ?? "")
+                          }
+                          placeholder="Buscar cliente…"
+                          onFocus={() => {
+                            setClientPickerOpen(true);
+                            setClientSearch("");
+                          }}
+                          onChange={(event) => {
+                            setClientPickerOpen(true);
+                            setClientSearch(event.target.value);
+                          }}
+                          className={joinClasses(
+                            "h-10 w-full rounded-lg py-2 pl-3 pr-16 text-sm",
+                            ui.input,
+                          )}
+                          aria-expanded={clientPickerOpen}
+                          aria-controls="active-client-results"
+                          aria-autocomplete="list"
+                        />
+                        {activeClientId ? (
+                          <button
+                            type="button"
+                            onClick={clearActiveClient}
+                            className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-md px-2 py-1 text-[11px] font-semibold text-muted hover:bg-surface-hover hover:text-foreground"
+                          >
+                            Quitar
+                          </button>
+                        ) : null}
+                      </div>
                       {activeClientId ? (
                         <button
                           type="button"
-                          onClick={clearActiveClient}
-                          className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-md px-2 py-1 text-[11px] font-semibold text-muted hover:bg-surface-hover hover:text-foreground"
+                          onClick={() =>
+                            router.push(staffClientHref(activeClientId))
+                          }
+                          title="Ver ficha del cliente"
+                          aria-label={`Ver ficha de ${activeClientRecord?.fullName ?? "cliente"}`}
+                          className={joinClasses(
+                            "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-white transition",
+                            "bg-[color:var(--dash-navy,#092558)] hover:bg-[color:color-mix(in_srgb,var(--dash-navy,#092558)_88%,black)]",
+                            "shadow-[0_4px_14px_-4px_rgb(9_37_88_/_0.45)]",
+                            touchTarget,
+                          )}
                         >
-                          Quitar
+                          <IconEye className="size-4" />
                         </button>
                       ) : null}
                     </div>

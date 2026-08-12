@@ -4,7 +4,8 @@ import { useMemo } from "react";
 import { useExecutiveCalendarQuery } from "@/hooks/query/use-executive-calendar-query";
 import { joinClasses } from "@/lib/utils";
 
-const CONFLICT_WINDOW_MS = 30 * 60 * 1000;
+/** Ventana de aviso: 1 h antes / 1 h después de otra reunión (solo notifica). */
+const CONFLICT_WINDOW_MS = 60 * 60 * 1000;
 
 function dayBoundsFromLocal(datetimeLocal: string): {
   dayLabel: string;
@@ -46,12 +47,17 @@ function formatTime(iso: string): string {
   }).format(new Date(iso));
 }
 
-function isConflicting(
-  eventAt: Date,
+function isZoomMeetingConflict(
+  event: { kind: "call" | "confirmation" | "reminder"; startsAt: string },
   selectedAt: Date | null,
 ): boolean {
   if (!selectedAt) return false;
-  return Math.abs(eventAt.getTime() - selectedAt.getTime()) < CONFLICT_WINDOW_MS;
+  // Solo reuniones Zoom / nextCall; no llamadas de confirmación.
+  if (event.kind !== "call") return false;
+  return (
+    Math.abs(new Date(event.startsAt).getTime() - selectedAt.getTime()) <
+    CONFLICT_WINDOW_MS
+  );
 }
 
 export interface RescheduleDayAgendaProps {
@@ -63,8 +69,8 @@ export interface RescheduleDayAgendaProps {
 }
 
 /**
- * Agenda del día al reagendar: lista llamados ya programados y marca
- * solapes (±30 min) para que el ejecutivo no duplique horario.
+ * Agenda del día al reagendar: solo reuniones Zoom (`call`);
+ * no lista llamadas de confirmación. El aviso amarillo (±1 h) aplica a Zoom.
  */
 export function RescheduleDayAgenda({
   nextCallLocal,
@@ -96,10 +102,11 @@ export function RescheduleDayAgenda({
     enabled: enabled && Boolean(bounds),
   });
 
-  const events = useMemo(
+  const zoomMeetings = useMemo(
     () =>
       (eventsQuery.data ?? []).filter(
-        (event) => event.clientId !== excludeClientId,
+        (event) =>
+          event.clientId !== excludeClientId && event.kind === "call",
       ),
     [eventsQuery.data, excludeClientId],
   );
@@ -114,8 +121,8 @@ export function RescheduleDayAgenda({
 
   if (!enabled || !bounds) return null;
 
-  const conflicts = events.filter((event) =>
-    isConflicting(new Date(event.startsAt), bounds.selectedAt),
+  const conflicts = zoomMeetings.filter((event) =>
+    isZoomMeetingConflict(event, bounds.selectedAt),
   );
 
   return (
@@ -136,39 +143,44 @@ export function RescheduleDayAgenda({
         <p className="text-[11px] text-danger">{error}</p>
       ) : null}
 
-      {!loading && !error && events.length === 0 ? (
+      {!loading && !error && zoomMeetings.length === 0 ? (
         <p className="text-[11px] text-muted">
-          No tienes otros llamados agendados este día.
+          No tienes otras reuniones Zoom agendadas este día.
         </p>
       ) : null}
 
-      {events.length > 0 ? (
-        <ul className="max-h-36 space-y-1.5 overflow-y-auto">
-          {events.map((event) => {
-            const conflict = isConflicting(
-              new Date(event.startsAt),
-              bounds.selectedAt,
-            );
+      {zoomMeetings.length > 0 ? (
+        <ul className="flex max-h-36 flex-wrap gap-1.5 overflow-y-auto">
+          {zoomMeetings.map((event) => {
+            const conflict = isZoomMeetingConflict(event, bounds.selectedAt);
             return (
-              <li
-                key={event.id}
-                className={joinClasses(
-                  "rounded-md px-2 py-1.5 text-[11px]",
-                  conflict
-                    ? "border border-amber-300 bg-amber-50 text-amber-950"
-                    : "border border-transparent bg-white text-foreground",
-                )}
-              >
-                <span className="font-semibold tabular-nums">
-                  {formatTime(event.startsAt)}
-                </span>
-                <span className="mx-1 text-muted">·</span>
-                <span>{event.clientName}</span>
-                {conflict ? (
-                  <span className="mt-0.5 block font-medium text-amber-800">
-                    Coincide con el horario elegido (±30 min)
+              <li key={event.id}>
+                <span
+                  title={
+                    conflict
+                      ? `${formatTime(event.startsAt)} · ${event.clientName} (Zoom) — Cerca del horario elegido (±1 h)`
+                      : `${formatTime(event.startsAt)} · ${event.clientName} (Zoom)`
+                  }
+                  className={joinClasses(
+                    "inline-flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] leading-tight",
+                    conflict
+                      ? "border-amber-300 bg-amber-50 text-amber-950"
+                      : "border-border bg-white text-foreground",
+                  )}
+                >
+                  <span className="shrink-0 font-semibold tabular-nums">
+                    {formatTime(event.startsAt)}
                   </span>
-                ) : null}
+                  <span className="min-w-0 truncate">{event.clientName}</span>
+                  <span
+                    className={joinClasses(
+                      "shrink-0 text-[9px] font-semibold uppercase tracking-wide",
+                      conflict ? "text-amber-800/80" : "text-primary-dark/55",
+                    )}
+                  >
+                    Zoom
+                  </span>
+                </span>
               </li>
             );
           })}
@@ -177,13 +189,14 @@ export function RescheduleDayAgenda({
 
       {conflicts.length > 0 ? (
         <p className="text-[11px] font-medium text-amber-800">
-          Ya tienes {conflicts.length} llamado
-          {conflicts.length === 1 ? "" : "s"} cerca de esta hora. Puedes
-          guardar igual, pero revisa si quieres evitar el choque.
+          Aviso: hay {conflicts.length} reunión Zoom
+          {conflicts.length === 1 ? "" : "es"} a menos de 1 hora (antes o
+          después) del horario elegido. No se bloquea; puedes guardar igual.
         </p>
-      ) : bounds.selectedAt && events.length > 0 && !loading ? (
+      ) : bounds.selectedAt && zoomMeetings.length > 0 && !loading ? (
         <p className="text-[11px] text-muted">
-          El horario elegido no coincide con otros llamados del día.
+          El horario elegido está a más de 1 hora de tus otras reuniones Zoom
+          del día.
         </p>
       ) : null}
     </div>

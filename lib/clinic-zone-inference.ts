@@ -31,11 +31,31 @@ const REGION_CENTROIDS: Record<string, GeoPoint> = {
 };
 
 const NAME_ZONE_KEYWORDS: Array<{ pattern: RegExp; zones: ZoneId[] }> = [
-  { pattern: /arica|iquique|antofagasta|atacama|copiap[oó]|elqui|la serena|tarapac[aá]|portada/i, zones: ["norte"] },
-  { pattern: /valpara[ií]so|vi[nñ]a|renaca|reñaca|san antonio|quilpu[eé]/i, zones: ["valparaiso"] },
-  { pattern: /talca|chill[aá]n|rancagua|los [aá]ngeles|arauco|curic[oó]|linares|maule|lircay/i, zones: ["octava"] },
-  { pattern: /concepci[oó]n|temuco|valdivia|osorno|puerto montt|punta arenas|ancud|chil[oó]e|magallanes|del sur/i, zones: ["biobio"] },
-  { pattern: /santiago|providencia|las condes|maip[uú]|recoleta|huechuraba|san bernardo|vitacura|independencia/i, zones: ["rm-metropolitana"] },
+  {
+    pattern:
+      /arica|iquique|antofagasta|atacama|copiap[oó]|elqui|la serena|tarapac[aá]|portada|calama|el loa/i,
+    zones: ["norte"],
+  },
+  {
+    pattern:
+      /valpara[ií]so|vi[nñ]a|renaca|reñaca|san antonio|quilpu[eé]|quintero/i,
+    zones: ["valparaiso"],
+  },
+  {
+    pattern:
+      /talca|chill[aá]n|rancagua|los [aá]ngeles|curic[oó]|linares|maule|lircay|o['’]?higgins|rengo|san fernando/i,
+    zones: ["octava"],
+  },
+  {
+    pattern:
+      /concepci[oó]n|temuco|valdivia|osorno|puerto montt|punta arenas|ancud|chil[oó]e|magallanes|arauco|biob[ií]o|talcahuano|los lagos|ays[eé]n/i,
+    zones: ["biobio"],
+  },
+  {
+    pattern:
+      /santiago|providencia|las condes|maip[uú]|recoleta|huechuraba|san bernardo|vitacura|independencia|apoquindo|la florida|puente alto|quilicura/i,
+    zones: ["rm-metropolitana"],
+  },
 ];
 
 const clinicLocations = clinicLocationsAsset as {

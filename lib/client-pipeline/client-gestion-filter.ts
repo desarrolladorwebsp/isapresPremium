@@ -55,7 +55,7 @@ export function clientGestionBuckets(
   const buckets = new Set<ClientGestionFilter>();
   const status = client.pipelineStatus ?? "NUEVO";
 
-  if (status === "CERRADO" || status === "PERDIDO") {
+  if (status === "RECEPCIONADO" || status === "PERDIDO") {
     buckets.add("gestionadas");
     return buckets;
   }

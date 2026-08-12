@@ -4,6 +4,7 @@ import type {
   ClientProfileInput,
 } from "@/types/client-profile";
 import { resolveClientMoneyCurrency } from "@/lib/client-profile/constants";
+import { resolveContributorType } from "@/lib/quote-criteria-options";
 
 function resolveCoverageArea(value: unknown): ClientCoverageArea {
   if (value === "santiago-centro" || value === "region") return value;
@@ -47,6 +48,8 @@ export function parseClientProfilePayload(payload: unknown): ClientProfileInput 
           const dependent = item as Record<string, unknown>;
           return {
             id: typeof dependent.id === "string" ? dependent.id : "",
+            fullName:
+              typeof dependent.fullName === "string" ? dependent.fullName : "",
             rut: typeof dependent.rut === "string" ? dependent.rut : "",
             birthDate:
               typeof dependent.birthDate === "string" ? dependent.birthDate : "",
@@ -148,6 +151,7 @@ export function parseClientProfilePayload(payload: unknown): ClientProfileInput 
     maritalStatus:
       typeof data.maritalStatus === "string" ? data.maritalStatus : null,
     employerRut: typeof data.employerRut === "string" ? data.employerRut : null,
+    contributorType: resolveContributorType(data.contributorType) || null,
     rentaImponible:
       typeof data.rentaImponible === "string" ? data.rentaImponible : null,
     motivoCotizacion:

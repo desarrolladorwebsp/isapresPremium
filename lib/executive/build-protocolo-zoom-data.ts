@@ -1,4 +1,9 @@
-import { CLIENT_MOTIVO_COTIZACION_OPTIONS } from "@/lib/client-profile/constants";
+import {
+  CLIENT_MOTIVO_COTIZACION_OPTIONS,
+  motivoCotizacionIncludes,
+  motivoCotizacionIncludesOtros,
+  parseMotivoCotizacionIds,
+} from "@/lib/client-profile/constants";
 import { formatPersonDisplayName } from "@/lib/format-person-name";
 import type { UserRecord } from "@/types/user";
 
@@ -130,7 +135,7 @@ export function buildProtocoloZoomData(client: UserRecord): ProtocoloZoomData {
     .filter(Boolean)
     .join(" · ");
 
-  const motivoId = profile?.motivoCotizacion?.trim() ?? "";
+  const motivoIds = parseMotivoCotizacionIds(profile?.motivoCotizacion);
   const costoUf =
     profile?.currentPlanPriceCurrency === "UF"
       ? profile.currentPlanPrice?.trim() ?? ""
@@ -140,30 +145,39 @@ export function buildProtocoloZoomData(client: UserRecord): ProtocoloZoomData {
         );
 
   const quotes: ProtocoloZoomQuoteRow[] = [];
-  if (client.advisedPlan) {
+  const seenPlanCodes = new Set<string>();
+
+  function pushQuotePlan(plan: {
+    planCode?: string | null;
+    isapre?: string | null;
+    planName?: string | null;
+    finalPriceUf?: number | null;
+    basePriceUf?: number | null;
+  } | null | undefined) {
+    if (!plan || quotes.length >= 4) return;
+    const code = plan.planCode?.trim() || "";
+    if (code && seenPlanCodes.has(code)) return;
+    if (code) seenPlanCodes.add(code);
     quotes.push({
-      isapre: client.advisedPlan.isapre?.trim() || "",
-      planName: client.advisedPlan.planName?.trim() || "",
+      isapre: plan.isapre?.trim() || "",
+      planName: plan.planName?.trim() || "",
       valorUf:
-        client.advisedPlan.finalPriceUf != null
-          ? String(client.advisedPlan.finalPriceUf)
-          : client.advisedPlan.basePriceUf != null
-            ? String(client.advisedPlan.basePriceUf)
+        plan.finalPriceUf != null
+          ? String(plan.finalPriceUf)
+          : plan.basePriceUf != null
+            ? String(plan.basePriceUf)
             : "",
     });
   }
-  if (client.requestedPlan) {
-    quotes.push({
-      isapre: client.requestedPlan.isapre?.trim() || "",
-      planName: client.requestedPlan.planName?.trim() || "",
-      valorUf:
-        client.requestedPlan.finalPriceUf != null
-          ? String(client.requestedPlan.finalPriceUf)
-          : client.requestedPlan.basePriceUf != null
-            ? String(client.requestedPlan.basePriceUf)
-            : "",
-    });
+
+  // Elegido primero, luego el resto de la propuesta, luego solicitado.
+  pushQuotePlan(client.advisedPlan);
+  for (const plan of client.assignedPlans ?? []) {
+    if (plan.planCode === client.advisedPlan?.planCode) continue;
+    pushQuotePlan(plan);
   }
+  pushQuotePlan(client.requestedPlan);
+
   while (quotes.length < 4) {
     quotes.push({ isapre: "", planName: "", valorUf: "" });
   }
@@ -200,18 +214,34 @@ export function buildProtocoloZoomData(client: UserRecord): ProtocoloZoomData {
     anualidadNo: profile?.anualidad === false,
     seguroComplSi: hasSeguro,
     seguroComplNo: !hasSeguro && seguros.toLowerCase() === "no",
-    motivoBajarCostos: motivoId === "bajar-costo",
-    motivoMalaExperiencia: motivoId === "mala-experiencia",
-    motivoCoberturas: motivoId === "cobertura",
-    otrosMotivos:
-      motivoId === "otros"
+    motivoBajarCostos: motivoCotizacionIncludes(
+      profile?.motivoCotizacion,
+      "bajar-costo",
+    ),
+    motivoMalaExperiencia: motivoCotizacionIncludes(
+      profile?.motivoCotizacion,
+      "mala-experiencia",
+    ),
+    motivoCoberturas: motivoCotizacionIncludes(
+      profile?.motivoCotizacion,
+      "cobertura",
+    ),
+    otrosMotivos: [
+      ...motivoIds
+        .filter(
+          (id) =>
+            id !== "bajar-costo" &&
+            id !== "mala-experiencia" &&
+            id !== "cobertura" &&
+            id !== "otros",
+        )
+        .map(resolveMotivoLabel),
+      motivoCotizacionIncludesOtros(profile?.motivoCotizacion)
         ? profile?.motivoCotizacionOther?.trim() || ""
-        : motivoId &&
-            motivoId !== "bajar-costo" &&
-            motivoId !== "mala-experiencia" &&
-            motivoId !== "cobertura"
-          ? resolveMotivoLabel(motivoId)
-          : profile?.motivoCotizacionOther?.trim() || "",
+        : "",
+    ]
+      .filter(Boolean)
+      .join(" · "),
     zoomIp1: "",
     zoomIp2: "",
     zoomIpAuxiliar: "",

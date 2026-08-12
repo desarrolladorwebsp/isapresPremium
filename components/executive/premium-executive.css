@@ -302,5 +302,5 @@
 [data-premium-surface] .premium-client-form label > span.font-medium,
 [data-premium-surface] .premium-client-form .premium-form-section-title,
 [data-premium-surface] .premium-client-form p.text-xs.font-semibold.uppercase.tracking-wide {
-  color: var(--dash-navy);
+  color: var(--dash-navy, #092558);
 }

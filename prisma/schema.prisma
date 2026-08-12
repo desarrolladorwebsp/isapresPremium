@@ -31,6 +31,8 @@ enum QuoteActivityType {
 enum ClientActivityType {
   PLAN_CHANGED
   ADVISED_PLAN_CLEARED
+  PLAN_ASSIGNED
+  PLAN_UNASSIGNED
 }
 
 enum StaffRole {
@@ -59,10 +61,8 @@ enum ClientPipelineStatus {
   CONTACTADO
   NO_CONTESTA
   EN_SEGUIMIENTO
-  PROPUESTA_ENVIADA
-  DOCUMENTACION
   ENVIADO_ISAPRE
-  CERRADO
+  RECEPCIONADO
   PERDIDO
 }
 
@@ -78,6 +78,14 @@ enum ClientOrigin {
   CAMPANA_LEAD_WHATSAPP
   /// Lead captado por formulario web (Isapres Premium u otros) vía API.
   FORMULARIO_WEB
+  CAMPANA_ISAPRES_PREMIUM
+  CAMPANA_CONSALUD
+  CAMPANA_BANMEDICA
+  CAMPANA_COLMENA
+  CAMPANA_CRUZ_BLANCA
+  CAMPANA_VIDA_TRES
+  CAMPANA_NUEVA_MASVIDA
+  CAMPANA_ESENCIAL
 }
 
 enum ClientContactMethod {
@@ -171,11 +179,29 @@ model Plan {
   coverages       CoverageEntry[]
   quotes          Quote[]
   advisedClients  User[]          @relation("AdvisedPlans")
+  assignedToClients ClientAssignedPlan[]
   reviews         PlanReview[]
 
   @@index([isapreId])
   @@index([planType])
   @@map("plans")
+}
+
+/// Planes propuestos/asignados a un cliente (varios). El elegido vive en User.advisedPlanCode.
+model ClientAssignedPlan {
+  id           String   @id @default(cuid())
+  userId       String   @map("user_id")
+  planCode     String   @map("plan_code")
+  notes        String?
+  assignedById String?  @map("assigned_by_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan         Plan     @relation(fields: [planCode], references: [uniqueCode], onDelete: Cascade)
+
+  @@unique([userId, planCode])
+  @@index([userId])
+  @@index([planCode])
+  @@map("client_assigned_plans")
 }
 
 model CoverageEntry {
@@ -205,7 +231,7 @@ model User {
   assignedExecutiveId  String?               @map("assigned_executive_id")
   /// Ejecutivo o admin que registró el cliente (alta manual). Null en leads del cotizador/formulario.
   registeredById       String?               @map("registered_by_id")
-  /// Ejecutivo que hizo el handoff y sigue el cliente hasta CERRADO/PERDIDO (sin ser el assignee).
+  /// Ejecutivo que hizo el handoff y sigue el cliente hasta RECEPCIONADO/PERDIDO (sin ser el assignee).
   trackingExecutiveId  String?               @map("tracking_executive_id")
   pipelineStatus       ClientPipelineStatus  @default(NUEVO) @map("pipeline_status")
   pipelineChecklist    Json?                 @map("pipeline_checklist")
@@ -215,6 +241,10 @@ model User {
   nextCallAt           DateTime?             @map("next_call_at")
   /// Llamado de confirmación Zoom (típicamente 10 min antes de la reunión Premium).
   confirmationCallAt   DateTime?             @map("confirmation_call_at")
+  /// Recordatorio / gestión libre del ejecutivo (aparece en calendario).
+  reminderAt           DateTime?             @map("reminder_at")
+  /// Texto de la gestión del recordatorio (ej. "Llamar al cliente a las 8pm").
+  reminderNote         String?               @map("reminder_note")
   /// Último resultado / nota corta del llamado.
   lastCallOutcome      String?               @map("last_call_outcome")
   /// Cómo debe contactar el ejecutivo Premium (tras redirección Zoom).
@@ -237,6 +267,7 @@ model User {
   registeredBy           StaffAccount? @relation("RegisteredClients", fields: [registeredById], references: [id], onDelete: SetNull)
   trackingExecutive      StaffAccount? @relation("TrackingClients", fields: [trackingExecutiveId], references: [id], onDelete: SetNull)
   advisedPlan            Plan?         @relation("AdvisedPlans", fields: [advisedPlanCode], references: [uniqueCode], onDelete: SetNull)
+  assignedPlans          ClientAssignedPlan[]
 
   @@index([role])
   @@index([assignedExecutiveId])
@@ -245,6 +276,7 @@ model User {
   @@index([advisedPlanCode])
   @@index([nextCallAt])
   @@index([confirmationCallAt])
+  @@index([reminderAt])
   @@map("users")
 }
 

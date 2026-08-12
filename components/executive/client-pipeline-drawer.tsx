@@ -12,6 +12,11 @@ import { ClientPlanSummary } from "@/components/executive/client-plan-summary";
 import { CalendlyInlineEmbed } from "@/components/executive/calendly-inline-embed";
 import { RescheduleDayAgenda } from "@/components/executive/reschedule-day-agenda";
 import {
+  ClientPipelineRoleCard,
+  type PipelineRoleId,
+} from "@/components/executive/client-pipeline-role-card";
+import { ClientProtocoloFlowView } from "@/components/executive/client-protocolo-flow-view";
+import {
   ClientProfileForm,
   userRecordToProfileFormValue,
   type ClientProfileFormValue,
@@ -42,6 +47,11 @@ import {
 import {
   appendPipelineNoteLine,
   canAccessInternalPipelineNotes,
+  clientNoteDisplayText,
+  extractPipelineNoteStamp,
+  formatClientNoteLineBody,
+  listClientNoteLines,
+  listPipelineModificationLines,
 } from "@/lib/client-pipeline/note-stamp";
 import {
   CONFIRMATION_CALL_LEAD_MINUTES,
@@ -52,6 +62,7 @@ import {
   agendaUrgencyFromIso,
   type AgendaUrgency,
 } from "@/lib/client-pipeline/agenda-urgency";
+import { motivoCotizacionIncludesOtros } from "@/lib/client-profile/constants";
 import { getClientManagementRutErrors } from "@/lib/client-profile/validate-client-ruts";
 import {
   CURRENT_COVERAGE_OPTIONS,
@@ -81,6 +92,7 @@ type PendingConfirm =
   | { kind: "contactado" }
   | { kind: "perdido"; reasonLabel: string }
   | { kind: "close" }
+  | { kind: "confirm_zoom_meeting" }
   | {
       kind: "redirect";
       targetLabel: string;
@@ -96,11 +108,19 @@ export type ClientFichaModal =
   | "family"
   | "addTitular"
   | "addCarga"
+  | "personal"
   | "prevision"
+  | "complementaria"
   | "plan"
   | "docs"
   | "historial"
   | "notas";
+
+/** Deep-link desde calendario / URL (`flow` + `gestion`). */
+export type ClientPipelineLaunchRequest = {
+  flow: PipelineRoleId;
+  gestion?: "reschedule" | "reminder" | "confirm_zoom" | "redirect" | null;
+};
 
 export interface ClientPipelineDrawerProps {
   client: UserRecord | null;
@@ -130,6 +150,13 @@ export interface ClientPipelineDrawerProps {
   onFichaModalChange?: (modal: ClientFichaModal) => void;
   pendingFamilyAdd?: "titular" | "carga" | null;
   onPendingFamilyAddConsumed?: () => void;
+  /** Notifica cuando se abre/cierra la vista de flujo (cards de rol). */
+  onActiveFlowChange?: (flow: PipelineRoleId | null) => void;
+  /** Notifica si hay cambios de ficha sin guardar. */
+  onUnsavedChangesChange?: (dirty: boolean) => void;
+  /** Abre flujo/acción una vez (p. ej. desde el calendario). */
+  launchRequest?: ClientPipelineLaunchRequest | null;
+  onLaunchConsumed?: () => void;
 }
 
 function getManagementDescription(input: {
@@ -211,6 +238,14 @@ const AGENDA_FOLLOWUP_OUTCOME_OPTIONS: Array<{
   { value: "other", label: "Otros (registrar en notas)" },
 ];
 
+const AGENDA_REMINDER_OUTCOME_OPTIONS: Array<{
+  value: AgendaOutcomeValue;
+  label: string;
+}> = [
+  { value: "completed", label: "Gestión realizada" },
+  { value: "other", label: "Otros (registrar en notas)" },
+];
+
 /** Cómo se llegó a la persona al marcar la gestión como realizada. */
 const AGENDA_REACH_OPTIONS: Array<{ value: string; label: string }> = [
   { value: "llego", label: "Llegué a la persona" },
@@ -268,7 +303,7 @@ function agendaUrgencyBadge(urgency: AgendaUrgency): {
 
 type ClientAgendaItem = {
   id: string;
-  kind: "meeting" | "confirmation" | "followup";
+  kind: "meeting" | "confirmation" | "followup" | "reminder";
   title: string;
   channelLabel: string | null;
   whenIso: string | null;
@@ -335,9 +370,32 @@ function buildClientAgendaItems(input: {
   const contactMethod = client.preferredContactMethod ?? null;
   const nextCallLabel = formatNextCallAt(client.nextCallAt);
   const confirmationLabel = formatNextCallAt(client.confirmationCallAt);
+  const reminderLabel = formatNextCallAt(client.reminderAt);
   const assigned = resolveAgendaResponsible(client, "assigned");
   const tracking = resolveAgendaResponsible(client, "tracking");
   const confirmationOwner = resolveAgendaResponsible(client, "confirmation");
+
+  if (reminderLabel) {
+    const reminderDetail = client.reminderNote?.trim() || null;
+    items.push(
+      withResponsible(
+        {
+          id: "reminder",
+          kind: "reminder",
+          title: "Recordatorio",
+          channelLabel: "Recordatorio",
+          whenIso: client.reminderAt ?? null,
+          whenLabel: reminderLabel,
+          urgency: agendaUrgencyFromIso(client.reminderAt),
+          detail: reminderDetail,
+          zoomJoinUrl: null,
+          required: false,
+          outcomeOptions: AGENDA_REMINDER_OUTCOME_OPTIONS,
+        },
+        assigned,
+      ),
+    );
+  }
 
   if (confirmationLabel) {
     items.push(
@@ -508,7 +566,7 @@ function buildClientAgendaItems(input: {
     );
   }
 
-  if (status === "DOCUMENTACION") {
+  if (status === "ENVIADO_ISAPRE") {
     const pendingDocs =
       client.checklist?.items.filter((item) => !item.checked).length ?? 0;
     items.push(
@@ -524,7 +582,7 @@ function buildClientAgendaItems(input: {
           detail:
             pendingDocs > 0
               ? `${pendingDocs} documento${pendingDocs === 1 ? "" : "s"} sin marcar como recibido.`
-              : CLIENT_PIPELINE_STATUS_DESCRIPTIONS.DOCUMENTACION,
+              : CLIENT_PIPELINE_STATUS_DESCRIPTIONS.ENVIADO_ISAPRE,
           zoomJoinUrl: null,
           required: pendingDocs > 0,
           outcomeOptions: AGENDA_FOLLOWUP_OUTCOME_OPTIONS,
@@ -535,7 +593,7 @@ function buildClientAgendaItems(input: {
   }
 
   if (
-    (status === "PROPUESTA_ENVIADA" || status === "EN_SEGUIMIENTO") &&
+    status === "EN_SEGUIMIENTO" &&
     !nextCallLabel &&
     !confirmationLabel &&
     items.length === 0
@@ -578,6 +636,7 @@ const PROFILE_FIELD_LABELS: Array<{
   { key: "phone", label: "Celular" },
   { key: "rut", label: "RUT" },
   { key: "employerRut", label: "RUT empleador" },
+  { key: "contributorType", label: "Calidad de cliente" },
   { key: "firstNames", label: "Nombres" },
   { key: "lastNames", label: "Apellidos" },
   { key: "birthDate", label: "Fecha de nacimiento" },
@@ -796,6 +855,29 @@ function LostReasonFields({
   );
 }
 
+/** Zoom (reunión) vs llamado telefónico/WhatsApp — para textos de confirmación. */
+function isZoomScheduleAction(input: {
+  activeFlow: PipelineRoleId | null;
+  rescheduleSource: "zoom" | "premium" | null;
+  rescheduleContactMethod: ClientContactMethod | "";
+  preferredContactMethod?: ClientContactMethod | null;
+}): boolean {
+  if (
+    input.activeFlow === "premium" ||
+    input.activeFlow === "zoom" ||
+    input.activeFlow === "isapres"
+  ) {
+    return true;
+  }
+  if (input.rescheduleSource === "zoom") return true;
+  if (input.rescheduleSource === "premium") {
+    const channel =
+      input.rescheduleContactMethod || input.preferredContactMethod || "";
+    return channel === "ZOOM";
+  }
+  return false;
+}
+
 function buildSaveChangeSummary(input: {
   client: UserRecord;
   profileForm: ClientProfileFormValue;
@@ -808,6 +890,7 @@ function buildSaveChangeSummary(input: {
   showCloseForm: boolean;
   pipelineStatus: ClientPipelineStatus;
   isZoom: boolean;
+  scheduleIsZoom: boolean;
 }): string[] {
   const {
     client,
@@ -821,6 +904,7 @@ function buildSaveChangeSummary(input: {
     showCloseForm,
     pipelineStatus,
     isZoom,
+    scheduleIsZoom,
   } = input;
   const items: string[] = [];
 
@@ -831,20 +915,32 @@ function buildSaveChangeSummary(input: {
   const originalNextCall = toDatetimeLocalValue(client.nextCallAt);
   if (nextCallLocal !== originalNextCall) {
     if (!nextCallLocal.trim()) {
-      items.push("Quitar la fecha del próximo llamado");
+      items.push(
+        scheduleIsZoom
+          ? "Quitar la fecha de la reunión Zoom"
+          : "Quitar la fecha del próximo llamado",
+      );
     } else {
       const when =
         formatNextCallFromLocal(nextCallLocal) ?? nextCallLocal;
       items.push(
         originalNextCall
-          ? `Reagendar llamado para ${when}`
-          : `Agendar llamado para ${when}`,
+          ? scheduleIsZoom
+            ? `Editar reunión Zoom para ${when}`
+            : `Reagendar llamado para ${when}`
+          : scheduleIsZoom
+            ? `Agendar reunión Zoom para ${when}`
+            : `Agendar llamado para ${when}`,
       );
     }
   } else if (rescheduleNote.trim() && nextCallLocal.trim()) {
     const when =
       formatNextCallFromLocal(nextCallLocal) ?? nextCallLocal;
-    items.push(`Confirmar llamado para ${when}`);
+    items.push(
+      scheduleIsZoom
+        ? `Confirmar reunión Zoom para ${when}`
+        : `Confirmar llamado para ${when}`,
+    );
   }
   if (
     rescheduleContactMethod &&
@@ -855,7 +951,15 @@ function buildSaveChangeSummary(input: {
     );
   }
   if (rescheduleNote.trim()) {
-    items.push(`Nota de reagendamiento: “${rescheduleNote.trim()}”`);
+    items.push(
+      originalNextCall
+        ? scheduleIsZoom
+          ? `Nota de edición Zoom: “${rescheduleNote.trim()}”`
+          : `Nota de reagendamiento: “${rescheduleNote.trim()}”`
+        : scheduleIsZoom
+          ? `Nota de agendamiento Zoom: “${rescheduleNote.trim()}”`
+          : `Nota de agendamiento: “${rescheduleNote.trim()}”`,
+    );
   }
 
   const originalProfile = userRecordToProfileFormValue(client);
@@ -907,11 +1011,11 @@ function buildSaveChangeSummary(input: {
       );
     }
 
-    const closing = showCloseForm || pipelineStatus === "CERRADO";
+    const closing = showCloseForm || pipelineStatus === "RECEPCIONADO";
     if (closing) {
       const originalClosed = client.closedRecord ?? buildEmptyClosedRecord();
       if (
-        client.pipelineStatus !== "CERRADO" ||
+        client.pipelineStatus !== "RECEPCIONADO" ||
         JSON.stringify(closedRecord) !== JSON.stringify(originalClosed)
       ) {
         const closeBits = [
@@ -922,11 +1026,11 @@ function buildSaveChangeSummary(input: {
             : null,
         ].filter(Boolean);
         items.push(
-          client.pipelineStatus === "CERRADO"
-            ? `Actualizar registro de cierre${
+          client.pipelineStatus === "RECEPCIONADO"
+            ? `Actualizar recepcionado${
                 closeBits.length ? ` (${closeBits.join(" · ")})` : ""
               }`
-            : `Cerrar negocio${
+            : `Recepcionado${
                 closeBits.length ? ` (${closeBits.join(" · ")})` : ""
               }`,
         );
@@ -955,6 +1059,7 @@ function profileSnapshot(value: ClientProfileFormValue): string {
     weightKg: value.weightKg || "",
     maritalStatus: value.maritalStatus || "",
     employerRut: value.employerRut || "",
+    contributorType: value.contributorType || "",
     rentaImponible: value.rentaImponible || "",
     motivoCotizacion: value.motivoCotizacion || "",
     motivoCotizacionOther: value.motivoCotizacionOther || "",
@@ -986,6 +1091,10 @@ export function ClientPipelineDrawer({
   onFichaModalChange,
   pendingFamilyAdd = null,
   onPendingFamilyAddConsumed,
+  onActiveFlowChange,
+  onUnsavedChangesChange,
+  launchRequest = null,
+  onLaunchConsumed,
 }: ClientPipelineDrawerProps) {
   const shouldCloseAfterSave = closeAfterSave ?? variant === "modal";
   const showFullSections = layout === "full";
@@ -1028,6 +1137,8 @@ export function ClientPipelineDrawer({
   const [nextCallLocal, setNextCallLocal] = useState("");
   const [rescheduleNote, setRescheduleNote] = useState("");
   const [meetingNote, setMeetingNote] = useState("");
+  const [confirmZoomNote, setConfirmZoomNote] = useState("");
+  const [activeFlow, setActiveFlow] = useState<PipelineRoleId | null>(null);
   const [rescheduleContactMethod, setRescheduleContactMethod] = useState<
     ClientContactMethod | ""
   >("");
@@ -1102,6 +1213,19 @@ export function ClientPipelineDrawer({
   const [calendlyError, setCalendlyError] = useState<string | null>(null);
   const [calendlyBookedHint, setCalendlyBookedHint] = useState(false);
   const [showCloseForm, setShowCloseForm] = useState(false);
+  const [flowActionModal, setFlowActionModal] = useState<
+    | null
+    | "reschedule"
+    | "redirect"
+    | "lost"
+    | "send_zoom"
+    | "send_isapres"
+    | "derive"
+    | "reminder"
+    | "recepcionado"
+  >(null);
+  const [reminderAtLocal, setReminderAtLocal] = useState("");
+  const [reminderNoteLocal, setReminderNoteLocal] = useState("");
   const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(
     null,
   );
@@ -1153,7 +1277,7 @@ export function ClientPipelineDrawer({
       if (JSON.stringify(checklist.items) !== JSON.stringify(originalChecklist.items)) {
         return true;
       }
-      if (showCloseForm || pipelineStatus === "CERRADO") {
+      if (showCloseForm || pipelineStatus === "RECEPCIONADO") {
         const originalClosed = client.closedRecord ?? buildEmptyClosedRecord();
         if (JSON.stringify(closedRecord) !== JSON.stringify(originalClosed)) {
           return true;
@@ -1196,6 +1320,8 @@ export function ClientPipelineDrawer({
     setClosedRecord(nextClosedRecord);
     setPipelineNotes(client.pipelineNotes ?? "");
     setNextCallLocal(toDatetimeLocalValue(client.nextCallAt));
+    setReminderAtLocal(toDatetimeLocalValue(client.reminderAt));
+    setReminderNoteLocal(client.reminderNote ?? "");
     setRescheduleNote("");
     setMeetingNote("");
     setRescheduleContactMethod(client.preferredContactMethod ?? "");
@@ -1226,7 +1352,7 @@ export function ClientPipelineDrawer({
     setAgendaReachCode("");
     setAgendaReachNote("");
     setCalendlyConfiguredTeams([]);
-    setShowCloseForm((client.pipelineStatus ?? "NUEVO") === "CERRADO");
+    setShowCloseForm((client.pipelineStatus ?? "NUEVO") === "RECEPCIONADO");
     setRedirectTargetId("");
     setRedirectContactMethod("");
     setRedirectAppointmentLocal("");
@@ -1236,8 +1362,101 @@ export function ClientPipelineDrawer({
     setRutErrors({});
   }, [open, client]);
 
+  // Solo salir de la pista al abrir/cambiar de cliente — no al guardar (mismo id).
   useEffect(() => {
-    if (!open || !canManageZoom) return;
+    setActiveFlow(null);
+  }, [open, client?.id]);
+
+  // Deep-link: abrir flujo + modal de gestión (calendario → ficha).
+  useEffect(() => {
+    if (!open || !client || !launchRequest) return;
+
+    const { flow, gestion } = launchRequest;
+    setActiveFlow(flow);
+
+    if (gestion === "reschedule") {
+      setShowNoAnswer(false);
+      setShowRedirect(false);
+      setShowSendToZoom(false);
+      setShowSendToIsapres(false);
+      setShowLost(false);
+      setLostSource(null);
+      setPendingConfirm(null);
+      setNextCallLocal(toDatetimeLocalValue(client.nextCallAt));
+      setRescheduleNote("");
+      if (canManagePremium) {
+        setShowReschedule(true);
+        setRescheduleSource("premium");
+        setRescheduleContactMethod(client.preferredContactMethod ?? "");
+      } else {
+        setShowReschedule(true);
+        setRescheduleSource("zoom");
+      }
+      setFlowActionModal("reschedule");
+    } else if (gestion === "reminder") {
+      setShowNoAnswer(false);
+      setShowReschedule(false);
+      setRescheduleSource(null);
+      setShowRedirect(false);
+      setShowSendToZoom(false);
+      setShowSendToIsapres(false);
+      setShowLost(false);
+      setLostSource(null);
+      setPendingConfirm(null);
+      setReminderAtLocal(toDatetimeLocalValue(client.reminderAt));
+      setReminderNoteLocal(client.reminderNote ?? "");
+      setFlowActionModal("reminder");
+    } else if (gestion === "confirm_zoom") {
+      setShowNoAnswer(false);
+      setShowReschedule(false);
+      setRescheduleSource(null);
+      setShowRedirect(false);
+      setShowSendToZoom(false);
+      setShowSendToIsapres(false);
+      setShowLost(false);
+      setLostSource(null);
+      setFlowActionModal(null);
+      if (client.confirmationCallAt || client.nextCallAt) {
+        setConfirmZoomNote("");
+        setPendingConfirm({ kind: "confirm_zoom_meeting" });
+      } else {
+        onNotify("No hay una reunión Zoom pendiente de confirmar.", "error");
+      }
+    } else if (gestion === "redirect") {
+      setShowNoAnswer(false);
+      setShowReschedule(false);
+      setRescheduleSource(null);
+      setShowSendToZoom(false);
+      setShowSendToIsapres(false);
+      setShowLost(false);
+      setLostSource(null);
+      setPendingConfirm(null);
+      if (canManageZoom) {
+        setShowRedirect(true);
+        setFlowActionModal("redirect");
+      } else if (canManagePremium) {
+        setFlowActionModal("derive");
+      }
+    }
+
+    onLaunchConsumed?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot launch
+  }, [open, client?.id, launchRequest]);
+
+  useEffect(() => {
+    onActiveFlowChange?.(activeFlow);
+    // Parent often passes an inline callback; only react to flow changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional
+  }, [activeFlow]);
+
+  useEffect(() => {
+    onUnsavedChangesChange?.(hasUnsavedChanges);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional
+  }, [hasUnsavedChanges]);
+
+  useEffect(() => {
+    // Zoom e Isapres (y admin) necesitan el listado Premium para asignar/redirigir.
+    if (!open || !(canManageZoom || canManageIsapres || isAdmin)) return;
     let cancelled = false;
     void (async () => {
       try {
@@ -1250,10 +1469,11 @@ export function ClientPipelineDrawer({
     return () => {
       cancelled = true;
     };
-  }, [open, canManageZoom]);
+  }, [open, canManageZoom, canManageIsapres, isAdmin]);
 
   useEffect(() => {
-    if (!open || !canManagePremium) return;
+    // Premium (y admin) necesitan Zoom / Isapres para derivar.
+    if (!open || !(canManagePremium || isAdmin)) return;
     let cancelled = false;
     void (async () => {
       try {
@@ -1354,6 +1574,12 @@ export function ClientPipelineDrawer({
     if (!pendingConfirm || !client) return null;
     switch (pendingConfirm.kind) {
       case "save": {
+        const scheduleIsZoom = isZoomScheduleAction({
+          activeFlow,
+          rescheduleSource,
+          rescheduleContactMethod,
+          preferredContactMethod: client.preferredContactMethod,
+        });
         const changes = buildSaveChangeSummary({
           client,
           profileForm,
@@ -1366,6 +1592,7 @@ export function ClientPipelineDrawer({
           showCloseForm,
           pipelineStatus,
           isZoom,
+          scheduleIsZoom,
         });
         const onlySchedule =
           changes.length > 0 &&
@@ -1373,23 +1600,54 @@ export function ClientPipelineDrawer({
             (item) =>
               item.startsWith("Agendar llamado") ||
               item.startsWith("Reagendar llamado") ||
+              item.startsWith("Agendar reunión Zoom") ||
+              item.startsWith("Editar reunión Zoom") ||
               item.startsWith("Confirmar llamado") ||
+              item.startsWith("Confirmar reunión Zoom") ||
               item.startsWith("Quitar la fecha") ||
               item.startsWith("Nota de reagendamiento") ||
+              item.startsWith("Nota de agendamiento") ||
+              item.startsWith("Nota de edición Zoom") ||
+              item.startsWith("Nota de agendamiento Zoom") ||
               item.startsWith("Canal de reunión"),
           );
         const whenLabel =
           formatNextCallFromLocal(nextCallLocal) ?? nextCallLocal;
+        const isReschedule = changes.some(
+          (item) =>
+            item.startsWith("Reagendar") || item.startsWith("Editar reunión"),
+        );
+        const clientName = (
+          <span className="font-extrabold text-[color:var(--dash-cyan,#1ac9ea)]">
+            {client.fullName}
+          </span>
+        );
         return {
           title: onlySchedule
-            ? changes.some((item) => item.startsWith("Reagendar"))
-              ? "Confirmar reagendamiento"
-              : "Confirmar agendamiento"
+            ? scheduleIsZoom
+              ? isReschedule
+                ? "Confirmar edición Zoom"
+                : "Confirmar agendamiento Zoom"
+              : isReschedule
+                ? "Confirmar reagendamiento"
+                : "Confirmar agendamiento"
             : "Guardar cambios",
           description:
-            onlySchedule && whenLabel
-              ? `¿Confirmas reagendar el llamado de ${client.fullName} para el ${whenLabel}?`
-              : `Se aplicarán estos cambios en ${client.fullName}:`,
+            onlySchedule && whenLabel ? (
+              scheduleIsZoom ? (
+                <>
+                  ¿Confirmas {isReschedule ? "actualizar" : "agendar"} la reunión
+                  Zoom de {clientName} para el {whenLabel}?
+                </>
+              ) : (
+                <>
+                  ¿Confirmas {isReschedule ? "reagendar" : "agendar"} el llamado
+                  de {clientName} para el {whenLabel}?
+                </>
+              )
+            ) : (
+              <>Se aplicarán estos cambios en {clientName}:</>
+            ),
           changes:
             changes.length > 0
               ? changes
@@ -1436,18 +1694,21 @@ export function ClientPipelineDrawer({
               }`
             : null,
           closedRecord.closedAt.trim()
-            ? `Fecha cierre: ${closedRecord.closedAt}`
+            ? `Fecha: ${closedRecord.closedAt}`
             : null,
         ].filter((value): value is string => Boolean(value));
         return {
-          title: "Cerrar negocio",
-          description: `¿Confirmas cerrar el negocio de ${client.fullName} con ${isapreLabel}?`,
-          changes: ["Estado → Cerrado", ...closeBits],
+          title: "Recepcionado",
+          description: `¿Confirmas marcar como recepcionado a ${client.fullName} con ${isapreLabel}?`,
+          changes: ["Estado → Cerrado (recepcionado)", ...closeBits],
         };
       }
       case "redirect":
         return {
-          title: "Redirigir a Isapres Premium",
+          title:
+            activeFlow === "isapres"
+              ? "Devolver a Ejecutivo Isapre Premium"
+              : "Redirigir a Isapres Premium",
           description: `Se reasignará a ${client.fullName}:`,
           changes: [
             `Ejecutivo destino: ${pendingConfirm.targetLabel}`,
@@ -1460,12 +1721,13 @@ export function ClientPipelineDrawer({
         };
       case "send_zoom":
         return {
-          title: "Confirmar envío a Zoom",
+          title: "Confirmar devolución a Zoom",
           description: `¿Confirmas devolver a ${client.fullName} a un Ejecutivo Zoom por falta de contacto?`,
           changes: [
             `Ejecutivo Zoom destino: ${pendingConfirm.targetLabel}`,
             "Estado → No contesta",
-            "Saldrá de tu cartera activa (Zoom lo retoma)",
+            "Saldrá de tu cartera activa",
+            "Zoom lo verá en Devueltos",
           ],
         };
       case "send_isapres":
@@ -1478,6 +1740,41 @@ export function ClientPipelineDrawer({
             "Queda en Derivados (seguimiento hasta el cierre)",
           ],
         };
+      case "confirm_zoom_meeting": {
+        const clientName = (
+          <span className="font-extrabold text-[color:var(--dash-cyan,#1ac9ea)]">
+            {client.fullName}
+          </span>
+        );
+        const isConfirmationCall = Boolean(client.confirmationCallAt);
+        const whenLabel = isConfirmationCall
+          ? confirmationCallLabel
+          : nextCallLabel;
+        return {
+          title: "Confirmar reunión Zoom",
+          description: whenLabel ? (
+            <>
+              ¿Confirmas la reunión Zoom de {clientName} ({whenLabel})?
+            </>
+          ) : (
+            <>¿Confirmas la reunión Zoom de {clientName}?</>
+          ),
+          changes: isConfirmationCall
+            ? [
+                "Se registra la confirmación Zoom como realizada",
+                "Se limpia el llamado de confirmación pendiente",
+                "Queda registro en el historial",
+                "Puedes agregar una anotación opcional",
+              ]
+            : [
+                "Se registra la reunión Zoom como confirmada",
+                "Se limpia la fecha de reunión pendiente",
+                "Estado → Contactado (si aplica)",
+                "Queda registro en el historial",
+                "Puedes agregar una anotación opcional",
+              ],
+        };
+      }
     }
   }, [
     pendingConfirm,
@@ -1492,6 +1789,10 @@ export function ClientPipelineDrawer({
     showCloseForm,
     pipelineStatus,
     isZoom,
+    activeFlow,
+    rescheduleSource,
+    nextCallLabel,
+    confirmationCallLabel,
   ]);
 
   if (!client) return null;
@@ -1517,7 +1818,7 @@ export function ClientPipelineDrawer({
       const checkedSomething = nextItems.some((item) => item.checked);
       if (checkedSomething) {
         setPipelineStatus((status) =>
-          advancePipelineStatus(status, "DOCUMENTACION"),
+          advancePipelineStatus(status, "EN_SEGUIMIENTO"),
         );
       }
       return {
@@ -1547,12 +1848,14 @@ export function ClientPipelineDrawer({
       weightKg: profileForm.weightKg || null,
       maritalStatus: profileForm.maritalStatus || null,
       employerRut: profileForm.employerRut.trim() || null,
+      contributorType: profileForm.contributorType.trim() || null,
       rentaImponible: profileForm.rentaImponible.trim() || null,
       motivoCotizacion: profileForm.motivoCotizacion || null,
-      motivoCotizacionOther:
-        profileForm.motivoCotizacion === "otros"
-          ? profileForm.motivoCotizacionOther.trim() || null
-          : null,
+      motivoCotizacionOther: motivoCotizacionIncludesOtros(
+        profileForm.motivoCotizacion,
+      )
+        ? profileForm.motivoCotizacionOther.trim() || null
+        : null,
       address: profileForm.address || null,
       commune: profileForm.commune || null,
       coverageArea: profileForm.coverageArea || null,
@@ -1574,14 +1877,51 @@ export function ClientPipelineDrawer({
   function renderCalendlyZoomPanel(context: "redirect" | "reschedule") {
     if (!client) return null;
 
+    const hasScheduledCall = Boolean(client.nextCallAt);
+    const isEditingExistingZoom =
+      context === "reschedule" &&
+      hasScheduledCall &&
+      (rescheduleSource === "zoom" ||
+        rescheduleContactMethod === "ZOOM" ||
+        client.preferredContactMethod === "ZOOM" ||
+        Boolean(client.zoomJoinUrl) ||
+        Boolean(client.calendlyTeam));
+
+    if (isEditingExistingZoom) {
+      return (
+        <div className="space-y-2 rounded-lg border border-amber-200/90 bg-amber-50/80 px-3 py-3">
+          <p className="text-xs font-semibold text-amber-950">
+            Editar reunión Zoom
+          </p>
+          <p className="text-[11px] leading-relaxed text-amber-950/90">
+            Para editar la fecha u hora de una reunión Zoom debes hacerlo
+            directamente en Calendly (reagendar o cancelar y volver a agendar).
+            Aquí solo puedes actualizar la fecha interna de seguimiento o
+            agregar una nota.
+          </p>
+          {client.calendlyTeam && isCalendlyTeamId(client.calendlyTeam) ? (
+            <p className="text-[11px] text-amber-950/80">
+              Equipo Calendly del cliente:{" "}
+              <span className="font-semibold">
+                {CALENDLY_TEAM_LABELS[client.calendlyTeam]}
+              </span>
+            </p>
+          ) : null}
+        </div>
+      );
+    }
+
+    const scheduleNoun = hasScheduledCall
+      ? "la edición de la reunión Zoom"
+      : "el agendamiento Zoom";
     const bookedHint =
       context === "redirect"
         ? "Horario reservado en Calendly. Indica la misma fecha y hora abajo y confirma la redirección a Premium."
-        : "Horario reservado en Calendly. Indica la misma fecha y hora arriba/abajo y confirma el reagendamiento.";
+        : `Horario reservado en Calendly. Indica la misma fecha y hora arriba/abajo y confirma ${scheduleNoun}.`;
     const notifyHint =
       context === "redirect"
         ? "Reunión Calendly confirmada. Completa la fecha abajo y confirma la redirección."
-        : "Reunión Calendly confirmada. Completa la fecha y confirma el reagendamiento.";
+        : `Reunión Calendly confirmada. Completa la fecha y confirma ${scheduleNoun}.`;
 
     return (
       <div className="space-y-3 rounded-lg border border-sky-200/80 bg-sky-50/70 px-3 py-3">
@@ -1728,14 +2068,14 @@ export function ClientPipelineDrawer({
     const closing =
       Boolean(options?.forceClose) ||
       showCloseForm ||
-      pipelineStatus === "CERRADO";
+      pipelineStatus === "RECEPCIONADO";
     if (closing) {
       if (!closedRecord.isapre.trim()) {
-        onNotify("Indica la Isapre del registro de cierre.", "error");
+        onNotify("Indica la Isapre del registro de recepcionado.", "error");
         return;
       }
       if (!closedRecord.closedAt.trim()) {
-        onNotify("Indica la fecha de cierre.", "error");
+        onNotify("Indica la fecha de recepcionado.", "error");
         return;
       }
     }
@@ -1765,6 +2105,13 @@ export function ClientPipelineDrawer({
           rescheduleSource === "premium" &&
           contactMethodChanged));
 
+    const scheduleIsZoom = isZoomScheduleAction({
+      activeFlow,
+      rescheduleSource,
+      rescheduleContactMethod,
+      preferredContactMethod: client.preferredContactMethod,
+    });
+
     let notesToSave: string | null | undefined;
     let lastCallOutcome: string | null | undefined;
     if (applyReschedule && nextCallIso) {
@@ -1773,7 +2120,15 @@ export function ClientPipelineDrawer({
         rescheduleSource === "premium" && rescheduleContactMethod
           ? ` Canal: ${CLIENT_CONTACT_METHOD_LABELS[rescheduleContactMethod]}.`
           : "";
-      const noteBody = `Reagendado para ${whenLabel}.${channelLabel}${
+      const isReschedule = Boolean(originalNextCall);
+      const noteVerb = scheduleIsZoom
+        ? isReschedule
+          ? "Reunión Zoom actualizada"
+          : "Reunión Zoom agendada"
+        : isReschedule
+          ? "Reagendado"
+          : "Agendado";
+      const noteBody = `${noteVerb} para ${whenLabel}.${channelLabel}${
         rescheduleNote.trim() ? ` ${rescheduleNote.trim()}` : ""
       }`;
       notesToSave = appendPipelineNoteLine(
@@ -1783,13 +2138,17 @@ export function ClientPipelineDrawer({
       );
       lastCallOutcome =
         rescheduleNote.trim() ||
-        (rescheduleContactMethod
-          ? `Llamado reagendado · ${CLIENT_CONTACT_METHOD_LABELS[rescheduleContactMethod]}`
-          : "Llamado reagendado");
+        (scheduleIsZoom
+          ? isReschedule
+            ? "Reunión Zoom actualizada"
+            : "Reunión Zoom agendada"
+          : rescheduleContactMethod
+            ? `Llamado ${isReschedule ? "reagendado" : "agendado"} · ${CLIENT_CONTACT_METHOD_LABELS[rescheduleContactMethod]}`
+            : `Llamado ${isReschedule ? "reagendado" : "agendado"}`);
     }
 
     if (closing) {
-      const closeBody = `Cierre de negocio registrado. Isapre: ${closedRecord.isapre.trim()}.${
+      const closeBody = `Recepcionado. Isapre: ${closedRecord.isapre.trim()}.${
         closedRecord.planName?.trim() || closedRecord.planCode?.trim()
           ? ` Plan: ${closedRecord.planName?.trim() || closedRecord.planCode?.trim()}.`
           : ""
@@ -1799,28 +2158,28 @@ export function ClientPipelineDrawer({
         closeBody,
         actorDisplayName,
       );
-      lastCallOutcome = `Cerrado · ${closedRecord.isapre.trim()}`;
+      lastCallOutcome = `Recepcionado · ${closedRecord.isapre.trim()}`;
     }
 
     if (meetingNote.trim()) {
       notesToSave = appendPipelineNoteLine(
         notesToSave ?? client.pipelineNotes,
-        `Nota de reunión: ${meetingNote.trim()}`,
+        formatClientNoteLineBody(meetingNote.trim()),
         actorDisplayName,
       );
       if (!lastCallOutcome) {
-        lastCallOutcome = "Nota de reunión registrada";
+        lastCallOutcome = "Nota registrada";
       }
     }
 
     setSaving(true);
     try {
       const nextStatus = closing
-        ? "CERRADO"
+        ? "RECEPCIONADO"
         : applyReschedule
           ? "EN_SEGUIMIENTO"
           : checklist.items.some((item) => item.checked)
-            ? advancePipelineStatus(pipelineStatus, "DOCUMENTACION")
+            ? advancePipelineStatus(pipelineStatus, "EN_SEGUIMIENTO")
             : pipelineStatus;
 
       const updated = await updateClientPipeline(client.id, {
@@ -1848,12 +2207,21 @@ export function ClientPipelineDrawer({
       setShowReschedule(false);
       setRescheduleSource(null);
       setShowCloseForm(closing);
+      if (closing) {
+        setFlowActionModal(null);
+      }
       onUpdated(updated);
       onNotify(
         closing
-          ? "Cliente cerrado."
+          ? "Cliente marcado como recepcionado."
           : applyReschedule
-            ? "Llamado reagendado y cambios guardados."
+            ? scheduleIsZoom
+              ? originalNextCall
+                ? "Reunión Zoom actualizada y cambios guardados."
+                : "Reunión Zoom agendada y cambios guardados."
+              : originalNextCall
+                ? "Llamado reagendado y cambios guardados."
+                : "Llamado agendado y cambios guardados."
             : "Cliente actualizado.",
       );
       if (shouldCloseAfterSave) {
@@ -1951,19 +2319,18 @@ export function ClientPipelineDrawer({
     try {
       const nextNotes = appendPipelineNoteLine(
         client.pipelineNotes,
-        `Nota de reunión: ${noteBody}`,
+        formatClientNoteLineBody(noteBody),
         actorDisplayName,
       );
       const updated = await updateClientPipeline(client.id, {
         pipelineNotes: nextNotes,
-        lastCallOutcome: "Nota de reunión registrada",
+        lastCallOutcome: "Nota registrada",
         clientProfile: buildProfilePayload(),
       });
       if (canViewInternalNotes) setPipelineNotes(nextNotes);
       setMeetingNote("");
       onUpdated(updated);
-      onNotify("Nota guardada en el historial.");
-      onFichaModalChange?.(null);
+      onNotify("Nota guardada.");
     } catch (error) {
       onNotify(
         error instanceof Error ? error.message : "No se pudo guardar la nota.",
@@ -2005,14 +2372,28 @@ export function ClientPipelineDrawer({
     }
   }
 
-  async function handleMarkConfirmationCall(): Promise<boolean> {
+  async function handleMarkConfirmationCall(
+    annotationNote?: string,
+  ): Promise<boolean> {
     if (!client) return false;
     setActionBusy(true);
     try {
-      const updated = await markClientConfirmationCall(client.id, {
+      let updated = await markClientConfirmationCall(client.id, {
         outcome:
           "Confirmación Zoom realizada: cliente recordado de la reunión Premium.",
       });
+      const annotation = annotationNote?.trim();
+      if (annotation) {
+        const nextNotes = appendPipelineNoteLine(
+          updated.pipelineNotes ?? client.pipelineNotes,
+          formatClientNoteLineBody(annotation),
+          actorDisplayName,
+        );
+        updated = await updateClientPipeline(client.id, {
+          pipelineNotes: nextNotes,
+        });
+        if (canViewInternalNotes) setPipelineNotes(nextNotes);
+      }
       onUpdated(updated);
       onNotify("Confirmación Zoom registrada.");
       return true;
@@ -2024,6 +2405,116 @@ export function ClientPipelineDrawer({
         "error",
       );
       return false;
+    } finally {
+      setActionBusy(false);
+    }
+  }
+
+  async function handleConfirmZoomMeeting() {
+    if (!client) return;
+    const annotation = confirmZoomNote.trim();
+
+    // Prioriza el llamado de confirmación Zoom si está pendiente.
+    if (client.confirmationCallAt) {
+      const ok = await handleMarkConfirmationCall(annotation);
+      if (ok) setConfirmZoomNote("");
+      return;
+    }
+
+    if (!client.nextCallAt) {
+      onNotify("No hay una reunión Zoom agendada para confirmar.", "error");
+      return;
+    }
+
+    setActionBusy(true);
+    try {
+      const whenLabel = formatNextCallAt(client.nextCallAt) ?? "fecha indicada";
+      const historyBody = `Reunión Zoom confirmada para ${whenLabel}.`;
+      let nextNotes = appendPipelineNoteLine(
+        client.pipelineNotes,
+        historyBody,
+        actorDisplayName,
+      );
+      if (annotation) {
+        nextNotes = appendPipelineNoteLine(
+          nextNotes,
+          formatClientNoteLineBody(annotation),
+          actorDisplayName,
+        );
+      }
+      const nextStatus = advancePipelineStatus(pipelineStatus, "CONTACTADO");
+      const updated = await updateClientPipeline(client.id, {
+        pipelineStatus: nextStatus,
+        pipelineNotes: nextNotes,
+        lastCallOutcome: "Reunión Zoom confirmada",
+        nextCallAt: null,
+        clientProfile: buildProfilePayload(),
+      });
+      setPipelineStatus(nextStatus);
+      setNextCallLocal("");
+      setConfirmZoomNote("");
+      if (canViewInternalNotes) setPipelineNotes(nextNotes);
+      onUpdated(updated);
+      onNotify("Reunión Zoom confirmada.");
+    } catch (error) {
+      onNotify(
+        error instanceof Error
+          ? error.message
+          : "No se pudo confirmar la reunión Zoom.",
+        "error",
+      );
+    } finally {
+      setActionBusy(false);
+    }
+  }
+
+  async function handleSaveReminder() {
+    if (!client) return;
+    const note = reminderNoteLocal.trim();
+    if (!note) {
+      onNotify("Escribe la gestión del recordatorio (ej. llamar al cliente).", "error");
+      return;
+    }
+    if (!reminderAtLocal.trim()) {
+      onNotify("Indica fecha y hora del recordatorio.", "error");
+      return;
+    }
+    const reminderDate = new Date(reminderAtLocal);
+    if (Number.isNaN(reminderDate.getTime())) {
+      onNotify("La fecha del recordatorio no es válida.", "error");
+      return;
+    }
+    const reminderIso = reminderDate.toISOString();
+    const whenLabel = formatNextCallAt(reminderIso) ?? reminderAtLocal;
+
+    setActionBusy(true);
+    try {
+      const noteBody = `Recordatorio agendado para ${whenLabel}: ${note}`;
+      const nextNotes = appendPipelineNoteLine(
+        client.pipelineNotes,
+        noteBody,
+        actorDisplayName,
+      );
+      const updated = await updateClientPipeline(client.id, {
+        reminderAt: reminderIso,
+        reminderNote: note,
+        pipelineNotes: nextNotes,
+        lastCallOutcome: `Recordatorio · ${note}`,
+        clientProfile: buildProfilePayload(),
+      });
+      if (canViewInternalNotes) setPipelineNotes(nextNotes);
+      setReminderAtLocal(toDatetimeLocalValue(updated.reminderAt));
+      setReminderNoteLocal(updated.reminderNote ?? note);
+      onUpdated(updated);
+      onNotify("Recordatorio guardado en el calendario.");
+      setFlowActionModal(null);
+    } catch (error) {
+      onNotify(
+        error instanceof Error
+          ? error.message
+          : "No se pudo guardar el recordatorio.",
+        "error",
+      );
     } finally {
       setActionBusy(false);
     }
@@ -2358,7 +2849,22 @@ export function ClientPipelineDrawer({
     }
 
     if (showReschedule && !nextCallLocal.trim()) {
-      onNotify("Indica la fecha y hora del llamado reagendado.", "error");
+      const scheduleIsZoom = isZoomScheduleAction({
+        activeFlow,
+        rescheduleSource,
+        rescheduleContactMethod,
+        preferredContactMethod: client?.preferredContactMethod,
+      });
+      onNotify(
+        scheduleIsZoom
+          ? client?.nextCallAt
+            ? "Indica la fecha y hora de la reunión Zoom."
+            : "Indica la fecha y hora para agendar Zoom."
+          : client?.nextCallAt
+            ? "Indica la fecha y hora del llamado reagendado."
+            : "Indica la fecha y hora del llamado.",
+        "error",
+      );
       return;
     }
 
@@ -2371,7 +2877,10 @@ export function ClientPipelineDrawer({
       return;
     }
 
-    if (!hasUnsavedChanges) return;
+    if (!hasUnsavedChanges) {
+      onNotify("No hay cambios para guardar.", "error");
+      return;
+    }
     setPendingConfirm({ kind: "save" });
   }
 
@@ -2466,11 +2975,11 @@ export function ClientPipelineDrawer({
 
   function requestCloseConfirm() {
     if (!closedRecord.isapre.trim()) {
-      onNotify("Indica la Isapre del registro de cierre.", "error");
+      onNotify("Indica la Isapre del registro de recepcionado.", "error");
       return;
     }
     if (!closedRecord.closedAt.trim()) {
-      onNotify("Indica la fecha de cierre.", "error");
+      onNotify("Indica la fecha de recepcionado.", "error");
       return;
     }
     if (!validateProfileRutsBeforeCommit()) return;
@@ -2487,6 +2996,44 @@ export function ClientPipelineDrawer({
     setShowLost(false);
     setLostSource(null);
     setPendingConfirm(null);
+  }
+
+  function openRecepcionadoAction() {
+    clearManagementPanels();
+    setShowCloseForm(true);
+    setClosedRecord((current) =>
+      current.closedAt.trim()
+        ? current
+        : {
+            ...current,
+            closedAt: new Date().toISOString().slice(0, 10),
+          },
+    );
+    openFlowActionModal("recepcionado");
+  }
+
+  function openFlowActionModal(
+    kind:
+      | "reschedule"
+      | "redirect"
+      | "lost"
+      | "send_zoom"
+      | "send_isapres"
+      | "derive"
+      | "reminder"
+      | "recepcionado",
+  ) {
+    if (kind === "reminder" && client) {
+      setReminderAtLocal(toDatetimeLocalValue(client.reminderAt));
+      setReminderNoteLocal(client.reminderNote ?? "");
+    }
+    setFlowActionModal(kind);
+  }
+
+  function closeFlowActionModal() {
+    clearManagementPanels();
+    setShowCloseForm(false);
+    setFlowActionModal(null);
   }
 
   function openZoomAction(
@@ -2574,6 +3121,8 @@ export function ClientPipelineDrawer({
   }
 
   function prepareAgendaReschedulePanels() {
+    setNextCallLocal(toDatetimeLocalValue(client?.nextCallAt));
+    setRescheduleNote("");
     if (canManagePremium) {
       setShowReschedule(true);
       setRescheduleSource("premium");
@@ -2738,14 +3287,25 @@ export function ClientPipelineDrawer({
         pipelineNotes: nextNotes,
         lastCallOutcome: noteBody.replace(/\.$/, ""),
         ...(item.kind === "meeting" ? { nextCallAt: null } : {}),
+        ...(item.kind === "reminder"
+          ? { reminderAt: null, reminderNote: null }
+          : {}),
         clientProfile: buildProfilePayload(),
       });
       setPipelineStatus(nextStatus);
       if (item.kind === "meeting") setNextCallLocal("");
+      if (item.kind === "reminder") {
+        setReminderAtLocal("");
+        setReminderNoteLocal("");
+      }
       if (canViewInternalNotes) setPipelineNotes(nextNotes);
       markAgendaItemDone(item, noteBody);
       onUpdated(updated);
-      onNotify("Gestión registrada: contactaste al cliente.");
+      onNotify(
+        item.kind === "reminder"
+          ? "Recordatorio marcado como realizado."
+          : "Gestión registrada: contactaste al cliente.",
+      );
       closeAgendaActionModal({ keepOutcome: true });
     } catch (error) {
       onNotify(
@@ -2963,40 +3523,588 @@ export function ClientPipelineDrawer({
   }
 
   async function executePendingConfirm() {
-    if (!pendingConfirm) return;
+    if (!pendingConfirm || saving || actionBusy) return;
     const action = pendingConfirm;
-    setPendingConfirm(null);
 
-    if (action.kind === "save") {
-      await handleSave();
-      return;
+    try {
+      if (action.kind === "save") {
+        await handleSave();
+        return;
+      }
+      if (action.kind === "no_contesta") {
+        await handleMarkNoAnswer();
+        return;
+      }
+      if (action.kind === "contactado") {
+        await handleMarkContacted();
+        return;
+      }
+      if (action.kind === "perdido") {
+        await handleMarkLost();
+        return;
+      }
+      if (action.kind === "close") {
+        await handleSave({ forceClose: true });
+        return;
+      }
+      if (action.kind === "send_zoom") {
+        await handleSendToZoom();
+        return;
+      }
+      if (action.kind === "send_isapres") {
+        await handleSendToIsapres();
+        return;
+      }
+      if (action.kind === "confirm_zoom_meeting") {
+        await handleConfirmZoomMeeting();
+        return;
+      }
+      await handleRedirect();
+    } finally {
+      setPendingConfirm(null);
+      setFlowActionModal(null);
     }
-    if (action.kind === "no_contesta") {
-      await handleMarkNoAnswer();
-      return;
-    }
-    if (action.kind === "contactado") {
-      await handleMarkContacted();
-      return;
-    }
-    if (action.kind === "perdido") {
-      await handleMarkLost();
-      return;
-    }
-    if (action.kind === "close") {
-      await handleSave({ forceClose: true });
-      return;
-    }
-    if (action.kind === "send_zoom") {
-      await handleSendToZoom();
-      return;
-    }
-    if (action.kind === "send_isapres") {
-      await handleSendToIsapres();
-      return;
-    }
-    await handleRedirect();
   }
+
+  function flowActionModalCopy(): {
+    title: string;
+    description: string;
+  } {
+    if (flowActionModal === "reschedule") {
+      const isPremiumFlow = activeFlow === "premium";
+      const hasScheduledCall = Boolean(client?.nextCallAt);
+      if (isPremiumFlow) {
+        return {
+          title: hasScheduledCall ? "Editar reunión Zoom" : "Agendar Zoom",
+          description: hasScheduledCall
+            ? "Actualiza fecha u hora de la reunión Zoom."
+            : "Elige fecha y confirma el agendamiento Zoom.",
+        };
+      }
+      if (rescheduleSource === "premium") {
+        return {
+          title: hasScheduledCall ? "Editar llamado" : "Agendar llamado",
+          description: hasScheduledCall
+            ? "Actualiza fecha, canal u hora del llamado."
+            : "Elige fecha, canal y confirma el agendamiento.",
+        };
+      }
+      return {
+        title: hasScheduledCall ? "Editar reunión Zoom" : "Agendar Zoom",
+        description: hasScheduledCall
+          ? "Actualiza fecha u hora de la reunión Zoom sin salir de esta vista."
+          : "Agenda la reunión Zoom sin salir de esta vista.",
+      };
+    }
+    if (flowActionModal === "redirect") {
+      return {
+        title:
+          activeFlow === "isapres"
+            ? "Devolver a Ejecutivo Isapre Premium"
+            : "Asignar Ejecutivo Premium",
+        description: "Selecciona ejecutivo, canal y fecha de atención solicitada.",
+      };
+    }
+    if (flowActionModal === "recepcionado") {
+      return {
+        title:
+          pipelineStatus === "RECEPCIONADO"
+            ? "Registro de recepcionado"
+            : "Recepcionado",
+        description:
+          pipelineStatus === "RECEPCIONADO"
+            ? "Consulta o actualiza los datos de recepcionado."
+            : "Completa los datos para marcar al cliente como recepcionado.",
+      };
+    }
+    if (flowActionModal === "send_zoom") {
+      return {
+        title: "Enviar a Ejecutivo Zoom",
+        description: "El cliente saldrá de tu cartera Premium.",
+      };
+    }
+    if (flowActionModal === "send_isapres") {
+      return {
+        title:
+          activeFlow === "premium"
+            ? "Asignar Ejecutivo Isapre"
+            : "Enviar a Ejecutivo Isapres",
+        description: "Deriva el cliente para cierre / contratación.",
+      };
+    }
+    if (flowActionModal === "derive") {
+      return {
+        title: "Derivar cliente",
+        description: "Elige si lo envías a Zoom o a Ejecutivo Isapres.",
+      };
+    }
+    if (flowActionModal === "reminder") {
+      const hasReminder = Boolean(client?.reminderAt);
+      return {
+        title: hasReminder ? "Editar recordatorio" : "Agendar recordatorio",
+        description:
+          "Deja una nota de la gestión y la fecha/hora. Aparecerá en tu calendario.",
+      };
+    }
+    return {
+      title: "Cliente perdido",
+      description: "Indica el motivo del cierre como perdido.",
+    };
+  }
+
+  function renderRecepcionadoFormFields() {
+    return (
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="block space-y-1.5 sm:col-span-2">
+          <span className="text-xs font-medium">Isapre *</span>
+          <select
+            value={closedRecord.isapre}
+            onChange={(event) =>
+              setClosedRecord((current) => ({
+                ...current,
+                isapre: event.target.value,
+              }))
+            }
+            className={joinClasses(
+              "h-10 w-full rounded-md px-3 text-sm",
+              ui.input,
+            )}
+          >
+            <option value="">Seleccionar…</option>
+            {ISAPRE_FILTER_OPTIONS.map((option) => (
+              <option key={option.id} value={option.label}>
+                {option.label}
+              </option>
+            ))}
+            {closedRecord.isapre &&
+            !ISAPRE_FILTER_OPTIONS.some(
+              (option) => option.label === closedRecord.isapre,
+            ) ? (
+              <option value={closedRecord.isapre}>
+                {closedRecord.isapre}
+              </option>
+            ) : null}
+          </select>
+        </label>
+        <label className="block space-y-1.5">
+          <span className="text-xs font-medium">Código plan</span>
+          <Input
+            value={closedRecord.planCode ?? ""}
+            onChange={(event) =>
+              setClosedRecord((current) => ({
+                ...current,
+                planCode: event.target.value,
+              }))
+            }
+          />
+        </label>
+        <label className="block space-y-1.5">
+          <span className="text-xs font-medium">Nombre plan</span>
+          <Input
+            value={closedRecord.planName ?? ""}
+            onChange={(event) =>
+              setClosedRecord((current) => ({
+                ...current,
+                planName: event.target.value,
+              }))
+            }
+          />
+        </label>
+        <label className="block space-y-1.5">
+          <span className="text-xs font-medium">Fecha *</span>
+          <Input
+            type="date"
+            value={closedRecord.closedAt}
+            onChange={(event) =>
+              setClosedRecord((current) => ({
+                ...current,
+                closedAt: event.target.value,
+              }))
+            }
+          />
+        </label>
+        <label className="block space-y-1.5">
+          <span className="text-xs font-medium">Nº solicitud Isapre</span>
+          <Input
+            value={closedRecord.isapreReference ?? ""}
+            onChange={(event) =>
+              setClosedRecord((current) => ({
+                ...current,
+                isapreReference: event.target.value,
+              }))
+            }
+          />
+        </label>
+        <label className="block space-y-1.5">
+          <span className="text-xs font-medium">Precio final UF</span>
+          <Input
+            value={closedRecord.finalPriceUf ?? ""}
+            onChange={(event) =>
+              setClosedRecord((current) => ({
+                ...current,
+                finalPriceUf: event.target.value,
+              }))
+            }
+          />
+        </label>
+        <label className="block space-y-1.5">
+          <span className="text-xs font-medium">Precio final CLP</span>
+          <Input
+            value={closedRecord.finalPriceClp ?? ""}
+            onChange={(event) =>
+              setClosedRecord((current) => ({
+                ...current,
+                finalPriceClp: event.target.value,
+              }))
+            }
+          />
+        </label>
+        <label className="block space-y-1.5 sm:col-span-2">
+          <span className="text-xs font-medium">Notas</span>
+          <textarea
+            value={closedRecord.notes ?? ""}
+            onChange={(event) =>
+              setClosedRecord((current) => ({
+                ...current,
+                notes: event.target.value,
+              }))
+            }
+            rows={3}
+            className={joinClasses(
+              "w-full rounded-xl px-3 py-2 text-sm",
+              ui.input,
+            )}
+          />
+        </label>
+      </div>
+    );
+  }
+
+  function renderFlowActionModalBody() {
+    if (!client) return null;
+
+    if (flowActionModal === "recepcionado") {
+      return <div className="space-y-3">{renderRecepcionadoFormFields()}</div>;
+    }
+
+    if (flowActionModal === "reminder") {
+      return (
+        <div className="space-y-3">
+          <label className="block space-y-1.5">
+            <span className="text-xs font-medium">Gestión / nota *</span>
+            <textarea
+              value={reminderNoteLocal}
+              onChange={(event) => setReminderNoteLocal(event.target.value)}
+              rows={3}
+              placeholder="Ej. Llamar al cliente a las 20:00 para revisar cotización"
+              className={joinClasses(
+                "min-h-[5rem] w-full resize-y rounded-xl px-3 py-2.5 text-sm",
+                ui.input,
+              )}
+            />
+          </label>
+          <label className="block space-y-1.5">
+            <span className="text-xs font-medium">Fecha y hora *</span>
+            <Input
+              type="datetime-local"
+              required
+              value={reminderAtLocal}
+              onChange={(event) => setReminderAtLocal(event.target.value)}
+            />
+          </label>
+          <RescheduleDayAgenda
+            enabled
+            nextCallLocal={reminderAtLocal}
+            excludeClientId={client.id}
+          />
+          <p className="text-[11px] text-muted">
+            El recordatorio no reemplaza la reunión Zoom ni el próximo llamado;
+            es una gestión aparte en el calendario.
+          </p>
+        </div>
+      );
+    }
+
+    if (flowActionModal === "derive") {
+      return (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Button
+            type="button"
+            variant="info"
+            className="h-auto justify-start px-4 py-3 text-left"
+            onClick={() => {
+              openPremiumAction("send_zoom");
+              openFlowActionModal("send_zoom");
+            }}
+          >
+            Enviar a Ejecutivo Zoom
+          </Button>
+          <Button
+            type="button"
+            variant="success"
+            className="h-auto justify-start px-4 py-3 text-left"
+            onClick={() => {
+              openPremiumAction("send_isapres");
+              openFlowActionModal("send_isapres");
+            }}
+          >
+            Enviar a Ejecutivo Isapres
+          </Button>
+        </div>
+      );
+    }
+
+    if (flowActionModal === "reschedule" && showReschedule) {
+      if (rescheduleSource === "zoom") {
+        return (
+          <div className="space-y-3">
+            <label className="block space-y-1.5">
+              <span className="text-xs font-medium">Fecha y hora *</span>
+              <Input
+                type="datetime-local"
+                required
+                value={nextCallLocal}
+                onChange={(event) => setNextCallLocal(event.target.value)}
+              />
+            </label>
+            <RescheduleDayAgenda
+              enabled={showReschedule}
+              nextCallLocal={nextCallLocal}
+              excludeClientId={client.id}
+            />
+            {renderCalendlyZoomPanel("reschedule")}
+            <label className="block space-y-1.5">
+              <span className="text-xs font-medium">Nota (opcional)</span>
+              <Input
+                value={rescheduleNote}
+                onChange={(event) => setRescheduleNote(event.target.value)}
+                placeholder="Ej. Cliente pidió llamar en la tarde"
+              />
+            </label>
+          </div>
+        );
+      }
+      if (rescheduleSource === "premium") {
+        return (
+          <div className="space-y-3">
+            <label className="block space-y-1.5">
+              <span className="text-xs font-medium">Fecha y hora *</span>
+              <Input
+                type="datetime-local"
+                required
+                value={nextCallLocal}
+                onChange={(event) => setNextCallLocal(event.target.value)}
+              />
+            </label>
+            <RescheduleDayAgenda
+              enabled={showReschedule}
+              nextCallLocal={nextCallLocal}
+              excludeClientId={client.id}
+            />
+            <fieldset className="space-y-2">
+              <legend className="text-xs font-medium text-foreground">
+                Canal de la reunión *
+              </legend>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {CLIENT_CONTACT_METHOD_OPTIONS.map((option) => {
+                  const selected = rescheduleContactMethod === option.value;
+                  return (
+                    <label
+                      key={option.value}
+                      className={joinClasses(
+                        "flex cursor-pointer items-start gap-2 rounded-lg border px-3 py-2 transition",
+                        selected
+                          ? option.value === "WHATSAPP"
+                            ? "border-[#25D366] bg-[#25D366]/10 ring-1 ring-[#25D366]/30"
+                            : "border-sky-400 bg-sky-50 ring-1 ring-sky-300/50"
+                          : "border-border bg-bg-layout/40 hover:bg-surface-hover",
+                      )}
+                    >
+                      <input
+                        type="radio"
+                        name="flow-reschedule-contact-method"
+                        className="mt-0.5"
+                        checked={selected}
+                        onChange={() =>
+                          setRescheduleContactMethod(option.value)
+                        }
+                      />
+                      <span>
+                        <span className="block text-xs font-semibold text-foreground">
+                          {option.label}
+                        </span>
+                        <span className="mt-0.5 block text-[11px] text-muted">
+                          {option.value === "WHATSAPP"
+                            ? "Aparecerá en verde en tu calendario."
+                            : "Aparecerá en azul en tu calendario."}
+                        </span>
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            </fieldset>
+            {rescheduleContactMethod === "ZOOM"
+              ? renderCalendlyZoomPanel("reschedule")
+              : null}
+            <label className="block space-y-1.5">
+              <span className="text-xs font-medium">Nota (opcional)</span>
+              <Input
+                value={rescheduleNote}
+                onChange={(event) => setRescheduleNote(event.target.value)}
+                placeholder="Ej. Cliente pidió llamar en la tarde"
+              />
+            </label>
+          </div>
+        );
+      }
+    }
+
+    if (flowActionModal === "redirect" && showRedirect) {
+      return (
+        <div className="space-y-3">
+          <label className="block space-y-1.5">
+            <span className="text-xs font-medium">Ejecutivo Isapres Premium</span>
+            <Select
+              value={redirectTargetId}
+              placeholder="Selecciona un ejecutivo…"
+              options={premiumExecutives.map((executive) => ({
+                value: executive.id,
+                label: `${formatExecutiveOptionLabel({
+                  fullName: executive.fullName,
+                  executiveKind: executive.executiveKind,
+                  realm: executive.realm,
+                })} (${executive.email})`,
+              }))}
+              onChange={(event) => setRedirectTargetId(event.target.value)}
+            />
+          </label>
+          <fieldset className="space-y-2">
+            <legend className="text-xs font-medium text-foreground">
+              Método de contacto *
+            </legend>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {CLIENT_CONTACT_METHOD_OPTIONS.map((option) => {
+                const selected = redirectContactMethod === option.value;
+                return (
+                  <label
+                    key={option.value}
+                    className={joinClasses(
+                      "flex cursor-pointer items-start gap-2 rounded-lg border px-3 py-2 transition",
+                      selected
+                        ? "border-primary bg-primary/8 ring-1 ring-primary/25"
+                        : "border-border bg-bg-layout/40 hover:bg-surface-hover",
+                    )}
+                  >
+                    <input
+                      type="radio"
+                      name="flow-redirect-contact-method"
+                      className="mt-0.5"
+                      checked={selected}
+                      onChange={() => setRedirectContactMethod(option.value)}
+                    />
+                    <span>
+                      <span className="block text-xs font-semibold text-foreground">
+                        {option.label}
+                      </span>
+                      <span className="mt-0.5 block text-[11px] text-muted">
+                        {option.description}
+                      </span>
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          </fieldset>
+          {redirectContactMethod === "ZOOM"
+            ? renderCalendlyZoomPanel("redirect")
+            : null}
+          <label className="block space-y-1.5">
+            <span className="text-xs font-medium">
+              Fecha y hora de atención solicitada *
+            </span>
+            <Input
+              type="datetime-local"
+              required
+              value={redirectAppointmentLocal}
+              onChange={(event) =>
+                setRedirectAppointmentLocal(event.target.value)
+              }
+            />
+          </label>
+        </div>
+      );
+    }
+
+    if (flowActionModal === "send_zoom" && showSendToZoom) {
+      return (
+        <div className="space-y-3">
+          <label className="block space-y-1.5">
+            <span className="text-xs font-medium">Ejecutivo Zoom</span>
+            <Select
+              value={sendZoomTargetId}
+              placeholder="Selecciona un ejecutivo Zoom…"
+              options={zoomExecutives.map((executive) => ({
+                value: executive.id,
+                label: `${formatExecutiveOptionLabel({
+                  fullName: executive.fullName,
+                  executiveKind: executive.executiveKind,
+                  realm: executive.realm,
+                })} (${executive.email})`,
+              }))}
+              onChange={(event) => setSendZoomTargetId(event.target.value)}
+            />
+          </label>
+        </div>
+      );
+    }
+
+    if (flowActionModal === "send_isapres" && showSendToIsapres) {
+      return (
+        <div className="space-y-3">
+          <label className="block space-y-1.5">
+            <span className="text-xs font-medium">Ejecutivo Isapres</span>
+            <Select
+              value={sendIsapresTargetId}
+              placeholder="Selecciona un ejecutivo Isapres…"
+              options={isapresExecutives.map((executive) => ({
+                value: executive.id,
+                label: `${formatExecutiveOptionLabel({
+                  fullName: executive.fullName,
+                  executiveKind: executive.executiveKind,
+                  realm: executive.realm,
+                })} (${executive.email})`,
+              }))}
+              onChange={(event) => setSendIsapresTargetId(event.target.value)}
+            />
+          </label>
+        </div>
+      );
+    }
+
+    if (flowActionModal === "lost" && showLost) {
+      return (
+        <LostReasonFields
+          lostReason={lostReason}
+          lostReasonOther={lostReasonOther}
+          onReasonChange={setLostReason}
+          onOtherChange={setLostReasonOther}
+          saveButtonLabel={saveButtonLabel}
+        />
+      );
+    }
+
+    return (
+      <p className="text-sm text-muted">No hay acción disponible.</p>
+    );
+  }
+
+  const scheduleIsZoom = isZoomScheduleAction({
+    activeFlow,
+    rescheduleSource,
+    rescheduleContactMethod,
+    preferredContactMethod: client?.preferredContactMethod,
+  });
 
   const saveButtonLabel = showSendToZoom
     ? "Confirmar envío a Zoom"
@@ -3005,13 +4113,19 @@ export function ClientPipelineDrawer({
       : showLost
         ? "Confirmar perdido"
         : showReschedule
-          ? "Guardar reagendamiento"
+          ? scheduleIsZoom
+            ? client?.nextCallAt
+              ? "Guardar edición Zoom"
+              : "Guardar agendamiento Zoom"
+            : client?.nextCallAt
+              ? "Guardar reagendamiento"
+              : "Guardar agendamiento"
           : showRedirect
             ? "Confirmar redirección"
             : showNoAnswer
               ? "Confirmar No contesta"
-              : showCloseForm && pipelineStatus !== "CERRADO"
-                ? "Confirmar cierre de negocio"
+              : showCloseForm && pipelineStatus !== "RECEPCIONADO"
+                ? "Confirmar recepcionado"
                 : "Guardar cambios";
 
   return (
@@ -3027,8 +4141,171 @@ export function ClientPipelineDrawer({
       {renderManagementBody()}
     </AdminFormModal>
     ) : open ? (
-      <div className="space-y-5">
-        {isOperationsLayout ? renderAgendaCard() : null}
+      <div className={activeFlow && isOperationsLayout ? "" : "space-y-5"}>
+        {isOperationsLayout ? (
+          activeFlow === "seguimiento" ? (
+            <div className="-mx-3 -mb-5 -mt-5 flex min-h-[50vh] flex-col sm:-mx-4 sm:-mb-7 sm:-mt-7 lg:-mx-5 lg:-mb-8 lg:-mt-8">
+              <div className="flex justify-start px-3 py-4 sm:px-4 lg:px-5">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setActiveFlow(null)}
+                  className="justify-center gap-2 border border-border"
+                >
+                  Volver
+                </Button>
+              </div>
+            </div>
+          ) : activeFlow ? (
+            <ClientProtocoloFlowView
+              client={client}
+              activeFlow={activeFlow}
+              profileForm={profileForm}
+              onProfileChange={setProfileForm}
+              pipelineStatus={pipelineStatus}
+              onManualStatusChange={async (nextStatus, note) => {
+                if (!client || saving || actionBusy) return;
+                setActionBusy(true);
+                try {
+                  const updated = await updateClientPipeline(client.id, {
+                    pipelineStatus: nextStatus,
+                    manualStatusChange: true,
+                    statusChangeNote: note,
+                  });
+                  setPipelineStatus(updated.pipelineStatus ?? nextStatus);
+                  if (canViewInternalNotes) {
+                    setPipelineNotes(updated.pipelineNotes ?? "");
+                  }
+                  setShowCloseForm(
+                    (updated.pipelineStatus ?? nextStatus) === "RECEPCIONADO",
+                  );
+                  onUpdated(updated);
+                  onNotify("Estatus actualizado.");
+                } catch (error) {
+                  const message =
+                    error instanceof Error
+                      ? error.message
+                      : "No se pudo cambiar el estatus.";
+                  onNotify(message, "error");
+                  throw error instanceof Error ? error : new Error(message);
+                } finally {
+                  setActionBusy(false);
+                }
+              }}
+              meetingNote={meetingNote}
+              onMeetingNoteChange={setMeetingNote}
+              canEdit={canEditClientData && !saving && !actionBusy}
+              saving={saving}
+              actionBusy={actionBusy}
+              hasUnsavedChanges={hasUnsavedChanges}
+              whatsappUrl={whatsappUrl}
+              canManageZoom={canManageZoom}
+              canManagePremium={canManagePremium}
+              canManageIsapres={canManageIsapres}
+              onBack={() => setActiveFlow(null)}
+              onSave={() => void handleSave({ forceClose: false })}
+              onWhatsApp={() => {
+                if (!whatsappUrl) return;
+                void markContactedFromWhatsApp();
+                window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+              }}
+              onScheduleZoom={() => {
+                if (saving || actionBusy) return;
+                clearManagementPanels();
+                prepareAgendaReschedulePanels();
+                openFlowActionModal("reschedule");
+              }}
+              onCallback={() => {
+                if (saving || actionBusy) return;
+                clearManagementPanels();
+                prepareAgendaReschedulePanels();
+                openFlowActionModal("reschedule");
+              }}
+              onReminder={() => {
+                if (saving || actionBusy) return;
+                clearManagementPanels();
+                openFlowActionModal("reminder");
+              }}
+              onRedirectPremium={() => {
+                if (saving || actionBusy) return;
+                // Vista Zoom o Isapre → asignar / redirigir a Premium
+                if (
+                  activeFlow === "zoom" ||
+                  activeFlow === "isapres" ||
+                  canManageZoom ||
+                  canManageIsapres
+                ) {
+                  clearManagementPanels();
+                  setShowRedirect(true);
+                  openFlowActionModal("redirect");
+                  return;
+                }
+                if (canManagePremium) {
+                  clearManagementPanels();
+                  openFlowActionModal("derive");
+                  return;
+                }
+                onNotify(
+                  "No tienes permiso para redirigir este cliente.",
+                  "error",
+                );
+              }}
+              onSendToZoom={() => {
+                if (saving || actionBusy) return;
+                clearManagementPanels();
+                openPremiumAction("send_zoom");
+                openFlowActionModal("send_zoom");
+              }}
+              onSendToIsapres={() => {
+                if (saving || actionBusy) return;
+                clearManagementPanels();
+                openPremiumAction("send_isapres");
+                openFlowActionModal("send_isapres");
+              }}
+              onMarkLost={() => {
+                if (saving || actionBusy) return;
+                openLostAction();
+                openFlowActionModal("lost");
+              }}
+              onRecepcionado={() => {
+                if (saving || actionBusy) return;
+                openRecepcionadoAction();
+              }}
+              onConfirmZoomMeeting={() => {
+                if (saving || actionBusy) return;
+                if (!client.confirmationCallAt && !client.nextCallAt) {
+                  onNotify(
+                    "No hay una reunión Zoom agendada para confirmar.",
+                    "error",
+                  );
+                  return;
+                }
+                setConfirmZoomNote("");
+                setPendingConfirm({ kind: "confirm_zoom_meeting" });
+              }}
+              onAddTitular={() => {
+                if (saving || actionBusy) return;
+                onFichaModalChange?.("addTitular");
+              }}
+              onAddCarga={() => {
+                if (saving || actionBusy) return;
+                onFichaModalChange?.("addCarga");
+              }}
+              onOpenFichaModal={(modal) => {
+                if (saving || actionBusy) return;
+                onFichaModalChange?.(modal);
+              }}
+              onNotify={onNotify}
+            />
+          ) : (
+            <ClientPipelineRoleCard
+              selectedId={activeFlow}
+              onSelect={setActiveFlow}
+            />
+          )
+        ) : null}
+        {isOperationsLayout ? null : (
         <div
           id="client-gestion-operativa"
           className={joinClasses(
@@ -3036,28 +4313,24 @@ export function ClientPipelineDrawer({
             ui.border,
           )}
         >
-          {isOperationsLayout ? (
-            <div className="mb-4 border-b border-primary-dark/10 pb-3">
-              <h2 className="text-sm font-semibold text-primary-dark">
-                Gestión operativa
-              </h2>
-              <p className="mt-1 text-xs text-muted">
-                Notas, contacto, derivaciones y cierre del pipeline.
-              </p>
-            </div>
-          ) : null}
           {renderManagementBody()}
         </div>
+        )}
       </div>
     ) : null}
 
-    <div className="relative z-[60]">
+    <div className="relative z-[80]">
       <AdminFormModal
         open={Boolean(pendingConfirm && confirmCopy)}
         title={confirmCopy?.title ?? "Confirmar"}
         description={confirmCopy?.description}
-        onClose={() => setPendingConfirm(null)}
+        onClose={() => {
+          if (saving || actionBusy) return;
+          setPendingConfirm(null);
+          setConfirmZoomNote("");
+        }}
         size="md"
+        overlayClassName="z-[80]"
       >
         <div className="space-y-4">
           {confirmCopy?.changes?.length ? (
@@ -3070,12 +4343,31 @@ export function ClientPipelineDrawer({
               ))}
             </ul>
           ) : null}
+          {pendingConfirm?.kind === "confirm_zoom_meeting" ? (
+            <label className="block space-y-1.5">
+              <span className="text-xs font-medium text-foreground">
+                Nota (opcional)
+              </span>
+              <Input
+                value={confirmZoomNote}
+                disabled={saving || actionBusy}
+                onChange={(event) => setConfirmZoomNote(event.target.value)}
+                placeholder="Ej. Cliente confirmó asistencia, pidió link Zoom…"
+              />
+              <p className="text-[11px] text-muted">
+                Si agregas una nota, se guarda en Anotaciones del cliente.
+              </p>
+            </label>
+          ) : null}
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button
               type="button"
               variant="ghost"
               disabled={saving || actionBusy}
-              onClick={() => setPendingConfirm(null)}
+              onClick={() => {
+                setPendingConfirm(null);
+                setConfirmZoomNote("");
+              }}
             >
               Cancelar
             </Button>
@@ -3131,9 +4423,78 @@ export function ClientPipelineDrawer({
 
     <div className="relative z-[60]">
       <AdminFormModal
+        open={Boolean(flowActionModal)}
+        title={flowActionModalCopy().title}
+        description={flowActionModalCopy().description}
+        onClose={() => {
+          if (saving || actionBusy) return;
+          closeFlowActionModal();
+        }}
+        size={
+          flowActionModal === "reschedule" || flowActionModal === "redirect"
+            ? "xl"
+            : "lg"
+        }
+        headerTone="navy"
+        overlayClassName="z-[60]"
+      >
+        <div className="space-y-4">
+          <fieldset
+            disabled={saving || actionBusy}
+            className="min-w-0 space-y-4 border-0 p-0 disabled:pointer-events-none disabled:opacity-60"
+          >
+            {renderFlowActionModalBody()}
+          </fieldset>
+          <div className="flex flex-col-reverse gap-2 border-t border-border pt-3 sm:flex-row sm:justify-end">
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={saving || actionBusy}
+              onClick={() => closeFlowActionModal()}
+            >
+              {flowActionModal === "derive" ? "Cerrar" : "Cancelar"}
+            </Button>
+            {flowActionModal !== "derive" ? (
+              <Button
+                type="button"
+                disabled={saving || actionBusy}
+                onClick={() => {
+                  if (flowActionModal === "reminder") {
+                    void handleSaveReminder();
+                    return;
+                  }
+                  if (flowActionModal === "recepcionado") {
+                    if (pipelineStatus === "RECEPCIONADO") {
+                      void handleSave({ forceClose: true });
+                      return;
+                    }
+                    requestCloseConfirm();
+                    return;
+                  }
+                  requestSaveConfirm();
+                }}
+              >
+                {saving || actionBusy
+                  ? "Guardando…"
+                  : flowActionModal === "reminder"
+                    ? "Guardar recordatorio"
+                    : flowActionModal === "recepcionado"
+                      ? pipelineStatus === "RECEPCIONADO"
+                        ? "Guardar recepcionado"
+                        : "Confirmar recepcionado"
+                      : saveButtonLabel}
+              </Button>
+            ) : null}
+          </div>
+        </div>
+      </AdminFormModal>
+    </div>
+
+    <div className="relative z-[60]">
+      <AdminFormModal
         open={Boolean(client && fichaModal === "employer")}
         title="Empleador"
-        description="RUT del empleador, convenio y renta imponible del titular."
+        description="Calidad de cliente, RUT del empleador, convenio y renta imponible."
         onClose={() => onFichaModalChange?.(null)}
         size="lg"
         headerTone="navy"
@@ -3171,6 +4532,48 @@ export function ClientPipelineDrawer({
       </AdminFormModal>
 
       <AdminFormModal
+        open={Boolean(client && fichaModal === "personal")}
+        title="Información personal"
+        description="Datos del titular principal."
+        onClose={() => onFichaModalChange?.(null)}
+        size="lg"
+        headerTone="navy"
+      >
+        <div className="space-y-4">
+          <ClientProfileForm
+            value={profileForm}
+            readOnly={!canEditClientData}
+            sections={["principal"]}
+            showEmail
+            onChange={(next) => {
+              if (!canEditClientData) return;
+              setProfileForm(next);
+              if (rutErrors.titular) setRutErrors({});
+            }}
+            rutErrors={rutErrors}
+          />
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => onFichaModalChange?.(null)}
+            >
+              Cerrar
+            </Button>
+            {canEditClientData ? (
+              <Button
+                type="button"
+                disabled={saving}
+                onClick={() => void handleSaveFichaModal()}
+              >
+                {saving ? "Guardando…" : "Guardar"}
+              </Button>
+            ) : null}
+          </div>
+        </div>
+      </AdminFormModal>
+
+      <AdminFormModal
         open={Boolean(client && fichaModal === "prevision")}
         title="Previsión actual"
         description="Isapre, Fonasa o sin previsión, precio del plan y anualidad."
@@ -3183,6 +4586,46 @@ export function ClientPipelineDrawer({
             value={profileForm}
             readOnly={!canEditClientData}
             sections={["prevision"]}
+            onChange={(next) => {
+              if (!canEditClientData) return;
+              setProfileForm(next);
+            }}
+            rutErrors={rutErrors}
+          />
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => onFichaModalChange?.(null)}
+            >
+              Cerrar
+            </Button>
+            {canEditClientData ? (
+              <Button
+                type="button"
+                disabled={saving}
+                onClick={() => void handleSaveFichaModal()}
+              >
+                {saving ? "Guardando…" : "Guardar"}
+              </Button>
+            ) : null}
+          </div>
+        </div>
+      </AdminFormModal>
+
+      <AdminFormModal
+        open={Boolean(client && fichaModal === "complementaria")}
+        title="Información complementaria"
+        description="Seguro complementario, clínicas de preferencia y preexistencias."
+        onClose={() => onFichaModalChange?.(null)}
+        size="lg"
+        headerTone="navy"
+      >
+        <div className="space-y-4">
+          <ClientProfileForm
+            value={profileForm}
+            readOnly={!canEditClientData}
+            sections={["complementaria"]}
             onChange={(next) => {
               if (!canEditClientData) return;
               setProfileForm(next);
@@ -3409,7 +4852,7 @@ export function ClientPipelineDrawer({
 
       <AdminFormModal
         open={Boolean(client && fichaModal === "docs")}
-        title="Documentos"
+        title="Archivos adjuntos"
         description="Checklist de recepción y archivos del cliente."
         onClose={() => onFichaModalChange?.(null)}
         size="xl"
@@ -3478,25 +4921,25 @@ export function ClientPipelineDrawer({
       <AdminFormModal
         open={Boolean(client && fichaModal === "historial")}
         title="Historial de modificaciones"
-        description="Solo lectura. Se actualiza con reagendar, contacto, redirecciones y otras acciones."
+        description="Solo lectura. Movimientos del sistema: reagendar, contacto, redirecciones y cierres (sin notas libres)."
         onClose={() => onFichaModalChange?.(null)}
         size="lg"
         headerTone="navy"
       >
         <div className="space-y-4">
           {canViewInternalNotes ? (
-            pipelineNotes.trim() ? (
-              <div
-                className="max-h-[min(28rem,70vh)] overflow-y-auto text-sm text-foreground"
-                role="log"
-                aria-label="Historial de modificaciones"
-              >
-                <ul className="space-y-2">
-                  {pipelineNotes
-                    .split("\n")
-                    .map((line) => line.trim())
-                    .filter(Boolean)
-                    .map((line, index) => (
+            (() => {
+              const modificationLines = listPipelineModificationLines(
+                pipelineNotes,
+              );
+              return modificationLines.length > 0 ? (
+                <div
+                  className="max-h-[min(28rem,70vh)] overflow-y-auto text-sm text-foreground"
+                  role="log"
+                  aria-label="Historial de modificaciones"
+                >
+                  <ul className="space-y-2">
+                    {modificationLines.map((line, index) => (
                       <li
                         key={`${index}-${line.slice(0, 24)}`}
                         className="border-b border-border/60 pb-2 last:border-b-0 last:pb-0"
@@ -3506,13 +4949,14 @@ export function ClientPipelineDrawer({
                         </p>
                       </li>
                     ))}
-                </ul>
-              </div>
-            ) : (
-              <p className="text-xs text-muted">
-                Sin movimientos registrados aún.
-              </p>
-            )
+                  </ul>
+                </div>
+              ) : (
+                <p className="text-xs text-muted">
+                  Sin movimientos registrados aún.
+                </p>
+              );
+            })()
           ) : (
             <p className="text-sm text-muted">
               No tienes permiso para ver el historial interno de este cliente.
@@ -3532,37 +4976,82 @@ export function ClientPipelineDrawer({
 
       <AdminFormModal
         open={Boolean(client && fichaModal === "notas")}
-        title="Notas cliente"
-        description="Registra lo conversado tras la reunión. Al guardar, queda en el historial."
+        title="Anotaciones"
+        description="Anotaciones libres del ejecutivo. Distintas del historial de modificaciones."
         onClose={() => onFichaModalChange?.(null)}
         size="lg"
         headerTone="navy"
       >
         <div className="space-y-4">
+          {canViewInternalNotes ? (
+            (() => {
+              const noteLines = listClientNoteLines(pipelineNotes);
+              return noteLines.length > 0 ? (
+                <div
+                  className="max-h-[min(18rem,45vh)] overflow-y-auto rounded-xl border border-border bg-bg-layout/40 px-3 py-2.5"
+                  role="log"
+                  aria-label="Notas del cliente"
+                >
+                  <ul className="space-y-3">
+                    {noteLines.map((line, index) => {
+                      const stamp = extractPipelineNoteStamp(line);
+                      const text = clientNoteDisplayText(line);
+                      return (
+                        <li
+                          key={`${index}-${line.slice(0, 32)}`}
+                          className="border-b border-border/60 pb-3 last:border-b-0 last:pb-0"
+                        >
+                          {stamp ? (
+                            <p className="text-[11px] font-semibold text-primary-dark">
+                              {stamp}
+                            </p>
+                          ) : null}
+                          <p className="mt-0.5 whitespace-pre-wrap text-[13px] leading-snug text-foreground">
+                            {text || line}
+                          </p>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              ) : (
+                <p className="rounded-xl border border-dashed border-border px-3 py-4 text-center text-sm text-muted">
+                  Aún no hay notas. Agrega la primera abajo.
+                </p>
+              );
+            })()
+          ) : (
+            <p className="text-sm text-muted">
+              No tienes permiso para ver las notas de este cliente.
+            </p>
+          )}
+
           {canEditClientData ? (
             <label className="block space-y-1.5">
-              <span className="text-xs font-medium">
-                Comentario post-reunión
+              <span className="text-xs font-medium text-primary-dark">
+                Nueva nota
               </span>
               <textarea
                 value={meetingNote}
                 onChange={(event) => setMeetingNote(event.target.value)}
-                rows={6}
+                rows={5}
                 placeholder="Ej. Cliente interesado en bajar costo; enviará liquidaciones mañana. Prefiere WhatsApp…"
                 className={joinClasses(
-                  "min-h-[8rem] w-full resize-y rounded-xl px-3 py-2.5 text-sm",
+                  "min-h-[7rem] w-full resize-y rounded-xl px-3 py-2.5 text-sm",
                   ui.input,
                 )}
               />
               <p className="text-[11px] text-muted">
-                Se agregará al historial con tu nombre y la fecha al guardar.
+                Se guarda con tu nombre y la fecha. No modifica el historial de
+                movimientos del sistema.
               </p>
             </label>
-          ) : (
+          ) : canViewInternalNotes ? (
             <p className="text-sm text-muted">
               Solo lectura: no puedes agregar notas en este cliente.
             </p>
-          )}
+          ) : null}
+
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button
               type="button"
@@ -3916,7 +5405,9 @@ export function ClientPipelineDrawer({
                               "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
                               item.channelLabel === "WhatsApp"
                                 ? "bg-[#25D366]/15 text-[#128C7E] ring-1 ring-[#25D366]/35"
-                                : "bg-sky-100 text-sky-900 ring-1 ring-sky-300/50",
+                                : item.channelLabel === "Recordatorio"
+                                  ? "bg-amber-100 text-amber-950 ring-1 ring-amber-300/60"
+                                  : "bg-sky-100 text-sky-900 ring-1 ring-sky-300/50",
                             )}
                           >
                             {item.channelLabel}
@@ -4172,7 +5663,7 @@ export function ClientPipelineDrawer({
                   aria-pressed={showReschedule}
                   onClick={() => openRescheduleAction()}
                 >
-                  Reagendar llamado
+                  {client.nextCallAt ? "Reagendar llamado" : "Agendar llamado"}
                 </Button>
               ) : null}
               {canManageZoom ? (
@@ -4228,14 +5719,14 @@ export function ClientPipelineDrawer({
                 <Button
                   type="button"
                   size="sm"
-                  variant={pipelineStatus === "CERRADO" ? "secondary" : "primary"}
+                  variant={pipelineStatus === "RECEPCIONADO" ? "secondary" : "primary"}
                   disabled={actionBusy}
                   aria-pressed={showCloseForm}
                   onClick={() => openCloseAction()}
                 >
-                  {pipelineStatus === "CERRADO"
-                    ? "Ver registro de cierre"
-                    : "Cerrar negocio"}
+                  {pipelineStatus === "RECEPCIONADO"
+                    ? "Ver recepcionado"
+                    : "Recepcionado"}
                 </Button>
               ) : null}
             </div>
@@ -4297,7 +5788,10 @@ export function ClientPipelineDrawer({
                     </label>
                     <p className="text-[11px] text-muted">
                       Usa &quot;{saveButtonLabel}&quot; al final del formulario para
-                      confirmar el reagendamiento
+                      confirmar{" "}
+                      {client.nextCallAt
+                        ? "la edición de la reunión Zoom"
+                        : "el agendamiento Zoom"}
                       {calendlyBookedHint
                         ? " (usa la misma hora que en Calendly)."
                         : "."}
@@ -4679,143 +6173,21 @@ export function ClientPipelineDrawer({
               <div className="space-y-3 rounded-xl border border-primary/20 bg-primary/5 p-4">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <h3 className="text-sm font-semibold text-primary-dark">
-                    Registro de cierre
+                    Recepcionado
                   </h3>
-                  {pipelineStatus !== "CERRADO" ? (
+                  {pipelineStatus !== "RECEPCIONADO" ? (
                     <Button
                       type="button"
                       size="sm"
                       variant="ghost"
                       onClick={() => setShowCloseForm(false)}
                     >
-                      Cancelar cierre
+                      Cancelar
                     </Button>
                   ) : null}
                 </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <label className="block space-y-1.5 sm:col-span-2">
-                    <span className="text-xs font-medium">Isapre *</span>
-                    <select
-                      value={closedRecord.isapre}
-                      onChange={(event) =>
-                        setClosedRecord((current) => ({
-                          ...current,
-                          isapre: event.target.value,
-                        }))
-                      }
-                      className={joinClasses(
-                        "h-10 w-full rounded-md px-3 text-sm",
-                        ui.input,
-                      )}
-                    >
-                      <option value="">Seleccionar…</option>
-                      {ISAPRE_FILTER_OPTIONS.map((option) => (
-                        <option key={option.id} value={option.label}>
-                          {option.label}
-                        </option>
-                      ))}
-                      {closedRecord.isapre &&
-                      !ISAPRE_FILTER_OPTIONS.some(
-                        (option) => option.label === closedRecord.isapre,
-                      ) ? (
-                        <option value={closedRecord.isapre}>
-                          {closedRecord.isapre}
-                        </option>
-                      ) : null}
-                    </select>
-                  </label>
-                  <label className="block space-y-1.5">
-                    <span className="text-xs font-medium">Código plan</span>
-                    <Input
-                      value={closedRecord.planCode ?? ""}
-                      onChange={(event) =>
-                        setClosedRecord((current) => ({
-                          ...current,
-                          planCode: event.target.value,
-                        }))
-                      }
-                    />
-                  </label>
-                  <label className="block space-y-1.5">
-                    <span className="text-xs font-medium">Nombre plan</span>
-                    <Input
-                      value={closedRecord.planName ?? ""}
-                      onChange={(event) =>
-                        setClosedRecord((current) => ({
-                          ...current,
-                          planName: event.target.value,
-                        }))
-                      }
-                    />
-                  </label>
-                  <label className="block space-y-1.5">
-                    <span className="text-xs font-medium">Fecha cierre *</span>
-                    <Input
-                      type="date"
-                      value={closedRecord.closedAt}
-                      onChange={(event) =>
-                        setClosedRecord((current) => ({
-                          ...current,
-                          closedAt: event.target.value,
-                        }))
-                      }
-                    />
-                  </label>
-                  <label className="block space-y-1.5">
-                    <span className="text-xs font-medium">Nº solicitud Isapre</span>
-                    <Input
-                      value={closedRecord.isapreReference ?? ""}
-                      onChange={(event) =>
-                        setClosedRecord((current) => ({
-                          ...current,
-                          isapreReference: event.target.value,
-                        }))
-                      }
-                    />
-                  </label>
-                  <label className="block space-y-1.5">
-                    <span className="text-xs font-medium">Precio final UF</span>
-                    <Input
-                      value={closedRecord.finalPriceUf ?? ""}
-                      onChange={(event) =>
-                        setClosedRecord((current) => ({
-                          ...current,
-                          finalPriceUf: event.target.value,
-                        }))
-                      }
-                    />
-                  </label>
-                  <label className="block space-y-1.5">
-                    <span className="text-xs font-medium">Precio final CLP</span>
-                    <Input
-                      value={closedRecord.finalPriceClp ?? ""}
-                      onChange={(event) =>
-                        setClosedRecord((current) => ({
-                          ...current,
-                          finalPriceClp: event.target.value,
-                        }))
-                      }
-                    />
-                  </label>
-                  <label className="block space-y-1.5 sm:col-span-2">
-                    <span className="text-xs font-medium">Notas de cierre</span>
-                    <textarea
-                      value={closedRecord.notes ?? ""}
-                      onChange={(event) =>
-                        setClosedRecord((current) => ({
-                          ...current,
-                          notes: event.target.value,
-                        }))
-                      }
-                      rows={3}
-                      className={joinClasses(
-                        "w-full rounded-xl px-3 py-2 text-sm",
-                        ui.input,
-                      )}
-                    />
-                  </label>
-                </div>
-                {pipelineStatus !== "CERRADO" ? (
+                {renderRecepcionadoFormFields()}
+                {pipelineStatus !== "RECEPCIONADO" ? (
                   <div className="flex justify-end">
                     <Button
                       type="button"
@@ -4823,7 +6195,7 @@ export function ClientPipelineDrawer({
                       disabled={saving || actionBusy}
                       onClick={requestCloseConfirm}
                     >
-                      Confirmar cierre de negocio
+                      Confirmar recepcionado
                     </Button>
                   </div>
                 ) : null}
@@ -4841,20 +6213,19 @@ export function ClientPipelineDrawer({
                 sistema (reagendar, contacto, redirecciones, etc.).
               </p>
             </div>
-            {pipelineNotes.trim() ? (
-              <div
-                className={joinClasses(
-                  "max-h-48 overflow-y-auto rounded-xl border border-border bg-bg-layout/50 px-3 py-2.5 text-sm text-foreground",
-                )}
-                role="log"
-                aria-label="Historial de modificaciones"
-              >
-                <ul className="space-y-2">
-                  {pipelineNotes
-                    .split("\n")
-                    .map((line) => line.trim())
-                    .filter(Boolean)
-                    .map((line, index) => (
+            {(() => {
+              const modificationLines =
+                listPipelineModificationLines(pipelineNotes);
+              return modificationLines.length > 0 ? (
+                <div
+                  className={joinClasses(
+                    "max-h-48 overflow-y-auto rounded-xl border border-border bg-bg-layout/50 px-3 py-2.5 text-sm text-foreground",
+                  )}
+                  role="log"
+                  aria-label="Historial de modificaciones"
+                >
+                  <ul className="space-y-2">
+                    {modificationLines.map((line, index) => (
                       <li
                         key={`${index}-${line.slice(0, 24)}`}
                         className="border-b border-border/60 pb-2 last:border-b-0 last:pb-0"
@@ -4864,13 +6235,14 @@ export function ClientPipelineDrawer({
                         </p>
                       </li>
                     ))}
-                </ul>
-              </div>
-            ) : (
-              <p className="rounded-xl border border-dashed border-border bg-bg-layout/30 px-3 py-3 text-xs text-muted">
-                Sin movimientos registrados aún.
-              </p>
-            )}
+                  </ul>
+                </div>
+              ) : (
+                <p className="rounded-xl border border-dashed border-border bg-bg-layout/30 px-3 py-3 text-xs text-muted">
+                  Sin movimientos registrados aún.
+                </p>
+              );
+            })()}
           </div>
         ) : null}
 

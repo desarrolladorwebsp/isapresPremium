@@ -42,6 +42,11 @@ export async function GET(request: Request, context: RouteContext) {
     const file = await getClientDocumentFile(id, docId, {
       executiveAccountId: user.id,
       isAdmin: realm === AUTH_REALM.admin,
+      executiveKind:
+        realm === AUTH_REALM.executive
+          ? (user as import("@/lib/auth/types").ExecutiveSessionUser)
+              .executiveKind
+          : null,
     });
 
     const safeName = sanitizeContentDispositionFileName(file.fileName);

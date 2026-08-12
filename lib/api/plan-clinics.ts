@@ -1,8 +1,11 @@
 import { prisma } from "@/lib/prisma";
+import { resolveClinicZoneIdsComplete } from "@/lib/clinic-zone-inference";
 
 export interface PlanCatalogClinicOption {
   id: string;
   name: string;
+  /** Zonas geográficas (DB o inferidas) para filtrar por región/zona. */
+  zones: string[];
 }
 
 const CLINICS_CACHE_TTL_MS = 30 * 60 * 1000;
@@ -27,8 +30,10 @@ export async function readPlanCatalogClinics(): Promise<PlanCatalogClinicOption[
   }
 
   clinicsInflight = prisma
-    .$queryRaw<Array<{ clinic_id: string; clinic_name: string }>>`
-      SELECT c.id AS clinic_id, c.name AS clinic_name
+    .$queryRaw<
+      Array<{ clinic_id: string; clinic_name: string; zones: string[] | null }>
+    >`
+      SELECT c.id AS clinic_id, c.name AS clinic_name, c.zones AS zones
       FROM clinics c
       WHERE EXISTS (
         SELECT 1
@@ -39,10 +44,18 @@ export async function readPlanCatalogClinics(): Promise<PlanCatalogClinicOption[
     `
     .then((rows) =>
       rows
-        .map((row) => ({
-          id: row.clinic_id.trim(),
-          name: row.clinic_name.trim(),
-        }))
+        .map((row) => {
+          const id = row.clinic_id.trim();
+          const name = row.clinic_name.trim();
+          const stored = Array.isArray(row.zones)
+            ? row.zones.map((zone) => zone.trim()).filter(Boolean)
+            : [];
+          const zones =
+            stored.length > 0
+              ? stored
+              : resolveClinicZoneIdsComplete(id, name);
+          return { id, name, zones };
+        })
         .filter((row) => row.id && row.name),
     )
     .then((items) => {

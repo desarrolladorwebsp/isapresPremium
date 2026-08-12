@@ -50,6 +50,18 @@ export function ClientOriginBadge({
     );
   }
 
+  if (origin.startsWith("CAMPANA_")) {
+    const label = CLIENT_ORIGIN_LABELS[origin] ?? origin;
+    return (
+      <AdminBadge
+        className="border border-[#0369a1]/25 bg-[#e0f2fe] text-[#0c4a6e]"
+        title={`Lead captado en ${label}`}
+      >
+        {label}
+      </AdminBadge>
+    );
+  }
+
   if (origin === "FORMULARIO_WEB") {
     const label =
       webFormSource?.trim() || CLIENT_ORIGIN_LABELS.FORMULARIO_WEB;

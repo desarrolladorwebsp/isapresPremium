@@ -11,6 +11,7 @@ import {
 } from "@/lib/api/plan-query";
 import { prisma } from "@/lib/prisma";
 import { resolveCanonicalClinicId } from "@/lib/clinic-canonical-ids";
+import { resolveClinicZoneIdsComplete } from "@/lib/clinic-zone-inference";
 import { resolveClinicZoneIds } from "@/lib/clinic-zones";
 import type { Clinic } from "@/types/clinic";
 import type { HealthPlan } from "@/types/plan";
@@ -30,7 +31,7 @@ async function upsertClinicsForCoverage(
   }
 
   for (const [id, name] of uniqueClinics) {
-    const zones = resolveClinicZoneIds(id, name);
+    const zones = resolveClinicZoneIdsComplete(id, name);
     await tx.clinic.upsert({
       where: { id },
       create: { id, name, zones },

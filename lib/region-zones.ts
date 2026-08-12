@@ -2,8 +2,15 @@ import { ZONE_FILTER_OPTIONS } from "@/lib/filter-options";
 import type { DashboardFiltersState } from "@/types/filters";
 import type { ZoneId } from "@/types/zone";
 
-/** Zonas del filtro lateral que cubren la Región Metropolitana completa. */
-export const RM_ZONE_FILTER_IDS: readonly ZoneId[] = [
+/**
+ * Zonas del filtro que representan la RM completa.
+ * Criterio `region=rm` activa solo el padre: las clínicas de sector llevan
+ * también `rm-metropolitana`, así aparecen sin marcar todos los sectores.
+ */
+export const RM_ZONE_FILTER_IDS: readonly ZoneId[] = ["rm-metropolitana"];
+
+/** Todos los IDs de zona RM (padre + sectores) — útil para auditorías/UI. */
+export const ALL_RM_ZONE_FILTER_IDS: readonly ZoneId[] = [
   "rm-metropolitana",
   "rm-norte",
   "rm-sur",
@@ -27,7 +34,7 @@ export const REGION_TO_ZONE_IDS: Record<string, readonly ZoneId[]> = {
   ohiggins: ["octava"],
   maule: ["octava"],
   nuble: ["octava"],
-  biobio: ["biobio", "octava"],
+  biobio: ["biobio"],
   araucania: ["biobio"],
   los_rios: ["biobio"],
   los_lagos: ["biobio"],

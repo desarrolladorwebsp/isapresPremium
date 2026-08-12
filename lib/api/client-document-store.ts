@@ -67,9 +67,20 @@ export function mapClientDocument(row: ClientDocument): ClientDocumentRecord {
 
 function assertCanView(
   client: { assignedExecutiveId?: string | null; trackingExecutiveId?: string | null },
-  actor: { executiveAccountId: string; isAdmin: boolean },
+  actor: {
+    executiveAccountId: string;
+    isAdmin: boolean;
+    executiveKind?: ExecutiveKind | null;
+  },
 ): void {
-  if (!canViewClientAsExecutive(client, actor.executiveAccountId, actor.isAdmin)) {
+  if (
+    !canViewClientAsExecutive(
+      client,
+      actor.executiveAccountId,
+      actor.isAdmin,
+      actor.executiveKind,
+    )
+  ) {
     throw new ApiError("No tienes permiso para ver este cliente.", 403, "FORBIDDEN");
   }
 }
@@ -100,7 +111,11 @@ function assertCanEdit(
 
 export async function listClientDocuments(
   userId: string,
-  actor: { executiveAccountId: string; isAdmin: boolean },
+  actor: {
+    executiveAccountId: string;
+    isAdmin: boolean;
+    executiveKind?: ExecutiveKind | null;
+  },
 ): Promise<ClientDocumentRecord[]> {
   const client = await readClientOrThrow(userId);
   assertCanView(client, actor);
@@ -185,7 +200,11 @@ export async function createClientDocument(
 export async function getClientDocumentFile(
   userId: string,
   documentId: string,
-  actor: { executiveAccountId: string; isAdmin: boolean },
+  actor: {
+    executiveAccountId: string;
+    isAdmin: boolean;
+    executiveKind?: ExecutiveKind | null;
+  },
 ): Promise<{
   record: ClientDocumentRecord;
   buffer: Buffer;

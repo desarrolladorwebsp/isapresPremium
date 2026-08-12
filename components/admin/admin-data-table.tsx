@@ -31,7 +31,8 @@ export function AdminPanelHeader({
           ? joinClasses(
               "flex gap-2",
               middle
-                ? "flex-col sm:flex-row sm:items-center"
+                ? // Filtros en el medio: apilar hasta lg para evitar solape en tablet/mediano.
+                  "flex-col lg:flex-row lg:items-center"
                 : "items-center justify-between lg:items-end",
             )
           : "flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between"
@@ -59,18 +60,20 @@ export function AdminPanelHeader({
           ) : null}
         </div>
         {compactMobile && middle && actions ? (
-          <div className="flex shrink-0 flex-nowrap gap-2 sm:hidden">{actions}</div>
+          <div className="flex shrink-0 flex-wrap justify-end gap-2 lg:hidden">
+            {actions}
+          </div>
         ) : null}
       </div>
       {middle ? (
-        <div className="min-w-0 w-full flex-1 sm:px-1">{middle}</div>
+        <div className="min-w-0 w-full flex-1 lg:px-1">{middle}</div>
       ) : null}
       {actions ? (
         <div
           className={joinClasses(
-            "flex gap-2",
-            compactMobile ? "shrink-0 flex-nowrap" : "flex-wrap",
-            compactMobile && middle ? "hidden sm:flex" : undefined,
+            "flex flex-wrap gap-2",
+            compactMobile ? "shrink-0" : undefined,
+            compactMobile && middle ? "hidden lg:flex" : undefined,
           )}
         >
           {actions}
@@ -410,7 +413,7 @@ export function AdminRefreshButton({
 }: {
   onClick: () => void;
   label?: string;
-  /** En mobile solo ícono; desde `sm` ícono + texto. */
+  /** En mobile/tablet solo ícono; desde `lg` ícono + texto. */
   compactMobile?: boolean;
   /** Muestra spinner en el ícono sin vaciar la lista (stale-while-revalidate). */
   loading?: boolean;
@@ -420,7 +423,7 @@ export function AdminRefreshButton({
       viewBox="0 0 24 24"
       className={joinClasses(
         "size-4",
-        compactMobile ? "sm:mr-1.5" : "mr-1.5",
+        compactMobile ? "lg:mr-1.5" : "mr-1.5",
         loading ? "animate-spin" : "",
       )}
       fill="none"
@@ -462,10 +465,13 @@ export function AdminRefreshButton({
       aria-busy={loading}
       aria-label={loading ? "Actualizando…" : label}
       title={loading ? "Actualizando…" : label}
-      className={joinClasses(touchTarget, "px-0 sm:h-9 sm:min-h-9 sm:min-w-0 sm:px-3")}
+      className={joinClasses(
+        touchTarget,
+        "px-0 sm:h-9 sm:min-h-9 sm:min-w-9 lg:min-w-0 lg:px-3",
+      )}
     >
       {icon}
-      <span className="hidden sm:inline">
+      <span className="hidden lg:inline">
         {loading ? "Actualizando…" : label}
       </span>
     </Button>
@@ -481,10 +487,11 @@ export function AdminFormModal({
   size = "lg",
   headerAside,
   headerTone = "navy",
+  overlayClassName,
 }: {
   open: boolean;
   title: string;
-  description?: string;
+  description?: ReactNode;
   onClose: () => void;
   children: ReactNode;
   size?: "md" | "lg" | "xl";
@@ -492,6 +499,8 @@ export function AdminFormModal({
   headerAside?: ReactNode;
   /** `navy` = cabecera azul oscuro (header ejecutivo) con texto blanco. Default. */
   headerTone?: "default" | "navy";
+  /** Clases del overlay fijo (p. ej. z-index al apilar modales). */
+  overlayClassName?: string;
 }) {
   if (!open) return null;
 
@@ -504,7 +513,12 @@ export function AdminFormModal({
   const isNavy = headerTone === "navy";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4">
+    <div
+      className={joinClasses(
+        "fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4",
+        overlayClassName,
+      )}
+    >
       <div
         className={joinClasses(
           "flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-2xl border bg-white shadow-xl sm:rounded-2xl",

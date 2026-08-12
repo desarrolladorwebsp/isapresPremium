@@ -6,9 +6,9 @@ import { Input } from "@/components/ui/input";
 import { AdminFormModal } from "@/components/admin/admin-data-table";
 import { ClientOriginBadge } from "@/components/executive/client-origin-badge";
 import {
+  assignClientPlan,
   createExecutiveClient,
   fetchExecutiveClients,
-  updateClientAdvisedPlan,
 } from "@/lib/api/admin-client";
 import { useOptionalCompanyAgreementContext } from "@/components/cotizador/company-agreement";
 import { formatAgreementDiscountBadge } from "@/components/cotizador/company-agreement/plan-agreement-price";
@@ -216,15 +216,16 @@ export function AssignPlanToClientModal({
         client = existing;
       }
 
-      const updated = await updateClientAdvisedPlan(client.id, {
+      const updated = await assignClientPlan(client.id, {
         planCode: plan.unique_code,
         notes:
           notes.trim() ||
           `Plan ${plan.plan_name} (${plan.unique_code}) asignado desde el cotizador.`,
+        setAsChosen: true,
       });
 
       onAssigned(updated);
-      onNotify(`Plan asignado a ${updated.fullName}.`);
+      onNotify(`Plan agregado a la propuesta de ${updated.fullName}.`);
       onClose();
     } catch (error) {
       onNotify(

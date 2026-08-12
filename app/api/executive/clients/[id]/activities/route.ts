@@ -5,6 +5,7 @@ import { readClientOrThrow } from "@/lib/api/user-store";
 import { requireExecutiveOrAdminSession, assertSessionStaffSection } from "@/lib/auth/require-auth";
 import { AUTH_REALM } from "@/lib/auth/constants";
 import { ApiError } from "@/lib/api/api-error";
+import type { ExecutiveSessionUser } from "@/lib/auth/types";
 import { canViewClientAsExecutive } from "@/lib/client-pipeline/tracking";
 
 interface RouteContext {
@@ -18,11 +19,17 @@ export async function GET(request: Request, context: RouteContext) {
     const { id } = await context.params;
     const client = await readClientOrThrow(id);
 
+    const executiveKind =
+      realm === AUTH_REALM.executive
+        ? (user as ExecutiveSessionUser).executiveKind
+        : null;
+
     if (
       !canViewClientAsExecutive(
         client,
         user.id,
         realm === AUTH_REALM.admin,
+        executiveKind,
       )
     ) {
       throw new ApiError(

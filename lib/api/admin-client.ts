@@ -606,6 +606,32 @@ export async function updateClientAdvisedPlan(
   return parseJsonResponse<UserRecord>(response);
 }
 
+export async function assignClientPlan(
+  clientId: string,
+  input: import("@/types/client-plan").AssignClientPlanInput,
+): Promise<UserRecord> {
+  const response = await fetch(
+    `/api/executive/clients/${encodeURIComponent(clientId)}/assigned-plans`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    },
+  );
+  return parseJsonResponse<UserRecord>(response);
+}
+
+export async function unassignClientPlan(
+  clientId: string,
+  planCode: string,
+): Promise<UserRecord> {
+  const response = await fetch(
+    `/api/executive/clients/${encodeURIComponent(clientId)}/assigned-plans/${encodeURIComponent(planCode)}`,
+    { method: "DELETE" },
+  );
+  return parseJsonResponse<UserRecord>(response);
+}
+
 export async function fetchClientActivities(
   clientId: string,
 ): Promise<import("@/types/client-activity").ClientActivityRecord[]> {

@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import {
   createClearedDashboardFilters,
   getActiveAmbulatoryClinicIds,
@@ -10,6 +11,7 @@ import {
   ZONE_FILTER_OPTIONS,
 } from "@/domain";
 import { FILTER_HELP } from "@/lib/filter-help-content";
+import { clinicMatchesActiveZones } from "@/lib/clinic-zones";
 import { touchTarget } from "@/lib/ui-tokens";
 import { joinClasses } from "@/lib/utils";
 import type { PlanCatalogClinicOption } from "@/lib/api/plan-clinics";
@@ -79,6 +81,33 @@ export function DashboardFiltersPanel({
     onPriceMinChange !== undefined &&
     onPriceMaxChange !== undefined;
 
+  const activeZoneIds = useMemo(
+    () =>
+      ZONE_FILTER_OPTIONS.filter((option) => value.zones[option.id]).map(
+        (option) => option.id,
+      ),
+    [value.zones],
+  );
+
+  /** Con zona activa: solo clínicas de esa zona (+ las ya seleccionadas). */
+  const zoneScopedClinicOptions = useMemo(() => {
+    if (activeZoneIds.length === 0) return clinicOptions;
+    const selectedIds = new Set([
+      ...value.hospitalClinicIds,
+      ...value.ambulatoryClinicIds,
+    ]);
+    return clinicOptions.filter(
+      (clinic) =>
+        selectedIds.has(clinic.id) ||
+        clinicMatchesActiveZones(clinic.zones ?? [], activeZoneIds),
+    );
+  }, [
+    activeZoneIds,
+    clinicOptions,
+    value.ambulatoryClinicIds,
+    value.hospitalClinicIds,
+  ]);
+
   function update(partial: Partial<DashboardFiltersState>) {
     onChange({ ...value, ...partial });
   }
@@ -143,7 +172,7 @@ export function DashboardFiltersPanel({
                     onChange={(hospitalClinicIds) =>
                       update({ hospitalClinicIds })
                     }
-                    options={clinicOptions}
+                    options={zoneScopedClinicOptions}
                     loading={clinicOptionsLoading}
                     error={clinicOptionsError}
                     modalTitle="Clínicas hospitalarias"
@@ -156,7 +185,7 @@ export function DashboardFiltersPanel({
                     onChange={(ambulatoryClinicIds) =>
                       update({ ambulatoryClinicIds })
                     }
-                    options={clinicOptions}
+                    options={zoneScopedClinicOptions}
                     loading={clinicOptionsLoading}
                     error={clinicOptionsError}
                     modalTitle="Clínicas ambulatorias"
@@ -182,7 +211,7 @@ export function DashboardFiltersPanel({
                       onChange={(hospitalClinicIds) =>
                         update({ hospitalClinicIds })
                       }
-                      options={clinicOptions}
+                      options={zoneScopedClinicOptions}
                       loading={clinicOptionsLoading}
                       error={clinicOptionsError}
                       modalTitle="Clínicas hospitalarias"
@@ -207,7 +236,7 @@ export function DashboardFiltersPanel({
                       onChange={(ambulatoryClinicIds) =>
                         update({ ambulatoryClinicIds })
                       }
-                      options={clinicOptions}
+                      options={zoneScopedClinicOptions}
                       loading={clinicOptionsLoading}
                       error={clinicOptionsError}
                       modalTitle="Clínicas ambulatorias"

@@ -26,6 +26,11 @@ export async function GET(request: Request, context: RouteContext) {
     const documents = await listClientDocuments(id, {
       executiveAccountId: user.id,
       isAdmin: realm === AUTH_REALM.admin,
+      executiveKind:
+        realm === AUTH_REALM.executive
+          ? (user as import("@/lib/auth/types").ExecutiveSessionUser)
+              .executiveKind
+          : null,
     });
 
     return NextResponse.json({ documents });

@@ -34,7 +34,7 @@ export interface ExecutiveAgendaStats {
 
 function isActivePipeline(client: UserRecord): boolean {
   const status = client.pipelineStatus ?? "NUEVO";
-  return status !== "CERRADO" && status !== "PERDIDO";
+  return status !== "RECEPCIONADO" && status !== "PERDIDO";
 }
 
 function isAssignedTo(

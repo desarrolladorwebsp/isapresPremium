@@ -14,6 +14,8 @@ type CalendarClientRow = {
   pipelineStatus: string;
   nextCallAt: Date | null;
   confirmationCallAt: Date | null;
+  reminderAt: Date | null;
+  reminderNote: string | null;
   preferredContactMethod: string | null;
   calendlyTeam: string | null;
   zoomJoinUrl: string | null;
@@ -33,7 +35,7 @@ type CalendarClientRow = {
 function mapCallEvent(
   client: CalendarClientRow,
   startsAt: Date,
-  kind: "call" | "confirmation",
+  kind: "call" | "confirmation" | "reminder",
 ): CalendarCallEvent {
   const contactMethod =
     (client.preferredContactMethod as ClientContactMethod | null) ?? null;
@@ -41,22 +43,31 @@ function mapCallEvent(
     ? CLIENT_CONTACT_METHOD_LABELS[contactMethod]
     : "Llamado";
   const hasZoomLink = Boolean(client.zoomJoinUrl);
+  const reminderLabel = client.reminderNote?.trim() || "Recordatorio";
   const title =
     kind === "confirmation"
       ? `Confirmación Zoom — ${client.fullName}`
-      : `${hasZoomLink ? "Zoom · " : ""}${channelLabel} — ${client.fullName}`;
+      : kind === "reminder"
+        ? `Recordatorio · ${reminderLabel} — ${client.fullName}`
+        : `${hasZoomLink ? "Zoom · " : ""}${channelLabel} — ${client.fullName}`;
 
   return {
-    id: kind === "confirmation" ? `${client.id}:confirmation` : client.id,
+    id:
+      kind === "confirmation"
+        ? `${client.id}:confirmation`
+        : kind === "reminder"
+          ? `${client.id}:reminder`
+          : client.id,
     clientId: client.id,
     clientName: client.fullName,
     startsAt: startsAt.toISOString(),
     title,
     kind,
-    contactMethod,
+    contactMethod: kind === "reminder" ? null : contactMethod,
+    reminderNote: kind === "reminder" ? client.reminderNote : null,
     calendlyTeam:
       (client.calendlyTeam as CalendarCallEvent["calendlyTeam"]) ?? null,
-    zoomJoinUrl: client.zoomJoinUrl ?? null,
+    zoomJoinUrl: kind === "reminder" ? null : client.zoomJoinUrl ?? null,
     clientEmail: client.email ?? null,
     clientPhone: client.phone ?? null,
     clientRut: client.rut ?? null,
@@ -71,8 +82,8 @@ function mapCallEvent(
 }
 
 /**
- * Llamados / reuniones agendadas (`nextCallAt`) y confirmaciones Zoom
- * (`confirmationCallAt`) para el calendario.
+ * Llamados / reuniones (`nextCallAt`), confirmaciones Zoom
+ * (`confirmationCallAt`) y recordatorios (`reminderAt`).
  * - Admin: todos en el rango.
  * - Ejecutivo: asignados o en seguimiento (tracking).
  */
@@ -109,6 +120,12 @@ export async function readCalendarCallEvents(input: {
                 lt: input.to,
               },
             },
+            {
+              reminderAt: {
+                gte: input.from,
+                lt: input.to,
+              },
+            },
           ],
         },
       ],
@@ -122,6 +139,8 @@ export async function readCalendarCallEvents(input: {
       pipelineStatus: true,
       nextCallAt: true,
       confirmationCallAt: true,
+      reminderAt: true,
+      reminderNote: true,
       preferredContactMethod: true,
       calendlyTeam: true,
       zoomJoinUrl: true,
@@ -154,7 +173,6 @@ export async function readCalendarCallEvents(input: {
       row.nextCallAt >= input.from &&
       row.nextCallAt < input.to
     ) {
-      // La reunión Premium la ve el assignee; el tracker Zoom ve la confirmación.
       const isAssignee =
         !input.executiveAccountId ||
         row.assignedExecutiveId === input.executiveAccountId;
@@ -174,9 +192,24 @@ export async function readCalendarCallEvents(input: {
       const isAssignee =
         !input.executiveAccountId ||
         row.assignedExecutiveId === input.executiveAccountId;
-      // Tracker (Zoom) siempre; assignee/admin también pueden verlo.
       if (isTracker || isAssignee) {
         events.push(mapCallEvent(row, row.confirmationCallAt, "confirmation"));
+      }
+    }
+
+    if (
+      row.reminderAt &&
+      row.reminderAt >= input.from &&
+      row.reminderAt < input.to
+    ) {
+      const isAssignee =
+        !input.executiveAccountId ||
+        row.assignedExecutiveId === input.executiveAccountId;
+      const isTracker =
+        !input.executiveAccountId ||
+        row.trackingExecutiveId === input.executiveAccountId;
+      if (isAssignee || isTracker) {
+        events.push(mapCallEvent(row, row.reminderAt, "reminder"));
       }
     }
   }

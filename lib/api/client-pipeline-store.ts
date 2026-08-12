@@ -7,6 +7,7 @@ import {
   type ClientRecordWithPlans,
 } from "@/lib/api/user-store";
 import {
+  CLIENT_PIPELINE_STATUS_LABELS,
   CLIENT_PIPELINE_STATUS_OPTIONS,
   parseClientClosedRecord,
 } from "@/lib/client-pipeline/constants";
@@ -106,8 +107,16 @@ function assertExecutiveCanView(
   user: ClientRecordWithPlans,
   executiveAccountId: string,
   isAdmin: boolean,
+  executiveKind?: ExecutiveKind | null,
 ): void {
-  if (!canViewClientAsExecutive(user, executiveAccountId, isAdmin)) {
+  if (
+    !canViewClientAsExecutive(
+      user,
+      executiveAccountId,
+      isAdmin,
+      executiveKind,
+    )
+  ) {
     throw new ApiError(
       "No tienes permiso para ver este cliente.",
       403,
@@ -129,14 +138,14 @@ function validateClosedRecord(
   if (!record) return null;
   if (!record.isapre.trim()) {
     throw new ApiError(
-      "Indica la Isapre al cerrar el cliente.",
+      "Indica la Isapre al marcar como recepcionado.",
       400,
       "INVALID_CLOSED_RECORD",
     );
   }
   if (!record.closedAt.trim()) {
     throw new ApiError(
-      "Indica la fecha de cierre.",
+      "Indica la fecha de recepcionado.",
       400,
       "INVALID_CLOSED_RECORD",
     );
@@ -187,7 +196,55 @@ export async function updateClientPipeline(
 
   const data: Prisma.UserUpdateInput = {};
 
-  if (input.pipelineStatus !== undefined) {
+  if (input.manualStatusChange) {
+    if (input.pipelineStatus === undefined) {
+      throw new ApiError(
+        "Indica el nuevo estatus.",
+        400,
+        "INVALID_STATUS",
+      );
+    }
+    if (!CLIENT_PIPELINE_STATUS_OPTIONS.includes(input.pipelineStatus)) {
+      throw new ApiError("Estado de cliente inválido.", 400, "INVALID_STATUS");
+    }
+    const reason = input.statusChangeNote?.trim() || "";
+    if (!reason) {
+      throw new ApiError(
+        "Indica el motivo del cambio manual de estatus.",
+        400,
+        "STATUS_CHANGE_NOTE_REQUIRED",
+      );
+    }
+    const previousStatus = existing.pipelineStatus as
+      | keyof typeof CLIENT_PIPELINE_STATUS_LABELS
+      | null;
+    const previousLabel = previousStatus
+      ? CLIENT_PIPELINE_STATUS_LABELS[
+          previousStatus as keyof typeof CLIENT_PIPELINE_STATUS_LABELS
+        ] ?? previousStatus
+      : "—";
+    const nextLabel = CLIENT_PIPELINE_STATUS_LABELS[input.pipelineStatus];
+    if (input.pipelineStatus !== existing.pipelineStatus) {
+      data.pipelineStatus = input.pipelineStatus;
+      const actorName = await resolveActorDisplayName(
+        actor.executiveAccountId,
+        actor.isAdmin,
+      );
+      const noteBody = `Estatus cambiado manualmente de "${previousLabel}" a "${nextLabel}". Motivo: ${reason}`;
+      const notesBase =
+        input.pipelineNotes !== undefined
+          ? input.pipelineNotes
+          : existing.pipelineNotes;
+      data.pipelineNotes = appendPipelineNoteLine(
+        notesBase,
+        noteBody,
+        actorName,
+      );
+      if (input.lastCallOutcome === undefined) {
+        data.lastCallOutcome = `Estatus → ${nextLabel}`;
+      }
+    }
+  } else if (input.pipelineStatus !== undefined) {
     if (!CLIENT_PIPELINE_STATUS_OPTIONS.includes(input.pipelineStatus)) {
       throw new ApiError("Estado de cliente inválido.", 400, "INVALID_STATUS");
     }
@@ -214,6 +271,14 @@ export async function updateClientPipeline(
 
   if (input.nextCallAt !== undefined) {
     data.nextCallAt = parseNextCallAt(input.nextCallAt);
+  }
+
+  if (input.reminderAt !== undefined) {
+    data.reminderAt = parseNextCallAt(input.reminderAt);
+  }
+
+  if (input.reminderNote !== undefined) {
+    data.reminderNote = input.reminderNote?.trim() || null;
   }
 
   if (input.lastCallOutcome !== undefined) {
@@ -299,14 +364,14 @@ export async function updateClientPipeline(
   }
 
   const nextStatus = input.pipelineStatus ?? existing.pipelineStatus;
-  if (nextStatus === "CERRADO") {
+  if (nextStatus === "RECEPCIONADO" && !input.manualStatusChange) {
     const closed =
       input.closedRecord !== undefined
         ? validateClosedRecord(input.closedRecord)
         : parseClientClosedRecord(existing.pipelineClosedRecord);
     if (!closed) {
       throw new ApiError(
-        "Completa el registro de cierre antes de marcar como Cerrado.",
+        "Completa el registro de recepcionado antes de marcar como Recepcionado.",
         400,
         "INVALID_CLOSED_RECORD",
       );
@@ -314,7 +379,7 @@ export async function updateClientPipeline(
     data.pipelineClosedRecord = closed as unknown as Prisma.InputJsonValue;
   }
 
-  if (nextStatus === "CERRADO" || nextStatus === "PERDIDO") {
+  if (nextStatus === "RECEPCIONADO" || nextStatus === "PERDIDO") {
     Object.assign(data, clearTrackingFields());
   }
 
@@ -451,7 +516,7 @@ export async function redirectClientToIsapresPremium(
 ): Promise<UserRecord> {
   if (!actor.isAdmin && !actor.canRunZoomWorkflow) {
     throw new ApiError(
-      "Solo un Ejecutivo Zoom, Isapres Premium o un administrador puede redirigir a Isapres Premium.",
+      "Solo un Ejecutivo Zoom, Isapres Premium, Isapres o un administrador puede redirigir a Isapres Premium.",
       403,
       "FORBIDDEN",
     );
@@ -675,7 +740,7 @@ async function assertEligibleExecutiveOfKind(
  *
  * Estados destino (documentados):
  * - ZOOM → `NO_CONTESTA` (motivo: sin contacto; reinicia el ciclo en Zoom).
- * - ISAPRES → `DOCUMENTACION` (listo para cierre/contratación).
+ * - ISAPRES → `ENVIADO_ISAPRE` (listo para cierre/contratación).
  *
  * Solo Premium (asignado) o Admin.
  */
@@ -744,16 +809,24 @@ export async function redirectClientFromIsapresPremium(
     actor.isAdmin,
   );
 
-  // ZOOM: sin contacto → NO_CONTESTA. ISAPRES: aceptó cotización → DOCUMENTACION.
-  const nextStatus = targetKind === "ZOOM" ? "NO_CONTESTA" : "DOCUMENTACION";
+  // ZOOM: sin contacto → NO_CONTESTA (devolución). ISAPRES: aceptó → ENVIADO_ISAPRE.
+  const nextStatus = targetKind === "ZOOM" ? "NO_CONTESTA" : "ENVIADO_ISAPRE";
   const reasonNote =
     targetKind === "ZOOM"
       ? "Sin contacto con el cliente."
       : "Derivado a Isapres para cierre.";
+  const handoffNote =
+    targetKind === "ZOOM"
+      ? `Devuelto a ${kindLabel}. ${reasonNote}`
+      : `Enviado a ${kindLabel}. ${reasonNote}`;
+  const handoffOutcome =
+    targetKind === "ZOOM"
+      ? `Devuelto a Zoom · ${reasonNote}`
+      : `Enviado a ${kindLabelShort} · ${reasonNote}`;
 
   const nextNotes = appendPipelineNoteLine(
     existing.pipelineNotes,
-    `Enviado a ${kindLabel}. ${reasonNote}`,
+    handoffNote,
     actorName,
   );
 
@@ -779,7 +852,7 @@ export async function redirectClientFromIsapresPremium(
       assignedExecutive: { connect: { id: targetId } },
       pipelineStatus: nextStatus,
       pipelineNotes: nextNotes,
-      lastCallOutcome: `Enviado a ${kindLabelShort} · ${reasonNote}`,
+      lastCallOutcome: handoffOutcome,
       ...(clearTracking
         ? clearTrackingFields()
         : trackerId

@@ -38,7 +38,7 @@ interface DashboardStats {
   derived: number;
   quotes: number;
   pendingQuotes: number;
-  inDocumentation: number;
+  enviadoIsapre: number;
   closed: number;
   noAnswer: number;
   inFollowUp: number;
@@ -211,8 +211,8 @@ export function ExecutiveDashboardHome() {
       pendingQuotes: canSeeQuotes
         ? quoteRows.filter((quote) => quote.status === "PENDING").length
         : 0,
-      inDocumentation: countByStatus(activeClients, "DOCUMENTACION"),
-      closed: countByStatus(activeClients, "CERRADO"),
+      enviadoIsapre: countByStatus(activeClients, "ENVIADO_ISAPRE"),
+      closed: countByStatus(activeClients, "RECEPCIONADO"),
       noAnswer: countByStatus(activeClients, "NO_CONTESTA"),
       inFollowUp: countByStatus(activeClients, "EN_SEGUIMIENTO"),
       gestionesHoy: agendaItems.dueToday.length,
@@ -384,14 +384,14 @@ export function ExecutiveDashboardHome() {
             icon: <IconUsers className="size-6" />,
           },
           {
-            label: "En documentación",
-            hint: "Listos o en proceso de contratación",
-            value: stats?.inDocumentation,
+            label: "Enviado a Isapre",
+            hint: "En gestión / contratación Isapre",
+            value: stats?.enviadoIsapre,
             icon: <IconClipboard className="size-6" />,
           },
           {
-            label: "Cerrados",
-            hint: "Negocios cerrados en tu cartera",
+            label: "Recepcionados",
+            hint: "Negocios recepcionados en tu cartera",
             value: stats?.closed,
             icon: <IconClock className="size-6" />,
           },

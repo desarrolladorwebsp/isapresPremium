@@ -11,8 +11,11 @@ import {
   CLIENT_MOTIVO_COTIZACION_OPTIONS,
   CLIENT_REGION_OPTIONS,
   MARITAL_STATUS_OPTIONS,
+  motivoCotizacionIncludes,
+  motivoCotizacionIncludesOtros,
   resolveClientMoneyCurrency,
   splitFullName,
+  toggleMotivoCotizacionId,
 } from "@/lib/client-profile/constants";
 import { sanitizeRutInput, isValidRut } from "@/lib/auth/rut";
 import {
@@ -20,6 +23,10 @@ import {
   getClientManagementRutWarnings,
 } from "@/lib/client-profile/validate-client-ruts";
 import { CURRENT_COVERAGE_OPTIONS } from "@/lib/filter-options";
+import {
+  CONTRIBUTOR_TYPE_OPTIONS,
+  resolveContributorType,
+} from "@/lib/quote-criteria-options";
 import { ui } from "@/lib/ui-tokens";
 import { joinClasses } from "@/lib/utils";
 import type {
@@ -37,6 +44,11 @@ const COVERAGE_SELECT_OPTIONS = CURRENT_COVERAGE_OPTIONS.map((option) => ({
   value: option.label,
   label: option.label,
 }));
+
+const FORM_LABEL_CLASS =
+  "text-xs font-medium text-[color:var(--dash-navy,#092558)]";
+const FORM_SECTION_TITLE_CLASS =
+  "text-xs font-semibold uppercase tracking-wide text-[color:var(--dash-navy,#092558)]";
 
 type EmployerAgreementStatus =
   | { kind: "idle" }
@@ -121,7 +133,12 @@ function EmployerRutField({
 
   return (
     <label className="block space-y-1.5">
-      <span className="flex flex-wrap items-center gap-2 text-xs font-medium">
+      <span
+        className={joinClasses(
+          "flex flex-wrap items-center gap-2",
+          FORM_LABEL_CLASS,
+        )}
+      >
         RUT empleador
         {status.kind === "checking" ? (
           <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600">
@@ -193,7 +210,7 @@ function CurrencyAmountField({
 
   return (
     <label className="block space-y-1.5">
-      <span className="text-xs font-medium">{label}</span>
+      <span className={FORM_LABEL_CLASS}>{label}</span>
       <div className="flex gap-2">
         <Input
           value={amount}
@@ -241,6 +258,7 @@ export interface ClientProfileFormValue {
   weightKg: string;
   maritalStatus: string;
   employerRut: string;
+  contributorType: string;
   rentaImponible: string;
   motivoCotizacion: string;
   motivoCotizacionOther: string;
@@ -275,6 +293,7 @@ export function buildEmptyClientProfileFormValue(): ClientProfileFormValue {
     weightKg: "",
     maritalStatus: "",
     employerRut: "",
+    contributorType: "",
     rentaImponible: "",
     motivoCotizacion: "",
     motivoCotizacionOther: "",
@@ -298,7 +317,9 @@ export type ClientProfileFormSection =
   | "titulares"
   | "cargas"
   /** Solo titular principal (sin titulares adicionales ni cargas). */
-  | "principal";
+  | "principal"
+  /** Seguro, clínicas y preexistencias. */
+  | "complementaria";
 
 export interface ClientProfileFormProps {
   value: ClientProfileFormValue;
@@ -340,6 +361,9 @@ export function ClientProfileForm({
     showAllSections === false && Boolean(sections?.includes("employer"));
   const showPrevisionBlock =
     showAllSections === false && Boolean(sections?.includes("prevision"));
+  const showComplementariaBlock =
+    showAllSections === false &&
+    Boolean(sections?.includes("complementaria"));
   const showTitulares =
     showAllSections ||
     Boolean(sections?.includes("titulares")) ||
@@ -349,6 +373,14 @@ export function ClientProfileForm({
   const showCargas = showAllSections || Boolean(sections?.includes("cargas"));
   /** En formulario completo el empleador vive dentro de titulares. */
   const showEmployerInline = showAllSections;
+  /**
+   * Modal «Información personal» (`principal`): solo datos del titular.
+   * Plan / complemento / motivo viven en sus propias cápsulas.
+   */
+  const isPersonalOnly =
+    Boolean(sections?.includes("principal")) &&
+    !showAllSections &&
+    !showAdditionalTitulares;
 
   const [blurRutErrors, setBlurRutErrors] = useState<{
     titular?: string;
@@ -488,8 +520,9 @@ export function ClientProfileForm({
           return {
             ...titular,
             motivoCotizacion: fieldValue,
-            motivoCotizacionOther:
-              fieldValue === "otros" ? titular.motivoCotizacionOther : "",
+            motivoCotizacionOther: motivoCotizacionIncludesOtros(fieldValue)
+              ? titular.motivoCotizacionOther
+              : "",
           };
         }
         return { ...titular, [field]: fieldValue };
@@ -613,12 +646,29 @@ export function ClientProfileForm({
       {showEmployerBlock ? (
         <div className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block space-y-1.5 sm:col-span-2">
+              <span className={FORM_LABEL_CLASS}>Calidad de cliente</span>
+              <select
+                value={resolveContributorType(value.contributorType)}
+                onChange={(event) =>
+                  updateField("contributorType", event.target.value)
+                }
+                className={joinClasses("h-10 w-full rounded-md px-3 text-sm", ui.input)}
+              >
+                <option value="">Selecciona…</option>
+                {CONTRIBUTOR_TYPE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
             <EmployerRutField
               value={value.employerRut}
               onChange={(next) => updateField("employerRut", next)}
             />
             <label className="block space-y-1.5">
-              <span className="text-xs font-medium">Renta imponible</span>
+              <span className={FORM_LABEL_CLASS}>Renta imponible</span>
               <Input
                 value={value.rentaImponible}
                 onChange={(event) =>
@@ -635,15 +685,13 @@ export function ClientProfileForm({
         <div className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="block space-y-1.5 sm:col-span-2">
-              <span className="text-xs font-medium">
-                Isapre / previsión actual
-              </span>
+              <span className={FORM_LABEL_CLASS}>Isapre actual</span>
               {renderIsapreSelect(value.currentIsapre, (next) =>
                 updateField("currentIsapre", next),
               )}
             </label>
             <CurrencyAmountField
-              label="Precio del plan actual"
+              label="Valor plan"
               amount={value.currentPlanPrice}
               currency={value.currentPlanPriceCurrency}
               onAmountChange={(next) => updateField("currentPlanPrice", next)}
@@ -677,11 +725,13 @@ export function ClientProfileForm({
                     })
                   }
                 />
-                <span className="font-medium">Anualidad</span>
+                <span className="font-medium text-[color:var(--dash-navy,#092558)]">
+                  Anualidad
+                </span>
               </label>
               {!value.anualidad ? (
                 <label className="min-w-0 flex-1 space-y-1.5">
-                  <span className="text-xs font-medium">
+                  <span className={FORM_LABEL_CLASS}>
                     Comentario (sin anualidad)
                   </span>
                   <Input
@@ -698,6 +748,43 @@ export function ClientProfileForm({
         </div>
       ) : null}
 
+      {showComplementariaBlock ? (
+        <div className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block space-y-1.5 sm:col-span-2">
+              <span className={FORM_LABEL_CLASS}>Seguro complementario</span>
+              <Input
+                value={value.segurosComplementarios}
+                onChange={(event) =>
+                  updateField("segurosComplementarios", event.target.value)
+                }
+                placeholder="Ej. dental, catastrófico…"
+              />
+            </label>
+            <label className="block space-y-1.5 sm:col-span-2">
+              <span className={FORM_LABEL_CLASS}>Clínicas de preferencia</span>
+              <Input
+                value={value.preferredClinics}
+                onChange={(event) =>
+                  updateField("preferredClinics", event.target.value)
+                }
+                placeholder="Ej. Clínica Alemana, RedSalud…"
+              />
+            </label>
+            <label className="block space-y-1.5 sm:col-span-2">
+              <span className={FORM_LABEL_CLASS}>Preexistencias</span>
+              <Input
+                value={value.preexistenciasMedicas}
+                onChange={(event) =>
+                  updateField("preexistenciasMedicas", event.target.value)
+                }
+                placeholder="Ej. hipertensión, diabetes…"
+              />
+            </label>
+          </div>
+        </div>
+      ) : null}
+
       {showTitulares ? (
       <CollapsibleSection
         title={showAdditionalTitulares ? "Datos de titulares" : "Datos del titular"}
@@ -706,11 +793,7 @@ export function ClientProfileForm({
             ? "Puedes registrar el titular principal y agregar titulares adicionales del grupo familiar."
             : undefined
         }
-        className={
-          showAllSections
-            ? "rounded-xl border border-border bg-bg-layout/30 p-4"
-            : "space-y-0"
-        }
+        className="space-y-0"
         hideIntro={!showAllSections}
         bodyClassName="space-y-4"
         headerRight={
@@ -726,13 +809,14 @@ export function ClientProfileForm({
           )
         }
       >
-        <div className="rounded-xl border border-border bg-white p-3 shadow-sm">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-primary-dark">
+        <div>
+          <p className={joinClasses("mb-3", FORM_SECTION_TITLE_CLASS)}>
             Titular 1 (principal)
           </p>
+          {/* Orden alineado a ClientProtocoloFlowView: personales → laboral → plan → motivo */}
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="block space-y-1.5">
-              <span className="text-xs font-medium">Nombres *</span>
+              <span className={FORM_LABEL_CLASS}>Nombres *</span>
               <Input
                 required
                 value={value.firstNames}
@@ -744,7 +828,7 @@ export function ClientProfileForm({
             </label>
 
             <label className="block space-y-1.5">
-              <span className="text-xs font-medium">Apellidos</span>
+              <span className={FORM_LABEL_CLASS}>Apellidos</span>
               <Input
                 value={value.lastNames}
                 onChange={(event) =>
@@ -754,29 +838,8 @@ export function ClientProfileForm({
               />
             </label>
 
-            {showEmail ? (
-              <label className="block space-y-1.5 sm:col-span-2">
-                <span className="text-xs font-medium">Correo electrónico</span>
-                <Input
-                  type="email"
-                  value={value.email}
-                  onChange={(event) => updateField("email", event.target.value)}
-                  placeholder="cliente@gmail.com"
-                />
-              </label>
-            ) : null}
-
             <label className="block space-y-1.5">
-              <span className="text-xs font-medium">Celular</span>
-              <Input
-                value={value.phone}
-                onChange={(event) => updateField("phone", event.target.value)}
-                placeholder="+56912345678"
-              />
-            </label>
-
-            <label className="block space-y-1.5">
-              <span className="text-xs font-medium">RUT titular</span>
+              <span className={FORM_LABEL_CLASS}>RUT</span>
               <Input
                 value={value.rut}
                 aria-invalid={
@@ -810,15 +873,38 @@ export function ClientProfileForm({
               ) : null}
             </label>
 
-            {showEmployerInline ? (
-              <EmployerRutField
-                value={value.employerRut}
-                onChange={(next) => updateField("employerRut", next)}
+            <label className="block space-y-1.5">
+              <span className={FORM_LABEL_CLASS}>Edad</span>
+              <Input
+                value={value.age}
+                onChange={(event) => updateField("age", event.target.value)}
+                placeholder="Ej. 37"
               />
+            </label>
+
+            <label className="block space-y-1.5">
+              <span className={FORM_LABEL_CLASS}>Teléfono</span>
+              <Input
+                value={value.phone}
+                onChange={(event) => updateField("phone", event.target.value)}
+                placeholder="+56912345678"
+              />
+            </label>
+
+            {showEmail ? (
+              <label className="block space-y-1.5">
+                <span className={FORM_LABEL_CLASS}>Email</span>
+                <Input
+                  type="email"
+                  value={value.email}
+                  onChange={(event) => updateField("email", event.target.value)}
+                  placeholder="cliente@gmail.com"
+                />
+              </label>
             ) : null}
 
             <label className="block space-y-1.5">
-              <span className="text-xs font-medium">Fecha de nacimiento</span>
+              <span className={FORM_LABEL_CLASS}>Fecha de nacimiento</span>
               <Input
                 type="date"
                 value={value.birthDate}
@@ -834,16 +920,7 @@ export function ClientProfileForm({
             </label>
 
             <label className="block space-y-1.5">
-              <span className="text-xs font-medium">Edad</span>
-              <Input
-                value={value.age}
-                onChange={(event) => updateField("age", event.target.value)}
-                placeholder="Ej. 35 o nota"
-              />
-            </label>
-
-            <label className="block space-y-1.5">
-              <span className="text-xs font-medium">Estado civil legal</span>
+              <span className={FORM_LABEL_CLASS}>Estado civil legal</span>
               <select
                 value={value.maritalStatus}
                 onChange={(event) =>
@@ -864,7 +941,7 @@ export function ClientProfileForm({
             </label>
 
             <label className="block space-y-1.5">
-              <span className="text-xs font-medium">Estatura (cm)</span>
+              <span className={FORM_LABEL_CLASS}>Estatura (cm)</span>
               <Input
                 value={value.heightCm}
                 onChange={(event) =>
@@ -875,7 +952,7 @@ export function ClientProfileForm({
             </label>
 
             <label className="block space-y-1.5">
-              <span className="text-xs font-medium">Peso (kg)</span>
+              <span className={FORM_LABEL_CLASS}>Peso (kg)</span>
               <Input
                 value={value.weightKg}
                 onChange={(event) =>
@@ -885,92 +962,214 @@ export function ClientProfileForm({
               />
             </label>
 
-            <label className="block space-y-1.5">
-              <span className="text-xs font-medium">Isapre / previsión actual</span>
-              {renderIsapreSelect(value.currentIsapre, (next) =>
-                updateField("currentIsapre", next),
-              )}
-            </label>
-
-            <CurrencyAmountField
-              label="Precio del plan actual"
-              amount={value.currentPlanPrice}
-              currency={value.currentPlanPriceCurrency}
-              onAmountChange={(next) => updateField("currentPlanPrice", next)}
-              onCurrencyChange={(next) =>
-                updateField("currentPlanPriceCurrency", next)
-              }
-            />
-
-            <CurrencyAmountField
-              label="Adicional voluntario"
-              amount={value.voluntaryAdditional}
-              currency={value.voluntaryAdditionalCurrency}
-              onAmountChange={(next) =>
-                updateField("voluntaryAdditional", next)
-              }
-              onCurrencyChange={(next) =>
-                updateField("voluntaryAdditionalCurrency", next)
-              }
-            />
-
             {showEmployerInline ? (
-              <label className="block space-y-1.5">
-                <span className="text-xs font-medium">Renta imponible</span>
-                <Input
-                  value={value.rentaImponible}
-                  onChange={(event) =>
-                    updateField("rentaImponible", event.target.value)
-                  }
-                  placeholder="Ej. 1500000"
+              <>
+                <EmployerRutField
+                  value={value.employerRut}
+                  onChange={(next) => updateField("employerRut", next)}
                 />
-              </label>
+                <label className="block space-y-1.5">
+                  <span className={FORM_LABEL_CLASS}>Renta imponible</span>
+                  <Input
+                    value={value.rentaImponible}
+                    onChange={(event) =>
+                      updateField("rentaImponible", event.target.value)
+                    }
+                    placeholder="Ej. 1500000"
+                  />
+                </label>
+                <label className="block space-y-1.5 sm:col-span-2">
+                  <span className={FORM_LABEL_CLASS}>Calidad de cliente</span>
+                  <select
+                    value={resolveContributorType(value.contributorType)}
+                    onChange={(event) =>
+                      updateField("contributorType", event.target.value)
+                    }
+                    className={joinClasses(
+                      "h-11 w-full rounded-xl px-3 text-sm",
+                      ui.input,
+                    )}
+                  >
+                    <option value="">Selecciona…</option>
+                    {CONTRIBUTOR_TYPE_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </>
             ) : null}
 
-            <label className="block space-y-1.5">
-              <span className="text-xs font-medium">Motivo de cotización</span>
-              <select
-                value={value.motivoCotizacion}
-                onChange={(event) => {
-                  const next = event.target.value;
-                  onChange({
-                    ...value,
-                    motivoCotizacion: next,
-                    motivoCotizacionOther:
-                      next === "otros" ? value.motivoCotizacionOther : "",
-                  });
-                }}
-                className={joinClasses(
-                  "h-10 w-full rounded-md px-3 text-sm",
-                  ui.input,
-                )}
-              >
-                <option value="">Seleccionar motivo…</option>
-                {CLIENT_MOTIVO_COTIZACION_OPTIONS.map((option) => (
-                  <option key={option.id} value={option.id}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+            {!isPersonalOnly ? (
+              <>
+                <label className="block space-y-1.5 sm:col-span-2">
+                  <span className={FORM_LABEL_CLASS}>Isapre actual</span>
+                  {renderIsapreSelect(value.currentIsapre, (next) =>
+                    updateField("currentIsapre", next),
+                  )}
+                </label>
 
-            {value.motivoCotizacion === "otros" ? (
-              <label className="block space-y-1.5 sm:col-span-2">
-                <span className="text-xs font-medium">
-                  Detalle del motivo *
-                </span>
-                <Input
-                  value={value.motivoCotizacionOther}
-                  onChange={(event) =>
-                    updateField("motivoCotizacionOther", event.target.value)
+                <CurrencyAmountField
+                  label="Valor plan"
+                  amount={value.currentPlanPrice}
+                  currency={value.currentPlanPriceCurrency}
+                  onAmountChange={(next) =>
+                    updateField("currentPlanPrice", next)
                   }
-                  placeholder="Describe el motivo de cotización…"
+                  onCurrencyChange={(next) =>
+                    updateField("currentPlanPriceCurrency", next)
+                  }
                 />
-              </label>
+
+                <CurrencyAmountField
+                  label="Adicional voluntario"
+                  amount={value.voluntaryAdditional}
+                  currency={value.voluntaryAdditionalCurrency}
+                  onAmountChange={(next) =>
+                    updateField("voluntaryAdditional", next)
+                  }
+                  onCurrencyChange={(next) =>
+                    updateField("voluntaryAdditionalCurrency", next)
+                  }
+                />
+
+                <label className="block space-y-1.5 sm:col-span-2">
+                  <span className={FORM_LABEL_CLASS}>
+                    Seguro complementario
+                  </span>
+                  <Input
+                    value={value.segurosComplementarios}
+                    onChange={(event) =>
+                      updateField("segurosComplementarios", event.target.value)
+                    }
+                    placeholder="Ej. dental, catastrófico…"
+                  />
+                </label>
+
+                <label className="block space-y-1.5 sm:col-span-2">
+                  <span className={FORM_LABEL_CLASS}>
+                    Clínicas de preferencia
+                  </span>
+                  <Input
+                    value={value.preferredClinics}
+                    onChange={(event) =>
+                      updateField("preferredClinics", event.target.value)
+                    }
+                    placeholder="Ej. Clínica Alemana, RedSalud…"
+                  />
+                </label>
+
+                <div className="flex flex-col gap-3 sm:col-span-2 sm:flex-row sm:items-end">
+                  <label className="flex h-10 shrink-0 cursor-pointer items-center gap-2 text-sm sm:pb-0">
+                    <input
+                      type="checkbox"
+                      checked={value.anualidad}
+                      onChange={(event) =>
+                        onChange({
+                          ...value,
+                          anualidad: event.target.checked,
+                          anualidadComment: event.target.checked
+                            ? ""
+                            : value.anualidadComment,
+                        })
+                      }
+                    />
+                    <span className="font-medium text-[color:var(--dash-navy,#092558)]">
+                      Anualidad
+                    </span>
+                  </label>
+                  {!value.anualidad ? (
+                    <label className="min-w-0 flex-1 space-y-1.5">
+                      <span className={FORM_LABEL_CLASS}>
+                        Comentario (sin anualidad)
+                      </span>
+                      <Input
+                        value={value.anualidadComment}
+                        onChange={(event) =>
+                          updateField("anualidadComment", event.target.value)
+                        }
+                        placeholder="Agregar comentario…"
+                      />
+                    </label>
+                  ) : null}
+                </div>
+
+                <label className="block space-y-1.5 sm:col-span-2">
+                  <span className={FORM_LABEL_CLASS}>Preexistencias</span>
+                  <Input
+                    value={value.preexistenciasMedicas}
+                    onChange={(event) =>
+                      updateField("preexistenciasMedicas", event.target.value)
+                    }
+                    placeholder="Ej. hipertensión, diabetes…"
+                  />
+                </label>
+
+                <div className="space-y-2 sm:col-span-2">
+                  <span className={FORM_LABEL_CLASS}>Motivo de cotización</span>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {CLIENT_MOTIVO_COTIZACION_OPTIONS.map((option) => {
+                      const selected = motivoCotizacionIncludes(
+                        value.motivoCotizacion,
+                        option.id,
+                      );
+                      return (
+                        <label
+                          key={option.id}
+                          className={joinClasses(
+                            "flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-sm transition",
+                            selected
+                              ? "border-primary/40 bg-[color-mix(in_srgb,var(--dash-cyan,#1ac9ea)_12%,white)] font-semibold text-primary-dark"
+                              : "border-border bg-white text-foreground hover:border-primary/25",
+                          )}
+                        >
+                          <input
+                            type="checkbox"
+                            className="accent-[color:var(--dash-navy)]"
+                            checked={selected}
+                            onChange={() => {
+                              const next = toggleMotivoCotizacionId(
+                                value.motivoCotizacion,
+                                option.id,
+                              );
+                              onChange({
+                                ...value,
+                                motivoCotizacion: next,
+                                motivoCotizacionOther:
+                                  motivoCotizacionIncludesOtros(next)
+                                    ? value.motivoCotizacionOther
+                                    : "",
+                              });
+                            }}
+                          />
+                          {option.label}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {motivoCotizacionIncludesOtros(value.motivoCotizacion) ? (
+                  <label className="block space-y-1.5 sm:col-span-2">
+                    <span className={FORM_LABEL_CLASS}>Detalle de Otros *</span>
+                    <Input
+                      value={value.motivoCotizacionOther}
+                      onChange={(event) =>
+                        updateField(
+                          "motivoCotizacionOther",
+                          event.target.value,
+                        )
+                      }
+                      placeholder="Describe el motivo de cotización…"
+                    />
+                  </label>
+                ) : null}
+              </>
             ) : null}
 
             <label className="block space-y-1.5 sm:col-span-2">
-              <span className="text-xs font-medium">Dirección particular</span>
+              <span className={FORM_LABEL_CLASS}>Dirección particular</span>
               <Input
                 value={value.address}
                 onChange={(event) => updateField("address", event.target.value)}
@@ -979,7 +1178,7 @@ export function ClientProfileForm({
             </label>
 
             <label className="block space-y-1.5">
-              <span className="text-xs font-medium">Comuna</span>
+              <span className={FORM_LABEL_CLASS}>Comuna</span>
               <Input
                 value={value.commune}
                 onChange={(event) => updateField("commune", event.target.value)}
@@ -988,7 +1187,7 @@ export function ClientProfileForm({
             </label>
 
             <label className="block space-y-1.5">
-              <span className="text-xs font-medium">Región</span>
+              <span className={FORM_LABEL_CLASS}>Región</span>
               <select
                 value={value.coverageRegionId}
                 onChange={(event) => updateCoverageRegion(event.target.value)}
@@ -1005,84 +1204,15 @@ export function ClientProfileForm({
                 ))}
               </select>
             </label>
-
-            <label className="block space-y-1.5 sm:col-span-2">
-              <span className="text-xs font-medium">Clínicas de preferencia</span>
-              <Input
-                value={value.preferredClinics}
-                onChange={(event) =>
-                  updateField("preferredClinics", event.target.value)
-                }
-                placeholder="Ej. Clínica Alemana, RedSalud…"
-              />
-            </label>
-
-            <div className="flex flex-col gap-3 sm:col-span-2 sm:flex-row sm:items-end">
-              <label className="flex h-10 shrink-0 cursor-pointer items-center gap-2 text-sm sm:pb-0">
-                <input
-                  type="checkbox"
-                  checked={value.anualidad}
-                  onChange={(event) =>
-                    onChange({
-                      ...value,
-                      anualidad: event.target.checked,
-                      anualidadComment: event.target.checked
-                        ? ""
-                        : value.anualidadComment,
-                    })
-                  }
-                />
-                <span className="font-medium">Anualidad</span>
-              </label>
-              {!value.anualidad ? (
-                <label className="min-w-0 flex-1 space-y-1.5">
-                  <span className="text-xs font-medium">
-                    Comentario (sin anualidad)
-                  </span>
-                  <Input
-                    value={value.anualidadComment}
-                    onChange={(event) =>
-                      updateField("anualidadComment", event.target.value)
-                    }
-                    placeholder="Agregar comentario…"
-                  />
-                </label>
-              ) : null}
-            </div>
-
-            <label className="block space-y-1.5">
-              <span className="text-xs font-medium">Seguros complementarios</span>
-              <Input
-                value={value.segurosComplementarios}
-                onChange={(event) =>
-                  updateField("segurosComplementarios", event.target.value)
-                }
-                placeholder="Ej. dental, catastrófico…"
-              />
-            </label>
-
-            <label className="block space-y-1.5">
-              <span className="text-xs font-medium">Preexistencias médicas</span>
-              <Input
-                value={value.preexistenciasMedicas}
-                onChange={(event) =>
-                  updateField("preexistenciasMedicas", event.target.value)
-                }
-                placeholder="Ej. hipertensión, diabetes…"
-              />
-            </label>
           </div>
         </div>
 
         {showAdditionalTitulares && value.additionalTitulares.length > 0 ? (
           <div className="space-y-3">
             {value.additionalTitulares.map((titular, index) => (
-              <div
-                key={titular.id}
-                className="rounded-xl border border-border bg-white p-3 shadow-sm"
-              >
+              <div key={titular.id}>
                 <div className="mb-3 flex items-center justify-between gap-2">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-primary-dark">
+                  <p className={FORM_SECTION_TITLE_CLASS}>
                     Titular {index + 2}
                   </p>
                   <Button
@@ -1097,7 +1227,7 @@ export function ClientProfileForm({
 
                 <div className="grid gap-3 sm:grid-cols-2">
                   <label className="block space-y-1.5">
-                    <span className="text-xs font-medium">Nombres *</span>
+                    <span className={FORM_LABEL_CLASS}>Nombres *</span>
                     <Input
                       required
                       value={titular.firstNames}
@@ -1113,7 +1243,7 @@ export function ClientProfileForm({
                   </label>
 
                   <label className="block space-y-1.5">
-                    <span className="text-xs font-medium">Apellidos</span>
+                    <span className={FORM_LABEL_CLASS}>Apellidos</span>
                     <Input
                       value={titular.lastNames}
                       onChange={(event) =>
@@ -1128,7 +1258,7 @@ export function ClientProfileForm({
                   </label>
 
                   <label className="block space-y-1.5">
-                    <span className="text-xs font-medium">RUT</span>
+                    <span className={FORM_LABEL_CLASS}>RUT</span>
                     <Input
                       value={titular.rut}
                       onChange={(event) =>
@@ -1160,7 +1290,22 @@ export function ClientProfileForm({
                   </label>
 
                   <label className="block space-y-1.5">
-                    <span className="text-xs font-medium">Celular</span>
+                    <span className={FORM_LABEL_CLASS}>Edad</span>
+                    <Input
+                      value={titular.age}
+                      onChange={(event) =>
+                        updateAdditionalTitular(
+                          titular.id,
+                          "age",
+                          event.target.value,
+                        )
+                      }
+                      placeholder="Ej. 37"
+                    />
+                  </label>
+
+                  <label className="block space-y-1.5">
+                    <span className={FORM_LABEL_CLASS}>Teléfono</span>
                     <Input
                       value={titular.phone}
                       onChange={(event) =>
@@ -1175,7 +1320,7 @@ export function ClientProfileForm({
                   </label>
 
                   <label className="block space-y-1.5">
-                    <span className="text-xs font-medium">
+                    <span className={FORM_LABEL_CLASS}>
                       Fecha de nacimiento
                     </span>
                     <Input
@@ -1192,22 +1337,7 @@ export function ClientProfileForm({
                   </label>
 
                   <label className="block space-y-1.5">
-                    <span className="text-xs font-medium">Edad</span>
-                    <Input
-                      value={titular.age}
-                      onChange={(event) =>
-                        updateAdditionalTitular(
-                          titular.id,
-                          "age",
-                          event.target.value,
-                        )
-                      }
-                      placeholder="Ej. 35 o nota"
-                    />
-                  </label>
-
-                  <label className="block space-y-1.5">
-                    <span className="text-xs font-medium">
+                    <span className={FORM_LABEL_CLASS}>
                       Estado civil legal
                     </span>
                     <select
@@ -1234,7 +1364,7 @@ export function ClientProfileForm({
                   </label>
 
                   <label className="block space-y-1.5">
-                    <span className="text-xs font-medium">Estatura (cm)</span>
+                    <span className={FORM_LABEL_CLASS}>Estatura (cm)</span>
                     <Input
                       value={titular.heightCm}
                       onChange={(event) =>
@@ -1249,7 +1379,7 @@ export function ClientProfileForm({
                   </label>
 
                   <label className="block space-y-1.5">
-                    <span className="text-xs font-medium">Peso (kg)</span>
+                    <span className={FORM_LABEL_CLASS}>Peso (kg)</span>
                     <Input
                       value={titular.weightKg}
                       onChange={(event) =>
@@ -1264,9 +1394,22 @@ export function ClientProfileForm({
                   </label>
 
                   <label className="block space-y-1.5">
-                    <span className="text-xs font-medium">
-                      Isapre / previsión actual
-                    </span>
+                    <span className={FORM_LABEL_CLASS}>Renta imponible</span>
+                    <Input
+                      value={titular.rentaImponible}
+                      onChange={(event) =>
+                        updateAdditionalTitular(
+                          titular.id,
+                          "rentaImponible",
+                          event.target.value,
+                        )
+                      }
+                      placeholder="Ej. 1500000"
+                    />
+                  </label>
+
+                  <label className="block space-y-1.5 sm:col-span-2">
+                    <span className={FORM_LABEL_CLASS}>Isapre actual</span>
                     {renderIsapreSelect(titular.currentIsapre, (next) =>
                       updateAdditionalTitular(
                         titular.id,
@@ -1277,7 +1420,7 @@ export function ClientProfileForm({
                   </label>
 
                   <CurrencyAmountField
-                    label="Precio del plan actual"
+                    label="Valor plan"
                     amount={titular.currentPlanPrice ?? ""}
                     currency={resolveClientMoneyCurrency(
                       titular.currentPlanPriceCurrency,
@@ -1320,10 +1463,8 @@ export function ClientProfileForm({
                     }
                   />
 
-                  <label className="block space-y-1.5">
-                    <span className="text-xs font-medium">
-                      Preexistencias médicas
-                    </span>
+                  <label className="block space-y-1.5 sm:col-span-2">
+                    <span className={FORM_LABEL_CLASS}>Preexistencias</span>
                     <Input
                       value={titular.preexistenciasMedicas}
                       onChange={(event) =>
@@ -1337,52 +1478,52 @@ export function ClientProfileForm({
                     />
                   </label>
 
-                  <label className="block space-y-1.5">
-                    <span className="text-xs font-medium">Renta imponible</span>
-                    <Input
-                      value={titular.rentaImponible}
-                      onChange={(event) =>
-                        updateAdditionalTitular(
-                          titular.id,
-                          "rentaImponible",
-                          event.target.value,
-                        )
-                      }
-                      placeholder="Ej. 1500000"
-                    />
-                  </label>
-
-                  <label className="block space-y-1.5">
-                    <span className="text-xs font-medium">
+                  <div className="space-y-2 sm:col-span-2">
+                    <span className={FORM_LABEL_CLASS}>
                       Motivo de cotización
                     </span>
-                    <select
-                      value={titular.motivoCotizacion}
-                      onChange={(event) =>
-                        updateAdditionalTitular(
-                          titular.id,
-                          "motivoCotizacion",
-                          event.target.value,
-                        )
-                      }
-                      className={joinClasses(
-                        "h-10 w-full rounded-md px-3 text-sm",
-                        ui.input,
-                      )}
-                    >
-                      <option value="">Seleccionar motivo…</option>
-                      {CLIENT_MOTIVO_COTIZACION_OPTIONS.map((option) => (
-                        <option key={option.id} value={option.id}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {CLIENT_MOTIVO_COTIZACION_OPTIONS.map((option) => {
+                        const selected = motivoCotizacionIncludes(
+                          titular.motivoCotizacion,
+                          option.id,
+                        );
+                        return (
+                          <label
+                            key={option.id}
+                            className={joinClasses(
+                              "flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-sm transition",
+                              selected
+                                ? "border-primary/40 bg-[color-mix(in_srgb,var(--dash-cyan,#1ac9ea)_12%,white)] font-semibold text-primary-dark"
+                                : "border-border bg-white text-foreground hover:border-primary/25",
+                            )}
+                          >
+                            <input
+                              type="checkbox"
+                              className="accent-[color:var(--dash-navy)]"
+                              checked={selected}
+                              onChange={() =>
+                                updateAdditionalTitular(
+                                  titular.id,
+                                  "motivoCotizacion",
+                                  toggleMotivoCotizacionId(
+                                    titular.motivoCotizacion,
+                                    option.id,
+                                  ),
+                                )
+                              }
+                            />
+                            {option.label}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
 
-                  {titular.motivoCotizacion === "otros" ? (
+                  {motivoCotizacionIncludesOtros(titular.motivoCotizacion) ? (
                     <label className="block space-y-1.5 sm:col-span-2">
-                      <span className="text-xs font-medium">
-                        Detalle del motivo *
+                      <span className={FORM_LABEL_CLASS}>
+                        Detalle de Otros *
                       </span>
                       <Input
                         value={titular.motivoCotizacionOther}
@@ -1413,11 +1554,7 @@ export function ClientProfileForm({
             ? "Agrega cada carga con sus datos básicos."
             : undefined
         }
-        className={
-          showAllSections
-            ? "rounded-xl border border-border bg-bg-layout/30 p-4"
-            : "space-y-0"
-        }
+        className="space-y-0"
         hideIntro={!showAllSections}
         bodyClassName="space-y-4"
         headerRight={
@@ -1436,12 +1573,9 @@ export function ClientProfileForm({
         ) : (
           <div className="space-y-3">
             {value.dependents.map((dependent, index) => (
-              <div
-                key={dependent.id}
-                className="rounded-xl border border-border bg-white p-3 shadow-sm"
-              >
+              <div key={dependent.id}>
                 <div className="mb-3 flex items-center justify-between gap-2">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-primary-dark">
+                  <p className={FORM_SECTION_TITLE_CLASS}>
                     Carga {index + 1}
                   </p>
                   <Button
@@ -1455,8 +1589,23 @@ export function ClientProfileForm({
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="block space-y-1.5 sm:col-span-2">
+                    <span className={FORM_LABEL_CLASS}>Nombre</span>
+                    <Input
+                      value={dependent.fullName}
+                      onChange={(event) =>
+                        updateDependent(
+                          dependent.id,
+                          "fullName",
+                          event.target.value,
+                        )
+                      }
+                      placeholder="Nombre de la carga"
+                    />
+                  </label>
+
                   <label className="block space-y-1.5">
-                    <span className="text-xs font-medium">RUT carga</span>
+                    <span className={FORM_LABEL_CLASS}>RUT carga</span>
                     <Input
                       value={dependent.rut}
                       aria-invalid={false}
@@ -1486,7 +1635,7 @@ export function ClientProfileForm({
                   </label>
 
                   <label className="block space-y-1.5">
-                    <span className="text-xs font-medium">
+                    <span className={FORM_LABEL_CLASS}>
                       Fecha de nacimiento
                     </span>
                     <Input
@@ -1503,7 +1652,7 @@ export function ClientProfileForm({
                   </label>
 
                   <label className="block space-y-1.5">
-                    <span className="text-xs font-medium">Edad</span>
+                    <span className={FORM_LABEL_CLASS}>Edad</span>
                     <Input
                       value={dependent.age}
                       onChange={(event) =>
@@ -1518,7 +1667,7 @@ export function ClientProfileForm({
                   </label>
 
                   <label className="block space-y-1.5">
-                    <span className="text-xs font-medium">Estatura (cm)</span>
+                    <span className={FORM_LABEL_CLASS}>Estatura (cm)</span>
                     <Input
                       value={dependent.heightCm}
                       onChange={(event) =>
@@ -1533,7 +1682,7 @@ export function ClientProfileForm({
                   </label>
 
                   <label className="block space-y-1.5">
-                    <span className="text-xs font-medium">Peso (kg)</span>
+                    <span className={FORM_LABEL_CLASS}>Peso (kg)</span>
                     <Input
                       value={dependent.weightKg}
                       onChange={(event) =>
@@ -1548,7 +1697,7 @@ export function ClientProfileForm({
                   </label>
 
                   <label className="block space-y-1.5">
-                    <span className="text-xs font-medium">
+                    <span className={FORM_LABEL_CLASS}>
                       Preexistencias médicas
                     </span>
                     <Input
@@ -1640,6 +1789,7 @@ export function userRecordToProfileFormValue(
     weightKg: profile?.weightKg ?? "",
     maritalStatus: profile?.maritalStatus ?? "",
     employerRut: profile?.employerRut ?? "",
+    contributorType: resolveContributorType(profile?.contributorType),
     rentaImponible: profile?.rentaImponible ?? "",
     motivoCotizacion: profile?.motivoCotizacion ?? "",
     motivoCotizacionOther: profile?.motivoCotizacionOther ?? "",

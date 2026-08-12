@@ -85,37 +85,39 @@ function buildBeneficiaryValueLines(
   const applyFactor = (uf: number) =>
     Math.round(uf * priceFactor * 1_000_000) / 1_000_000;
 
-  if (summary.contributor.age != null || summary.beneficiaryCount > 0) {
+  // Misma fuente que el modal de detalle: todos los cotizantes + todas las cargas.
+  const contributors = summary.contributors.filter(
+    (person) => person.age != null,
+  );
+  const dependents = summary.dependents.filter((person) => person.age != null);
+
+  contributors.forEach((contributor, index) => {
     const uf = applyFactor(
-      personUnitPriceUf(
-        summary.contributor,
-        basePriceUf,
-        gesPremiumUfPerPerson,
-      ),
+      personUnitPriceUf(contributor, basePriceUf, gesPremiumUfPerPerson),
     );
     lines.push(
       formatBeneficiaryLine(
-        "Cotizante",
-        summary.contributor.age,
+        contributors.length > 1 ? `Cotizante ${index + 1}` : "Cotizante",
+        contributor.age,
         uf,
         calculateFinalPlanPriceClp(uf, ufToClp),
       ),
     );
-  }
+  });
 
-  for (const dependent of summary.dependents) {
+  dependents.forEach((dependent, index) => {
     const uf = applyFactor(
       personUnitPriceUf(dependent, basePriceUf, gesPremiumUfPerPerson),
     );
     lines.push(
       formatBeneficiaryLine(
-        "Carga",
+        dependents.length > 1 ? `Carga ${index + 1}` : "Carga",
         dependent.age,
         uf,
         calculateFinalPlanPriceClp(uf, ufToClp),
       ),
     );
-  }
+  });
 
   return lines;
 }

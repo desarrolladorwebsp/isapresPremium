@@ -12,18 +12,158 @@ import { ClientContactMethodBadge } from "@/components/executive/client-contact-
 import { ClientPipelineStatusBadge } from "@/components/executive/client-pipeline-status-badge";
 import { ClientRutCell } from "@/components/executive/client-rut-cell";
 import { Button } from "@/components/ui/button";
+import { useStaffSession } from "@/hooks/use-auth-session";
 import { useExecutiveCalendarQuery } from "@/hooks/query/use-executive-calendar-query";
 import { getStaffRoleLabel } from "@/lib/auth/staff-role";
+import { isTrackingOnlyForExecutive } from "@/lib/client-pipeline/tracking";
 import { CALENDLY_TEAM_LABELS } from "@/lib/calendly/labels";
-import { buildWhatsAppUrl } from "@/lib/partner-entity/theme";
 import {
   staffClientHref,
   staffExecutiveHref,
+  type StaffClientFlowId,
+  type StaffClientGestionAction,
 } from "@/lib/staff/staff-sections";
 import { horizontalScrollRail, touchTarget, ui } from "@/lib/ui-tokens";
 import { joinClasses } from "@/lib/utils";
 import type { CalendarCallEvent } from "@/types/calendar";
 import { CLIENT_CONTACT_METHOD_LABELS } from "@/types/client-pipeline";
+import type { ExecutiveKind } from "@/types/staff-account";
+
+type CalendarQuickAction = {
+  id: string;
+  label: string;
+  variant?: "primary" | "secondary" | "info" | "success" | "warning" | "ghost";
+  href?: string;
+  external?: boolean;
+  onNavigate?: () => void;
+};
+
+function resolveCalendarProtocolFlow(input: {
+  executiveKind: ExecutiveKind | null;
+  isAdmin: boolean;
+  isTrackingOnly: boolean;
+  event: CalendarCallEvent;
+}): StaffClientFlowId {
+  if (input.isTrackingOnly || input.event.kind === "confirmation") {
+    return "seguimiento";
+  }
+  if (input.executiveKind === "ZOOM") return "zoom";
+  if (input.executiveKind === "ISAPRES") return "isapres";
+  if (input.executiveKind === "ISAPRES_PREMIUM" || input.isAdmin) {
+    return "premium";
+  }
+  return "zoom";
+}
+
+function buildCalendarQuickActions(input: {
+  event: CalendarCallEvent;
+  executiveKind: ExecutiveKind | null;
+  isAdmin: boolean;
+  isTrackingOnly: boolean;
+}): CalendarQuickAction[] {
+  const { event, executiveKind, isAdmin, isTrackingOnly } = input;
+  const flow = resolveCalendarProtocolFlow({
+    executiveKind,
+    isAdmin,
+    isTrackingOnly,
+    event,
+  });
+  const clientHref = (gestion?: StaffClientGestionAction) =>
+    staffClientHref(event.clientId, { flow, gestion });
+
+  const actions: CalendarQuickAction[] = [];
+  const isWhatsAppCall =
+    event.kind === "call" && event.contactMethod === "WHATSAPP";
+  const isZoomCall =
+    event.kind === "call" &&
+    !isWhatsAppCall &&
+    (event.contactMethod === "ZOOM" ||
+      Boolean(event.zoomJoinUrl) ||
+      !event.contactMethod);
+
+  if (event.zoomJoinUrl) {
+    actions.push({
+      id: "join-zoom",
+      label: "Unirse a Zoom",
+      variant: "info",
+      href: event.zoomJoinUrl,
+      external: true,
+    });
+  }
+
+  if (event.kind === "confirmation") {
+    actions.push({
+      id: "confirm-zoom",
+      label: "Confirmar reunión Zoom",
+      variant: "warning",
+      href: clientHref("confirm_zoom"),
+    });
+  } else if (event.kind === "reminder") {
+    actions.push({
+      id: "edit-reminder",
+      label: "Editar recordatorio",
+      variant: "warning",
+      href: clientHref("reminder"),
+    });
+  } else if (isZoomCall) {
+    actions.push({
+      id: "edit-zoom",
+      label: "Editar reunión Zoom",
+      variant: "info",
+      href: clientHref("reschedule"),
+    });
+    if (
+      !isTrackingOnly &&
+      (executiveKind === "ZOOM" || isAdmin) &&
+      event.kind === "call"
+    ) {
+      actions.push({
+        id: "redirect",
+        label: "Asignar Premium",
+        variant: "success",
+        href: clientHref("redirect"),
+      });
+    }
+  } else if (isWhatsAppCall) {
+    actions.push({
+      id: "edit-call",
+      label: "Editar llamado",
+      variant: "info",
+      href: clientHref("reschedule"),
+    });
+  } else if (event.kind === "call") {
+    actions.push({
+      id: "edit-call",
+      label: "Editar llamado",
+      variant: "info",
+      href: clientHref("reschedule"),
+    });
+  }
+
+  if (
+    !isTrackingOnly &&
+    (executiveKind === "ZOOM" ||
+      executiveKind === "ISAPRES_PREMIUM" ||
+      isAdmin) &&
+    event.kind !== "reminder"
+  ) {
+    actions.push({
+      id: "reminder",
+      label: "Recordatorio",
+      variant: "warning",
+      href: clientHref("reminder"),
+    });
+  }
+
+  actions.push({
+    id: "ficha",
+    label: "Ver ficha del cliente",
+    variant: "secondary",
+    href: clientHref(),
+  });
+
+  return actions;
+}
 
 type CalendarView = "month" | "week" | "day" | "year";
 
@@ -242,11 +382,14 @@ function EmptyBanner({ compact = false }: { compact?: boolean }) {
   );
 }
 
-function eventChipClass(contactMethod?: CalendarCallEvent["contactMethod"]): string {
-  if (contactMethod === "WHATSAPP") {
+function eventChipClass(event: CalendarCallEvent): string {
+  if (event.kind === "reminder") {
+    return "bg-amber-100 font-medium text-amber-950 ring-1 ring-amber-300/70";
+  }
+  if (event.contactMethod === "WHATSAPP") {
     return "bg-[#25D366]/20 font-medium text-[#0f7a4a] ring-1 ring-[#25D366]/35";
   }
-  if (contactMethod === "ZOOM") {
+  if (event.contactMethod === "ZOOM") {
     return "bg-sky-100 font-medium text-sky-900 ring-1 ring-sky-300/60";
   }
   return "bg-primary/12 font-medium text-primary-dark";
@@ -288,7 +431,7 @@ function EventChip({
       onClick={() => onSelect(event)}
       className={joinClasses(
         "block w-full truncate rounded-md text-left transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
-        eventChipClass(event.contactMethod),
+        eventChipClass(event),
         dense
           ? "px-1 py-0.5 text-[10px] leading-tight"
           : "px-1.5 py-1 text-[11px] leading-snug sm:text-xs",
@@ -324,22 +467,24 @@ function MeetingDetailField({
 function MeetingDetailModal({
   event,
   onClose,
-  onOpenClient,
+  onOpenHref,
   onOpenExecutive,
+  quickActions,
 }: {
   event: CalendarCallEvent | null;
   onClose: () => void;
-  onOpenClient: (clientId: string) => void;
+  onOpenHref: (href: string) => void;
   onOpenExecutive: (executiveId: string) => void;
+  quickActions: CalendarQuickAction[];
 }) {
   if (!event) return null;
 
-  const channelLabel = event.contactMethod
-    ? CLIENT_CONTACT_METHOD_LABELS[event.contactMethod]
-    : "Llamado";
-  const whatsappUrl = event.clientPhone
-    ? buildWhatsAppUrl(event.clientPhone)
-    : null;
+  const channelLabel =
+    event.kind === "reminder"
+      ? "Recordatorio"
+      : event.contactMethod
+        ? CLIENT_CONTACT_METHOD_LABELS[event.contactMethod]
+        : "Llamado";
   const calendlyLabel =
     event.calendlyTeam && event.calendlyTeam in CALENDLY_TEAM_LABELS
       ? CALENDLY_TEAM_LABELS[event.calendlyTeam]
@@ -361,9 +506,23 @@ function MeetingDetailModal({
     >
       <div className="space-y-5">
         <div className="flex flex-wrap items-center gap-2">
-          <ClientContactMethodBadge method={event.contactMethod} />
+          {event.kind === "reminder" ? (
+            <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-950">
+              Recordatorio
+            </span>
+          ) : (
+            <ClientContactMethodBadge method={event.contactMethod} />
+          )}
           <ClientPipelineStatusBadge status={event.pipelineStatus ?? undefined} />
         </div>
+
+        {event.kind === "reminder" && event.reminderNote?.trim() ? (
+          <MeetingDetailField label="Gestión">
+            <p className="font-medium text-foreground">
+              {event.reminderNote.trim()}
+            </p>
+          </MeetingDetailField>
+        ) : null}
 
         <div className="grid gap-4 sm:grid-cols-2">
           <MeetingDetailField label="Fecha y hora">
@@ -397,24 +556,12 @@ function MeetingDetailModal({
           </MeetingDetailField>
           <MeetingDetailField label="Teléfono">
             {event.clientPhone ? (
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                <a
-                  href={`tel:${event.clientPhone}`}
-                  className="font-medium text-primary-dark underline-offset-2 hover:underline"
-                >
-                  {event.clientPhone}
-                </a>
-                {whatsappUrl ? (
-                  <a
-                    href={whatsappUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-semibold text-[#128C7E] underline-offset-2 hover:underline"
-                  >
-                    WhatsApp
-                  </a>
-                ) : null}
-              </div>
+              <a
+                href={`tel:${event.clientPhone}`}
+                className="font-medium text-primary-dark underline-offset-2 hover:underline"
+              >
+                {event.clientPhone}
+              </a>
             ) : (
               <span className="text-muted">Sin teléfono</span>
             )}
@@ -454,16 +601,46 @@ function MeetingDetailModal({
           </div>
         ) : null}
 
-        <div className="flex flex-wrap gap-2 border-t border-border pt-4">
-          <Button
-            type="button"
-            onClick={() => onOpenClient(event.clientId)}
-          >
-            Ver ficha del cliente
-          </Button>
-          <Button type="button" variant="secondary" onClick={onClose}>
-            Cerrar
-          </Button>
+        <div className="space-y-2 border-t border-border pt-4">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+            Gestión rápida
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {quickActions.map((action) => {
+              if (action.external && action.href) {
+                return (
+                  <Button
+                    key={action.id}
+                    type="button"
+                    size="sm"
+                    variant={action.variant ?? "secondary"}
+                    onClick={() =>
+                      window.open(action.href, "_blank", "noopener,noreferrer")
+                    }
+                  >
+                    {action.label}
+                  </Button>
+                );
+              }
+              return (
+                <Button
+                  key={action.id}
+                  type="button"
+                  size="sm"
+                  variant={action.variant ?? "secondary"}
+                  onClick={() => {
+                    if (action.href) {
+                      onOpenHref(action.href);
+                      return;
+                    }
+                    action.onNavigate?.();
+                  }}
+                >
+                  {action.label}
+                </Button>
+              );
+            })}
+          </div>
         </div>
       </div>
     </AdminFormModal>
@@ -807,12 +984,34 @@ function YearView({
 
 export function ExecutiveCalendarPanel() {
   const router = useRouter();
+  const { isAdmin, executiveKind, user } = useStaffSession();
   const [view, setView] = useState<CalendarView>("month");
   const [cursor, setCursor] = useState(() => startOfDay(new Date()));
   const [selectedEvent, setSelectedEvent] = useState<CalendarCallEvent | null>(
     null,
   );
   const today = useMemo(() => startOfDay(new Date()), []);
+
+  const selectedQuickActions = useMemo(() => {
+    if (!selectedEvent) return [];
+    const sessionUserId = user?.id ?? null;
+    const isTrackingOnly =
+      Boolean(sessionUserId) &&
+      !isAdmin &&
+      isTrackingOnlyForExecutive(
+        {
+          assignedExecutiveId: selectedEvent.assignedExecutiveId,
+          trackingExecutiveId: selectedEvent.trackingExecutiveId,
+        },
+        sessionUserId!,
+      );
+    return buildCalendarQuickActions({
+      event: selectedEvent,
+      executiveKind,
+      isAdmin,
+      isTrackingOnly,
+    });
+  }, [selectedEvent, executiveKind, isAdmin, user?.id]);
 
   const periodTitle = useMemo(
     () => formatPeriodTitle(view, cursor),
@@ -839,9 +1038,9 @@ export function ExecutiveCalendarPanel() {
         : "No se pudieron cargar los llamados."
       : null;
 
-  function openClientFicha(clientId: string) {
+  function openHref(href: string) {
     setSelectedEvent(null);
-    router.push(staffClientHref(clientId));
+    router.push(href);
   }
 
   function openExecutiveFicha(executiveId: string) {
@@ -937,6 +1136,10 @@ export function ExecutiveCalendarPanel() {
               <span className="size-2.5 rounded-sm bg-sky-400" />
               Zoom
             </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="size-2.5 rounded-sm bg-amber-400" />
+              Recordatorio
+            </span>
             {isFetching && !loading ? <span>Actualizando…</span> : null}
             {loading ? <span>Cargando llamados…</span> : null}
           </div>
@@ -980,8 +1183,9 @@ export function ExecutiveCalendarPanel() {
       <MeetingDetailModal
         event={selectedEvent}
         onClose={() => setSelectedEvent(null)}
-        onOpenClient={openClientFicha}
+        onOpenHref={openHref}
         onOpenExecutive={openExecutiveFicha}
+        quickActions={selectedQuickActions}
       />
     </AdminPanel>
   );

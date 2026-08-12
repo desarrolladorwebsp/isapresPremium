@@ -44,7 +44,7 @@ function parseRedirectPayload(payload: unknown): RedirectClientFromPremiumInput 
 
 /**
  * Premium (o Admin) → Ejecutivo Isapres para cierre/contratación.
- * Estado destino: DOCUMENTACION.
+ * Estado destino: ENVIADO_ISAPRE.
  */
 export async function POST(request: Request, context: RouteContext) {
   try {

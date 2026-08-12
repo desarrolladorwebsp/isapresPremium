@@ -12,7 +12,15 @@ export type ClientOrigin =
   | "COTIZADOR"
   | "MANUAL"
   | "CAMPANA_LEAD_WHATSAPP"
-  | "FORMULARIO_WEB";
+  | "FORMULARIO_WEB"
+  | "CAMPANA_ISAPRES_PREMIUM"
+  | "CAMPANA_CONSALUD"
+  | "CAMPANA_BANMEDICA"
+  | "CAMPANA_COLMENA"
+  | "CAMPANA_CRUZ_BLANCA"
+  | "CAMPANA_VIDA_TRES"
+  | "CAMPANA_NUEVA_MASVIDA"
+  | "CAMPANA_ESENCIAL";
 
 export const CLIENT_ORIGIN_OPTIONS: Array<{
   value: ClientOrigin;
@@ -20,6 +28,14 @@ export const CLIENT_ORIGIN_OPTIONS: Array<{
 }> = [
   { value: "MANUAL", label: "Registro propio" },
   { value: "CAMPANA_LEAD_WHATSAPP", label: "Campaña lead WhatsApp" },
+  { value: "CAMPANA_ISAPRES_PREMIUM", label: "Campaña Isapres Premium" },
+  { value: "CAMPANA_CONSALUD", label: "Campaña Consalud" },
+  { value: "CAMPANA_BANMEDICA", label: "Campaña Banmédica" },
+  { value: "CAMPANA_COLMENA", label: "Campaña Colmena" },
+  { value: "CAMPANA_CRUZ_BLANCA", label: "Campaña Cruz Blanca" },
+  { value: "CAMPANA_VIDA_TRES", label: "Campaña Vida Tres" },
+  { value: "CAMPANA_NUEVA_MASVIDA", label: "Campaña Nueva Masvida" },
+  { value: "CAMPANA_ESENCIAL", label: "Campaña Esencial" },
   { value: "COTIZADOR", label: "Lead cotizador" },
   { value: "FORMULARIO_WEB", label: "Formulario web" },
 ];
@@ -31,6 +47,14 @@ export const MANUAL_CLIENT_ORIGIN_OPTIONS: Array<{
 }> = [
   { value: "MANUAL", label: "Registro propio" },
   { value: "CAMPANA_LEAD_WHATSAPP", label: "Campaña lead WhatsApp" },
+  { value: "CAMPANA_ISAPRES_PREMIUM", label: "Campaña Isapres Premium" },
+  { value: "CAMPANA_CONSALUD", label: "Campaña Consalud" },
+  { value: "CAMPANA_BANMEDICA", label: "Campaña Banmédica" },
+  { value: "CAMPANA_COLMENA", label: "Campaña Colmena" },
+  { value: "CAMPANA_CRUZ_BLANCA", label: "Campaña Cruz Blanca" },
+  { value: "CAMPANA_VIDA_TRES", label: "Campaña Vida Tres" },
+  { value: "CAMPANA_NUEVA_MASVIDA", label: "Campaña Nueva Masvida" },
+  { value: "CAMPANA_ESENCIAL", label: "Campaña Esencial" },
 ];
 
 export function isClientOrigin(value: string): value is ClientOrigin {
@@ -65,7 +89,7 @@ export interface UserRecord {
   /** Staff que registró el cliente (alta manual). */
   registeredById?: string | null;
   registeredByName?: string | null;
-  /** Ejecutivo que sigue el cliente tras un handoff (hasta CERRADO/PERDIDO). */
+  /** Ejecutivo que sigue el cliente tras un handoff (hasta RECEPCIONADO/PERDIDO). */
   trackingExecutiveId?: string | null;
   trackingExecutiveName?: string | null;
   pipelineStatus?: ClientPipelineStatus;
@@ -76,6 +100,10 @@ export interface UserRecord {
   nextCallAt?: string | null;
   /** Llamado de confirmación Zoom previo a la reunión Premium (ISO). */
   confirmationCallAt?: string | null;
+  /** Recordatorio / gestión libre en calendario (ISO). */
+  reminderAt?: string | null;
+  /** Nota de la gestión del recordatorio. */
+  reminderNote?: string | null;
   lastCallOutcome?: string | null;
   /** Canal preferido de contacto (p. ej. tras redirección Zoom → Premium). */
   preferredContactMethod?: import("@/types/client-pipeline").ClientContactMethod | null;
@@ -85,7 +113,10 @@ export interface UserRecord {
   zoomJoinUrl?: string | null;
   clientProfile?: ClientExecutiveProfile;
   requestedPlan?: ClientPlanSnapshot | null;
+  /** Plan elegido (propuesta final). Subconjunto de assignedPlans. */
   advisedPlan?: ClientPlanSnapshot | null;
+  /** Planes propuestos/asignados al cliente (puede haber varios). */
+  assignedPlans?: ClientPlanSnapshot[];
   clientOrigin?: ClientOrigin;
   /** Etiqueta del formulario web (p. ej. "Formulario web - Desde Tu 7%"). */
   webFormSource?: string | null;

@@ -73,7 +73,7 @@ export function CollapsibleSection({
         >
           <ChevronIcon expanded={open} />
           <span className="min-w-0 py-0.5">
-            <span className="block text-sm font-semibold text-foreground">
+            <span className="block text-sm font-semibold text-[color:var(--dash-navy,#092558)]">
               {title}
             </span>
             {description ? (

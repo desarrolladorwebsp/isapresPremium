@@ -9,7 +9,8 @@ import {
 /** Cobertura libre elección: aplica en cualquier zona del filtro. */
 export const LIBRE_ELECCION_ZONE_IDS = [...ZONE_IDS] as ZoneId[];
 
-const RM = [...RM_ZONE_IDS] as ZoneId[];
+/** Redes con presencia metropolitana amplia (solo padre RM, no todos los sectores). */
+const RM_WIDE: ZoneId[] = ["rm-metropolitana"];
 const RM_ORIENTE: ZoneId[] = ["rm-oriente", "rm-metropolitana"];
 const RM_CENTRO: ZoneId[] = ["rm-centro", "rm-metropolitana"];
 const RM_PONIENTE: ZoneId[] = ["rm-poniente", "rm-metropolitana"];
@@ -17,22 +18,26 @@ const RM_SUR: ZoneId[] = ["rm-sur", "rm-metropolitana"];
 const RM_NORTE: ZoneId[] = ["rm-norte", "rm-metropolitana"];
 const NORTE: ZoneId[] = [...NORTE_ZONE_IDS];
 const VALPARAISO: ZoneId[] = ["valparaiso"];
-const BIOBIO: ZoneId[] = ["biobio", "octava"];
+/** Octava / O’Higgins / Maule / Ñuble (criterio de producto actual). */
+const OCTAVA: ZoneId[] = ["octava"];
+/** Biobío y sur (Araucanía, Los Ríos, Los Lagos, Aysén, Magallanes). */
+const BIOBIO: ZoneId[] = ["biobio"];
 
 /**
  * Zonas geográficas por clínica/prestador.
- * Una clínica puede pertenecer a varias zonas (ej. sector RM + RM completa).
+ * Una clínica de sector RM lleva [sector, rm-metropolitana].
+ * Fuera de RM: solo la zona regional correspondiente (sin mezclar RM).
  */
 const CLINIC_ZONE_MAP: Record<string, readonly ZoneId[]> = {
   // Redes con cobertura metropolitana amplia
-  integramedica: RM,
-  vidaintegra: RM,
-  "cm-redsalud": RM,
+  integramedica: RM_WIDE,
+  vidaintegra: RM_WIDE,
+  "cm-redsalud": RM_WIDE,
   "cm-santa-maria": RM_ORIENTE,
   "cl-centros-medicos-santa-maria": RM_ORIENTE,
   "cl-hospital-clinico-uc-christus-clinica-santa-maria": RM_ORIENTE,
-  "cm-davila": RM_ORIENTE,
-  "cm-red-davila": RM_ORIENTE,
+  "cm-davila": RM_NORTE,
+  "cm-red-davila": RM_NORTE,
   centromed: VALPARAISO,
   "cl-centromed": VALPARAISO,
   "centros-medicos-red-uc-christus": RM_ORIENTE,
@@ -87,9 +92,9 @@ const CLINIC_ZONE_MAP: Record<string, readonly ZoneId[]> = {
   // RM Sur
   "hosp-parroquial-san-bernardo": RM_SUR,
 
-  // RM Norte (sector)
-  "cl-davila": RM_ORIENTE,
-  "cl-davila-a3": RM_ORIENTE,
+  // RM Norte (sector) — Dávila Recoleta / Vespucio
+  "cl-davila": RM_NORTE,
+  "cl-davila-a3": RM_NORTE,
   "cl-davila-vespucio": RM_NORTE,
   "clinica-davila-vespucio": RM_NORTE,
 
@@ -124,24 +129,36 @@ const CLINIC_ZONE_MAP: Record<string, readonly ZoneId[]> = {
   "cl-clinica-renaca": VALPARAISO,
   "cl-san-antonio": VALPARAISO,
 
-  // Biobío / sur central
+  // O’Higgins / Maule / Ñuble → Octava (catálogo de filtros actual)
+  "cl-redsalud-rancagua": OCTAVA,
+  "cl-andes-salud-chillan": OCTAVA,
+  "cl-andes-salud-talca": OCTAVA,
+  "centro-medico-andes-salud-talca": OCTAVA,
+  "cm-andes-salud-talca": OCTAVA,
+  "clinica-curico-achs-salud": OCTAVA,
+  "clinica-lircay-achs-salud": OCTAVA,
+  "cl-lircay-de-talca-clinica-los-andes-de-los-angeles": OCTAVA,
+  "cl-los-andes-la": OCTAVA,
+  "clinica-los-andes-achs-salud": OCTAVA,
+  "cm-andes-salud-la": OCTAVA,
+  "cl-adventista-los-angeles": OCTAVA,
+
+  // Biobío
   "cl-biobio": BIOBIO,
   "cl-andes-salud-concepcion": BIOBIO,
-  "cl-los-andes-la": BIOBIO,
   "sanatorio-aleman": BIOBIO,
-  "cl-andes-salud-chillan": BIOBIO,
-  "cl-andes-salud-talca": BIOBIO,
-  "cl-redsalud-rancagua": ["octava", "rm-metropolitana"],
   "hosp-clinico-fusat": BIOBIO,
   "clinica-biobio": BIOBIO,
   "clinica-andes-salud-concepcion": BIOBIO,
   "clinica-sanatorio-aleman": BIOBIO,
   "hospital-clinico-fusat": BIOBIO,
-  "centro-medico-andes-salud-talca": BIOBIO,
-  "clinica-curico-achs-salud": BIOBIO,
   "hosp-clinico-del-sur": BIOBIO,
+  "clinica-del-sur-achs-salud": BIOBIO,
+  "centro-medico-redsalud-arauco": BIOBIO,
+  "cl-juan-pablo-ii": BIOBIO,
+  "hosp-ffaa-guzman": BIOBIO,
 
-  // Sur Austral
+  // Sur Austral (sin zona propia en el catálogo → Biobío)
   "cl-alemana-osorno": BIOBIO,
   "cl-alemana-temuco": BIOBIO,
   "cl-alemana-valdivia": BIOBIO,
@@ -158,39 +175,27 @@ const CLINIC_ZONE_MAP: Record<string, readonly ZoneId[]> = {
   "clinica-puerto-varas": BIOBIO,
   "clinica-redsalud-magallanes": BIOBIO,
   "clinica-redsalud-mayor-temuco": BIOBIO,
-  "cl-adventista-los-angeles": BIOBIO,
+  "cm-andes-salud-ancud": BIOBIO,
 
   // Centros médicos / redes adicionales
-  "cl-centros-medicos-davila": RM_ORIENTE,
+  "cl-centros-medicos-davila": RM_NORTE,
   "cl-red-cm-uc-christus-e": RM_ORIENTE,
 
-  // RM — prestadores faltantes
+  // RM — prestadores adicionales
   "cl-cumbres-del-norte": RM_NORTE,
-  "clinica-isamedica": RM,
+  "clinica-isamedica": RM_WIDE,
   "cl-las-amapolas": RM_ORIENTE,
   "cl-sierra-bella": RM_CENTRO,
-  "hosp-clinico-fach": RM,
-  "hosp-militar-santiago": RM,
+  "hosp-clinico-fach": RM_WIDE,
+  "hosp-militar-santiago": RM_WIDE,
+  "clinica-indisa": RM_ORIENTE,
+  "clinica-san-carlos-de-apoquindo": RM_ORIENTE,
 
   // Regiones
-  "cl-juan-pablo-ii": BIOBIO,
   "cl-rio-blanco": NORTE,
-  "hosp-ffaa-guzman": BIOBIO,
   "hosp-militar-norte": NORTE,
   "hosp-naval-nef": VALPARAISO,
-  "clinica-los-andes-achs-salud": BIOBIO,
-  "cl-lircay-de-talca-clinica-los-andes-de-los-angeles": BIOBIO,
-  "cm-andes-salud-la": BIOBIO,
-  "cm-andes-salud-ancud": BIOBIO,
-  "cm-andes-salud-talca": BIOBIO,
-  "clinica-lircay-achs-salud": BIOBIO,
-  "clinica-del-sur-achs-salud": BIOBIO,
-  "centro-medico-redsalud-arauco": BIOBIO,
-  "cl-centros-medicos": RM,
-  "cl-clinica": RM,
-  "clinica-indisa": RM_ORIENTE,
   "clinica-renaca": VALPARAISO,
-  "clinica-san-carlos-de-apoquindo": RM_ORIENTE,
   "cl-clinica-san-jose": NORTE,
 
   // Placeholders libre elección (sin prestador geográfico fijo)
@@ -198,6 +203,14 @@ const CLINIC_ZONE_MAP: Record<string, readonly ZoneId[]> = {
   "mv-libre-eleccion-a": LIBRE_ELECCION_ZONE_IDS,
   "vt-libre-eleccion-h": LIBRE_ELECCION_ZONE_IDS,
   "vt-libre-eleccion-a": LIBRE_ELECCION_ZONE_IDS,
+  "col-libre-eleccion-h": LIBRE_ELECCION_ZONE_IDS,
+  "col-libre-eleccion-a": LIBRE_ELECCION_ZONE_IDS,
+  "cb-libre-eleccion-h": LIBRE_ELECCION_ZONE_IDS,
+  "cb-libre-eleccion-a": LIBRE_ELECCION_ZONE_IDS,
+  "ban-libre-eleccion-h": LIBRE_ELECCION_ZONE_IDS,
+  "ban-libre-eleccion-a": LIBRE_ELECCION_ZONE_IDS,
+  "cs-libre-eleccion-h": LIBRE_ELECCION_ZONE_IDS,
+  "cs-libre-eleccion-a": LIBRE_ELECCION_ZONE_IDS,
 };
 
 /** Alias automáticos clinica-* → cl-* para IDs importados con otro prefijo. */
@@ -222,6 +235,9 @@ function buildClinicZoneLookup(): ReadonlyMap<string, readonly ZoneId[]> {
 }
 
 const CLINIC_ZONE_LOOKUP = buildClinicZoneLookup();
+
+/** Largo mínimo para matching fuzzy (evita que IDs genéricos enganchen todo). */
+const MIN_FUZZY_MATCH_LENGTH = 12;
 
 function lookupClinicZoneIds(clinicId: string): ZoneId[] {
   const zones = CLINIC_ZONE_LOOKUP.get(clinicId.trim());
@@ -290,6 +306,11 @@ export function resolveClinicZoneIdsFromName(clinicName: string): ZoneId[] {
   let bestLength = 0;
 
   for (const [mapId, zones] of CLINIC_ZONE_LOOKUP.entries()) {
+    // No fuzzy-match placeholders de libre elección ni IDs cortos/genéricos.
+    if (zones === LIBRE_ELECCION_ZONE_IDS) continue;
+    if (mapId.length < MIN_FUZZY_MATCH_LENGTH) continue;
+    if (slug.length < MIN_FUZZY_MATCH_LENGTH) continue;
+
     if (slug.includes(mapId) || mapId.includes(slug)) {
       if (mapId.length > bestLength) {
         bestMatch = zones;
@@ -300,3 +321,17 @@ export function resolveClinicZoneIdsFromName(clinicName: string): ZoneId[] {
 
   return bestMatch ? [...bestMatch] : [];
 }
+
+/** ¿La clínica intersecta alguna de las zonas activas del filtro? */
+export function clinicMatchesActiveZones(
+  clinicZoneIds: readonly string[] | null | undefined,
+  activeZoneIds: readonly string[],
+): boolean {
+  if (activeZoneIds.length === 0) return true;
+  if (!clinicZoneIds || clinicZoneIds.length === 0) return false;
+  const active = new Set(activeZoneIds);
+  return clinicZoneIds.some((zoneId) => active.has(zoneId));
+}
+
+/** Re-export útil para callers que listan el catálogo RM completo. */
+export const ALL_RM_ZONE_IDS = [...RM_ZONE_IDS] as ZoneId[];

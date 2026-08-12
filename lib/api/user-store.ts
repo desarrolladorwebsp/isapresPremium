@@ -43,6 +43,14 @@ type QuoteWithPlan = Quote & {
   plan: PlanSummary | null;
 };
 
+type AssignedPlanRow = {
+  id: string;
+  planCode: string;
+  notes: string | null;
+  createdAt: Date;
+  plan: PlanSummary;
+};
+
 export type ClientRecordWithPlans = DbUser & {
   assignedExecutive?: Pick<
     StaffAccount,
@@ -52,7 +60,15 @@ export type ClientRecordWithPlans = DbUser & {
   trackingExecutive?: Pick<StaffAccount, "id" | "fullName"> | null;
   quotes?: QuoteWithPlan[];
   advisedPlan?: PlanSummary | null;
+  assignedPlans?: AssignedPlanRow[];
 };
+
+const planSummarySelect = {
+  uniqueCode: true,
+  planName: true,
+  basePriceUf: true,
+  isapreRef: { select: { name: true } },
+} as const;
 
 export const clientRecordInclude = {
   assignedExecutive: {
@@ -69,33 +85,49 @@ export const clientRecordInclude = {
     take: 1,
     include: {
       plan: {
-        select: {
-          uniqueCode: true,
-          planName: true,
-          basePriceUf: true,
-          isapreRef: { select: { name: true } },
-        },
+        select: planSummarySelect,
       },
     },
   },
   advisedPlan: {
-    select: {
-      uniqueCode: true,
-      planName: true,
-      basePriceUf: true,
-      isapreRef: { select: { name: true } },
+    select: planSummarySelect,
+  },
+  assignedPlans: {
+    orderBy: { createdAt: "asc" as const },
+    include: {
+      plan: {
+        select: planSummarySelect,
+      },
     },
   },
 } as const;
 
-function mapPlanSummary(plan: PlanSummary | null | undefined): ClientPlanSnapshot | null {
+function mapPlanSummary(
+  plan: PlanSummary | null | undefined,
+  extras?: Partial<ClientPlanSnapshot>,
+): ClientPlanSnapshot | null {
   if (!plan) return null;
   return {
     planCode: plan.uniqueCode,
     planName: plan.planName,
     isapre: plan.isapreRef.name,
     basePriceUf: plan.basePriceUf,
+    ...extras,
   };
+}
+
+function mapAssignedPlans(
+  rows: AssignedPlanRow[] | undefined,
+  chosenCode: string | null | undefined,
+): ClientPlanSnapshot[] {
+  if (!rows?.length) return [];
+  return rows.map((row) =>
+    mapPlanSummary(row.plan, {
+      isChosen: row.planCode === chosenCode,
+      assignmentId: row.id,
+      assignedAt: row.createdAt.toISOString(),
+    })!,
+  );
 }
 
 function mapRequestedPlan(quote: QuoteWithPlan | undefined): ClientPlanSnapshot | null {
@@ -134,6 +166,8 @@ export function mapDbUser(user: UserWithExecutive): UserRecord {
     pipelineNotes: user.pipelineNotes,
     nextCallAt: user.nextCallAt?.toISOString() ?? null,
     confirmationCallAt: user.confirmationCallAt?.toISOString() ?? null,
+    reminderAt: user.reminderAt?.toISOString() ?? null,
+    reminderNote: user.reminderNote ?? null,
     lastCallOutcome: user.lastCallOutcome,
     preferredContactMethod:
       (user.preferredContactMethod as import("@/types/client-pipeline").ClientContactMethod | null) ??
@@ -157,10 +191,20 @@ export function mapDbClientRecord(user: ClientRecordWithPlans): UserRecord {
     ? resolveCotizadorSourceFromQuote(latestQuote)
     : null;
 
+  const assignedPlans = mapAssignedPlans(
+    user.assignedPlans,
+    user.advisedPlanCode,
+  );
+  const advisedPlan =
+    mapPlanSummary(user.advisedPlan, { isChosen: true }) ??
+    assignedPlans.find((plan) => plan.isChosen) ??
+    null;
+
   return {
     ...mapDbUser(user),
     requestedPlan: mapRequestedPlan(latestQuote),
-    advisedPlan: mapPlanSummary(user.advisedPlan),
+    advisedPlan,
+    assignedPlans,
     cotizadorSource,
   };
 }

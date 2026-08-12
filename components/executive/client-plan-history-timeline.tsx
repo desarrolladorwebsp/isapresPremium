@@ -10,13 +10,17 @@ import type {
 } from "@/types/client-activity";
 
 const ACTIVITY_LABELS: Record<ClientActivityType, string> = {
-  PLAN_CHANGED: "Cambio de plan",
-  ADVISED_PLAN_CLEARED: "Plan asesorado removido",
+  PLAN_CHANGED: "Plan elegido",
+  ADVISED_PLAN_CLEARED: "Plan elegido removido",
+  PLAN_ASSIGNED: "Plan agregado",
+  PLAN_UNASSIGNED: "Plan eliminado",
 };
 
 const ACTIVITY_TONES: Record<ClientActivityType, string> = {
   PLAN_CHANGED: "bg-primary/10 text-primary-dark",
   ADVISED_PLAN_CLEARED: "bg-amber-500/10 text-amber-800",
+  PLAN_ASSIGNED: "bg-emerald-500/10 text-emerald-800",
+  PLAN_UNASSIGNED: "bg-rose-500/10 text-rose-800",
 };
 
 export interface ClientPlanHistoryTimelineProps {

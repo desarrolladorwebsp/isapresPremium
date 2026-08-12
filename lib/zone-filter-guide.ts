@@ -48,11 +48,7 @@ export function buildZoneFilterApiGuide(request: Request) {
       ],
       clinic_zone_source:
         "Mapa estático clinic_id → zone_ids en src/lib/clinic-zones.ts (sincronizado a BD en clinics.zones).",
-      default_active_zone_ids: [
-        "rm-metropolitana",
-        "rm-oriente",
-        "rm-centro",
-      ],
+      default_active_zone_ids: ["rm-metropolitana"],
       no_zone_filter_active:
         "Si ninguna zona está marcada, no se aplica filtro geográfico (muestra todos los planes).",
     },

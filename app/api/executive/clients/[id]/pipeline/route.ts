@@ -26,6 +26,20 @@ function parsePipelinePayload(payload: unknown): UpdateClientPipelineInput {
     input.pipelineStatus = data.pipelineStatus as UpdateClientPipelineInput["pipelineStatus"];
   }
 
+  if (data.manualStatusChange !== undefined) {
+    if (typeof data.manualStatusChange !== "boolean") {
+      throw new Error("manualStatusChange inválido.");
+    }
+    input.manualStatusChange = data.manualStatusChange;
+  }
+
+  if (data.statusChangeNote !== undefined) {
+    if (typeof data.statusChangeNote !== "string") {
+      throw new Error("Motivo de cambio de estatus inválido.");
+    }
+    input.statusChangeNote = data.statusChangeNote;
+  }
+
   if (data.checklist !== undefined) {
     input.checklist = data.checklist as UpdateClientPipelineInput["checklist"];
   }

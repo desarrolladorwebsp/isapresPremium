@@ -101,6 +101,26 @@ export function IconClock({ className = "size-5" }: { className?: string }) {
   );
 }
 
+export function IconBell({ className = "size-4" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      aria-hidden
+    >
+      <path
+        d="M15 17H9a4 4 0 01-4-4V10a7 7 0 1114 0v3a4 4 0 01-4 4z"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M9 17a3 3 0 006 0" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function IconPhone({ className = "size-4" }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
@@ -122,11 +142,121 @@ export function IconCalendar({ className = "size-4" }: { className?: string }) {
   );
 }
 
-export function IconVideo({ className = "size-4" }: { className?: string }) {
+export function IconCalendarCheck({ className = "size-4" }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-      <path d="M23 7l-7 5 7 5V7z" strokeLinecap="round" strokeLinejoin="round" />
-      <rect x="1" y="5" width="15" height="14" rx="2" />
+      <rect x="3" y="4" width="18" height="18" rx="2" />
+      <path d="M16 2v4M8 2v4M3 10h18" strokeLinecap="round" />
+      <path d="M9 15.5l2 2 4-4.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function IconVideo({ className = "size-4" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      aria-hidden
+    >
+      {/* Cuerpo tipo Zoom: marco + pastilla + lente */}
+      <rect x="2.25" y="6.25" width="12.75" height="11.5" rx="2.75" />
+      <rect x="5.6" y="10.35" width="6" height="3.3" rx="1.65" />
+      <path
+        d="M15 9.15l5.35-2.55c.5-.24 1.05.14 1.05.72v9.36c0 .58-.55.96-1.05.72L15 14.85V9.15z"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+export function IconHeadset({ className = "size-4" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      aria-hidden
+    >
+      {/* Persona + diadema + micrófono */}
+      <circle cx="12" cy="8.2" r="2.6" />
+      <path
+        d="M6.2 20.5v-.7c0-2.7 2.4-4.9 5.8-4.9s5.8 2.2 5.8 4.9v.7"
+        strokeLinecap="round"
+      />
+      <path
+        d="M5.5 12.2v-1.1a6.5 6.5 0 0113 0v1.1"
+        strokeLinecap="round"
+      />
+      <rect x="4.2" y="12.2" width="2.4" height="4.2" rx="1.1" />
+      <rect x="17.4" y="12.2" width="2.4" height="4.2" rx="1.1" />
+      <path
+        d="M6.6 16.4c.4 1.3 1.5 2.1 2.9 2.3"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+export function IconExecutive({ className = "size-4" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      aria-hidden
+    >
+      {/* Ejecutivo: cabeza + solapas + corbata + credencial */}
+      <circle cx="12" cy="6.8" r="2.7" />
+      <path
+        d="M5.8 20.8v-.6c0-2.9 2.5-5.2 6.2-5.2s6.2 2.3 6.2 5.2v.6"
+        strokeLinecap="round"
+      />
+      <path
+        d="M9.2 15.2L12 18.2l2.8-3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M12 15.6v5.2" strokeLinecap="round" />
+      <rect x="14.2" y="16.6" width="2.6" height="2" rx="0.35" />
+    </svg>
+  );
+}
+
+export function IconClipboardCheck({ className = "size-4" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      aria-hidden
+    >
+      {/* Clipboard con checks + badge circular */}
+      <rect x="5" y="4.5" width="11.5" height="15.5" rx="2" />
+      <path
+        d="M9 4.5h3.5a1.6 1.6 0 010 3.2H9a1.6 1.6 0 010-3.2z"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M8 11.2l1.3 1.3 2.5-2.6M8 15l1.3 1.3 2.5-2.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx="17.2" cy="17.2" r="3.4" />
+      <path
+        d="M15.8 17.2l1 1 1.8-2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }

@@ -3,10 +3,8 @@ export type ClientPipelineStatus =
   | "CONTACTADO"
   | "NO_CONTESTA"
   | "EN_SEGUIMIENTO"
-  | "PROPUESTA_ENVIADA"
-  | "DOCUMENTACION"
   | "ENVIADO_ISAPRE"
-  | "CERRADO"
+  | "RECEPCIONADO"
   | "PERDIDO";
 
 export interface ClientChecklistItem {
@@ -35,12 +33,22 @@ export interface ClientClosedRecord {
 
 export interface UpdateClientPipelineInput {
   pipelineStatus?: ClientPipelineStatus;
+  /**
+   * Cambio manual desde el select de estatus.
+   * Exige `statusChangeNote` y deja registro en el historial.
+   */
+  manualStatusChange?: boolean;
+  /** Justificación obligatoria cuando `manualStatusChange` es true. */
+  statusChangeNote?: string;
   checklist?: ClientChecklist;
   closedRecord?: ClientClosedRecord | null;
   pipelineNotes?: string | null;
   clientProfile?: import("@/types/client-profile").ClientProfileInput;
   /** ISO datetime o null para limpiar. */
   nextCallAt?: string | null;
+  /** Recordatorio / gestión libre (ISO) o null para limpiar. */
+  reminderAt?: string | null;
+  reminderNote?: string | null;
   lastCallOutcome?: string | null;
   /** Canal preferido de la reunión/llamado (calendario). */
   preferredContactMethod?: ClientContactMethod | null;

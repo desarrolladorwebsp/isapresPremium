@@ -7,6 +7,27 @@ export const CONTRIBUTOR_TYPE_OPTIONS = [
 export type ContributorType =
   (typeof CONTRIBUTOR_TYPE_OPTIONS)[number]["value"];
 
+export function isContributorType(value: unknown): value is ContributorType {
+  return (
+    value === "dependiente" ||
+    value === "independiente" ||
+    value === "voluntario"
+  );
+}
+
+export function resolveContributorType(value: unknown): ContributorType | "" {
+  return isContributorType(value) ? value : "";
+}
+
+export function contributorTypeLabel(value: unknown): string {
+  const resolved = resolveContributorType(value);
+  if (!resolved) return "";
+  return (
+    CONTRIBUTOR_TYPE_OPTIONS.find((option) => option.value === resolved)
+      ?.label ?? resolved
+  );
+}
+
 export const REGION_OPTIONS = [
   { value: "rm", label: "Región Metropolitana" },
   { value: "arica", label: "Arica y Parinacota" },

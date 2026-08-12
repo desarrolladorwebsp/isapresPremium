@@ -43,7 +43,11 @@ import {
   invalidateExecutiveClients,
   upsertExecutiveClientCache,
 } from "@/lib/query/executive-cache";
-import { isTrackingOnlyForExecutive } from "@/lib/client-pipeline/tracking";
+import { canBrowseAllClientsAsExecutive } from "@/lib/auth/staff-role";
+import {
+  isReturnedClientForExecutive,
+  isTrackingOnlyForExecutive,
+} from "@/lib/client-pipeline/tracking";
 import {
   CLIENT_GESTION_FILTER_OPTIONS,
   DEFAULT_CLIENT_GESTION_FILTERS,
@@ -58,7 +62,11 @@ import { CreateClientModal } from "@/components/executive/create-client-modal";
 import { ExecutiveAccountDetailView } from "@/components/executive/executive-account-detail-view";
 import { ExecutiveClientDetailView } from "@/components/executive/executive-client-detail-view";
 import { ClientPortfolioCard } from "@/components/executive/client-portfolio-card";
-import { buildClientWhatsAppMessage } from "@/lib/client-pipeline/constants";
+import {
+  buildClientWhatsAppMessage,
+  CLIENT_PIPELINE_STATUS_LABELS,
+  CLIENT_PIPELINE_STATUS_OPTIONS,
+} from "@/lib/client-pipeline/constants";
 import {
   AGENDA_URGENCY_LABELS,
   agendaUrgencyChipClasses,
@@ -76,6 +84,7 @@ import {
 import { touchTarget, ui } from "@/lib/ui-tokens";
 import { joinClasses } from "@/lib/utils";
 import { formatPersonDisplayName } from "@/lib/format-person-name";
+import type { ClientPipelineStatus } from "@/types/client-pipeline";
 import type { UserRecord } from "@/types/user";
 import { CLIENT_ORIGIN_LABELS } from "@/components/executive/client-origin-badge";
 
@@ -100,7 +109,11 @@ type ClientsViewMode = "table" | "cards";
 
 const CLIENTS_VIEW_MODE_KEY = "executive-clients-view-mode";
 
-const CLIENTS_SORT_OPTIONS: { key: ClientsSortKey; label: string; adminOnly?: boolean }[] = [
+const CLIENTS_SORT_OPTIONS: {
+  key: ClientsSortKey;
+  label: string;
+  adminOnly?: boolean;
+}[] = [
   { key: "registro", label: "Fecha registro" },
   { key: "cliente", label: "Cliente" },
   { key: "zoom", label: "Zoom" },
@@ -212,8 +225,7 @@ function scheduleUrgencyForClient(
   iso: string | null | undefined,
   pipelineStatus: UserRecord["pipelineStatus"],
 ): AgendaUrgency {
-  const closed =
-    pipelineStatus === "CERRADO" || pipelineStatus === "PERDIDO";
+  const closed = pipelineStatus === "RECEPCIONADO" || pipelineStatus === "PERDIDO";
   return agendaUrgencyFromIso(iso, closed);
 }
 
@@ -243,6 +255,22 @@ function resolveRegisteredByLabel(client: UserRecord): string {
       return "Formulario web";
     case "CAMPANA_LEAD_WHATSAPP":
       return "Campaña WhatsApp";
+    case "CAMPANA_ISAPRES_PREMIUM":
+      return "Campaña Isapres Premium";
+    case "CAMPANA_CONSALUD":
+      return "Campaña Consalud";
+    case "CAMPANA_BANMEDICA":
+      return "Campaña Banmédica";
+    case "CAMPANA_COLMENA":
+      return "Campaña Colmena";
+    case "CAMPANA_CRUZ_BLANCA":
+      return "Campaña Cruz Blanca";
+    case "CAMPANA_VIDA_TRES":
+      return "Campaña Vida Tres";
+    case "CAMPANA_NUEVA_MASVIDA":
+      return "Campaña Nueva Masvida";
+    case "CAMPANA_ESENCIAL":
+      return "Campaña Esencial";
     default:
       return "—";
   }
@@ -252,7 +280,10 @@ function resolveAssignedExecutiveLabel(client: UserRecord): string {
   return formatPersonDisplayName(client.assignedExecutiveName);
 }
 
-function clientSortValue(client: UserRecord, key: ClientsSortKey): string | number {
+function clientSortValue(
+  client: UserRecord,
+  key: ClientsSortKey,
+): string | number {
   switch (key) {
     case "cliente":
       return client.fullName?.trim() || "";
@@ -299,11 +330,14 @@ export function ExecutiveClientsPanel({
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
-  const { isAdmin, user } = useStaffSession();
+  const { isAdmin, user, executiveKind } = useStaffSession();
   const clientsQuery = useExecutiveClientsQuery();
   const executivesQuery = useExecutiveAccountsQuery({ enabled: isAdmin });
+  const canBrowseAllClients =
+    isAdmin || canBrowseAllClientsAsExecutive(executiveKind);
 
-  const detailClientId = searchParams.get(STAFF_CLIENT_ID_QUERY)?.trim() || null;
+  const detailClientId =
+    searchParams.get(STAFF_CLIENT_ID_QUERY)?.trim() || null;
   const detailExecutiveId =
     searchParams.get(STAFF_EXECUTIVE_ID_QUERY)?.trim() || null;
 
@@ -315,7 +349,9 @@ export function ExecutiveClientsPanel({
   const isFetching = clientsQuery.isFetching || executivesQuery.isFetching;
 
   const [search, setSearch] = useState("");
-  const [segment, setSegment] = useState<"cartera" | "derivados">("cartera");
+  const [segment, setSegment] = useState<
+    "cartera" | "derivados" | "devueltos" | "todos"
+  >("cartera");
   const [viewMode, setViewMode] = useState<ClientsViewMode>("cards");
   const [sortKey, setSortKey] = useState<ClientsSortKey>("registro");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
@@ -324,6 +360,14 @@ export function ExecutiveClientsPanel({
   );
   const [gestionFilterOpen, setGestionFilterOpen] = useState(false);
   const gestionFilterRef = useRef<HTMLDivElement | null>(null);
+  /** Panel de filtros colapsable en vista < lg. */
+  const [filtersPanelOpen, setFiltersPanelOpen] = useState(false);
+  /** `""` = todos, `__unassigned__` = sin ejecutivo, o id de cuenta. */
+  const [executiveFilterId, setExecutiveFilterId] = useState("");
+  /** `""` = todos los estados del pipeline. */
+  const [statusFilter, setStatusFilter] = useState<"" | ClientPipelineStatus>(
+    "",
+  );
   const [savingId, setSavingId] = useState<string | null>(null);
   const [distributing, setDistributing] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -396,13 +440,26 @@ export function ExecutiveClientsPanel({
   const segmentedClients = useMemo(() => {
     const rows = clients ?? [];
     if (isAdmin || !user?.id) return rows;
+    if (segment === "todos" && canBrowseAllClientsAsExecutive(executiveKind)) {
+      return rows;
+    }
     if (segment === "derivados") {
       return rows.filter((client) =>
         isTrackingOnlyForExecutive(client, user.id),
       );
     }
-    return rows.filter((client) => client.assignedExecutiveId === user.id);
-  }, [clients, isAdmin, segment, user?.id]);
+    if (segment === "devueltos") {
+      return rows.filter((client) =>
+        isReturnedClientForExecutive(client, user.id),
+      );
+    }
+    // Mi cartera: asignados activos, sin contar devoluciones (van a Devueltos).
+    return rows.filter(
+      (client) =>
+        client.assignedExecutiveId === user.id &&
+        !isReturnedClientForExecutive(client, user.id),
+    );
+  }, [clients, executiveKind, isAdmin, segment, user?.id]);
 
   const derivadosCount = useMemo(() => {
     if (isAdmin || !user?.id) return 0;
@@ -411,11 +468,76 @@ export function ExecutiveClientsPanel({
     ).length;
   }, [clients, isAdmin, user?.id]);
 
-  const filteredClients = useMemo(() => {
-    const rows = segmentedClients.filter((client) =>
-      clientMatchesGestionFilters(client, gestionFilters),
+  const devueltosCount = useMemo(() => {
+    if (isAdmin || !user?.id) return 0;
+    return (clients ?? []).filter((client) =>
+      isReturnedClientForExecutive(client, user.id),
+    ).length;
+  }, [clients, isAdmin, user?.id]);
+
+  const showExecutiveFilter = canBrowseAllClients;
+
+  const sortedExecutives = useMemo(() => {
+    if (isAdmin) {
+      return [...executives].sort((left, right) =>
+        formatPersonDisplayName(left.fullName).localeCompare(
+          formatPersonDisplayName(right.fullName),
+          "es",
+          { sensitivity: "base" },
+        ),
+      );
+    }
+
+    const byId = new Map<string, { id: string; fullName: string }>();
+    for (const client of clients ?? []) {
+      const id = client.assignedExecutiveId?.trim();
+      if (!id || byId.has(id)) continue;
+      byId.set(id, {
+        id,
+        fullName:
+          client.assignedExecutiveName?.trim() ||
+          "Ejecutivo sin nombre",
+      });
+    }
+    return [...byId.values()].sort((left, right) =>
+      formatPersonDisplayName(left.fullName).localeCompare(
+        formatPersonDisplayName(right.fullName),
+        "es",
+        { sensitivity: "base" },
+      ),
     );
+  }, [clients, executives, isAdmin]);
+
+  const filteredClients = useMemo(() => {
     const query = search.trim().toLowerCase();
+    // Perdido / Recepcionado viven en el bucket "gestionadas".
+    // No se eliminan: el filtro "Gestión: pendientes" los ocultaba.
+    // Si buscas por estatus terminal o por texto, no los escondemos.
+    const statusBypassesGestion =
+      statusFilter === "PERDIDO" || statusFilter === "RECEPCIONADO";
+    const searchBypassesGestion = query.length > 0;
+
+    let rows =
+      statusBypassesGestion || searchBypassesGestion
+        ? segmentedClients
+        : segmentedClients.filter((client) =>
+            clientMatchesGestionFilters(client, gestionFilters),
+          );
+
+    if (statusFilter) {
+      rows = rows.filter(
+        (client) => (client.pipelineStatus ?? "NUEVO") === statusFilter,
+      );
+    }
+
+    if (showExecutiveFilter && executiveFilterId === "__unassigned__") {
+      rows = rows.filter((client) => !client.assignedExecutiveId);
+    } else if (showExecutiveFilter && executiveFilterId) {
+      rows = rows.filter(
+        (client) => client.assignedExecutiveId === executiveFilterId,
+      );
+    }
+
     if (!query) return rows;
 
     return rows.filter((client) =>
@@ -432,19 +554,28 @@ export function ExecutiveClientsPanel({
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(query)),
     );
-  }, [segmentedClients, search, gestionFilters]);
+  }, [
+    segmentedClients,
+    search,
+    gestionFilters,
+    showExecutiveFilter,
+    executiveFilterId,
+    statusFilter,
+  ]);
 
-  const gestionFilterLabel = useMemo(() => {
-    if (gestionFilters.length === 0) return "Gestión: ninguna";
-    if (
+  const gestionFilterIsDefault = useMemo(
+    () =>
       gestionFilters.length === DEFAULT_CLIENT_GESTION_FILTERS.length &&
       DEFAULT_CLIENT_GESTION_FILTERS.every((value) =>
         gestionFilters.includes(value),
       ) &&
-      !gestionFilters.includes("gestionadas")
-    ) {
-      return "Gestión: pendientes";
-    }
+      !gestionFilters.includes("gestionadas"),
+    [gestionFilters],
+  );
+
+  const gestionFilterLabel = useMemo(() => {
+    if (gestionFilters.length === 0) return "Gestión: ninguna";
+    if (gestionFilterIsDefault) return "Gestión: pendientes";
     if (gestionFilters.length === CLIENT_GESTION_FILTER_OPTIONS.length) {
       return "Gestión: todas";
     }
@@ -452,7 +583,29 @@ export function ExecutiveClientsPanel({
       gestionFilters.includes(option.value),
     ).map((option) => option.label);
     return `Gestión: ${labels.join(", ")}`;
-  }, [gestionFilters]);
+  }, [gestionFilters, gestionFilterIsDefault]);
+
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (!gestionFilterIsDefault) count += 1;
+    if (statusFilter) count += 1;
+    if (showExecutiveFilter && executiveFilterId) count += 1;
+    if (
+      viewMode === "cards" &&
+      (sortKey !== "registro" || sortDirection !== "desc")
+    ) {
+      count += 1;
+    }
+    return count;
+  }, [
+    gestionFilterIsDefault,
+    statusFilter,
+    showExecutiveFilter,
+    executiveFilterId,
+    viewMode,
+    sortKey,
+    sortDirection,
+  ]);
 
   function toggleGestionFilter(value: ClientGestionFilter) {
     setGestionFilters((current) => {
@@ -502,7 +655,8 @@ export function ExecutiveClientsPanel({
   }
 
   const unassignedCount = useMemo(
-    () => (clients ?? []).filter((client) => !client.assignedExecutiveId).length,
+    () =>
+      (clients ?? []).filter((client) => !client.assignedExecutiveId).length,
     [clients],
   );
 
@@ -521,7 +675,9 @@ export function ExecutiveClientsPanel({
       <ExecutiveAccountDetailView
         executiveId={detailExecutiveId}
         onBack={closeExecutiveFicha}
-        onOpenClient={(clientId) => openClientFicha(clientId, detailExecutiveId)}
+        onOpenClient={(clientId) =>
+          openClientFicha(clientId, detailExecutiveId)
+        }
       />
     );
   }
@@ -539,7 +695,10 @@ export function ExecutiveClientsPanel({
   ) {
     setSavingId(client.id);
     try {
-      const updated = await assignClientToExecutive(client.id, executiveAccountId);
+      const updated = await assignClientToExecutive(
+        client.id,
+        executiveAccountId,
+      );
       upsertExecutiveClientCache(queryClient, updated);
       void invalidateExecutiveClients(queryClient);
       setPendingExecutiveByClientId((current) => {
@@ -564,7 +723,10 @@ export function ExecutiveClientsPanel({
     }
   }
 
-  function handlePendingExecutiveChange(clientId: string, executiveAccountId: string) {
+  function handlePendingExecutiveChange(
+    clientId: string,
+    executiveAccountId: string,
+  ) {
     setPendingExecutiveByClientId((current) => ({
       ...current,
       [clientId]: executiveAccountId,
@@ -650,7 +812,10 @@ export function ExecutiveClientsPanel({
                 variant="primary"
                 disabled={savingId === client.id}
                 onClick={() => {
-                  void handleAssignExecutive(client, selectedExecutiveId || null);
+                  void handleAssignExecutive(
+                    client,
+                    selectedExecutiveId || null,
+                  );
                 }}
               >
                 Confirmar
@@ -818,133 +983,225 @@ export function ExecutiveClientsPanel({
         title="Clientes"
         compactMobile
         middle={
-          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
-            <Input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Buscar por nombre, correo, teléfono o RUT…"
-              aria-label="Buscar clientes"
-              className={joinClasses("h-9 min-w-0 flex-1", ui.input)}
-            />
-            <div ref={gestionFilterRef} className="relative shrink-0">
-              <button
+          <div className="flex min-w-0 flex-col gap-2 lg:flex-row lg:items-center">
+            <div className="flex min-w-0 flex-1 items-center gap-2 lg:max-w-md lg:flex-none">
+              <Input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Buscar por nombre, correo, teléfono o RUT…"
+                aria-label="Buscar clientes"
+                className={joinClasses("h-9 min-w-0 flex-1", ui.input)}
+              />
+              <Button
                 type="button"
-                onClick={() => setGestionFilterOpen((open) => !open)}
-                aria-expanded={gestionFilterOpen}
-                aria-haspopup="listbox"
+                size="sm"
+                variant={filtersPanelOpen || activeFiltersCount > 0 ? "primary" : "ghost"}
+                onClick={() => setFiltersPanelOpen((open) => !open)}
+                aria-expanded={filtersPanelOpen}
+                aria-controls="clients-filters-panel"
                 className={joinClasses(
-                  "flex h-9 min-w-[10.5rem] max-w-[16rem] items-center justify-between gap-2 rounded-lg px-2.5 text-left text-sm",
-                  ui.input,
+                  touchTarget,
+                  "relative shrink-0 px-3 sm:h-9 sm:min-h-9 lg:hidden",
                 )}
               >
-                <span className="truncate">{gestionFilterLabel}</span>
-                <span className="text-[10px] text-muted" aria-hidden>
-                  ▾
-                </span>
-              </button>
-              {gestionFilterOpen ? (
-                <div
-                  role="listbox"
-                  aria-multiselectable="true"
-                  className="absolute right-0 z-30 mt-1 w-56 rounded-xl border border-border bg-white p-2 shadow-lg"
+                <svg
+                  viewBox="0 0 24 24"
+                  className="mr-1.5 size-4 shrink-0"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  aria-hidden
                 >
-                  <p className="px-2 pb-1.5 text-[11px] font-medium text-muted">
-                    Filtrar por gestión
-                  </p>
-                  <ul className="space-y-0.5">
-                    {CLIENT_GESTION_FILTER_OPTIONS.map((option) => {
-                      const checked = gestionFilters.includes(option.value);
-                      return (
-                        <li key={option.value}>
-                          <label className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-surface-hover">
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              onChange={() => toggleGestionFilter(option.value)}
-                              className="size-3.5 rounded border-border"
-                            />
-                            <span>{option.label}</span>
-                          </label>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                  <div className="mt-1.5 flex gap-1 border-t border-border pt-1.5">
-                    <button
-                      type="button"
-                      className="flex-1 rounded-md px-2 py-1 text-[11px] font-medium text-muted hover:bg-surface-hover"
-                      onClick={() =>
-                        setGestionFilters([...DEFAULT_CLIENT_GESTION_FILTERS])
-                      }
-                    >
-                      Solo pendientes
-                    </button>
-                    <button
-                      type="button"
-                      className="flex-1 rounded-md px-2 py-1 text-[11px] font-medium text-muted hover:bg-surface-hover"
-                      onClick={() =>
-                        setGestionFilters(
-                          CLIENT_GESTION_FILTER_OPTIONS.map(
-                            (option) => option.value,
-                          ),
-                        )
-                      }
-                    >
-                      Todas
-                    </button>
-                  </div>
-                </div>
-              ) : null}
+                  <path
+                    d="M4 7h16M4 12h10M4 17h16"
+                    strokeLinecap="round"
+                  />
+                </svg>
+                Filtros
+                {activeFiltersCount > 0 ? (
+                  <span className="ml-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-white/20 px-1 text-[11px] font-bold">
+                    {activeFiltersCount}
+                  </span>
+                ) : null}
+              </Button>
             </div>
-            {viewMode === "cards" ? (
-              <div className="flex shrink-0 flex-wrap items-center gap-2">
-                <label className="sr-only" htmlFor="clients-sort-key">
-                  Ordenar por
-                </label>
-                <select
-                  id="clients-sort-key"
-                  value={sortKey}
-                  onChange={(event) => {
-                    const nextKey = event.target.value as ClientsSortKey;
-                    setSortKey(nextKey);
-                    setSortDirection(nextKey === "registro" ? "desc" : "asc");
-                  }}
+            <div
+              id="clients-filters-panel"
+              className={joinClasses(
+                "min-w-0 flex-wrap items-stretch gap-2 sm:items-center",
+                filtersPanelOpen
+                  ? "flex rounded-xl border border-border bg-white p-3"
+                  : "hidden",
+                "lg:flex lg:min-w-0 lg:flex-1 lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0",
+              )}
+            >
+              <div ref={gestionFilterRef} className="relative w-full sm:w-auto sm:min-w-[12rem]">
+                <button
+                  type="button"
+                  onClick={() => setGestionFilterOpen((open) => !open)}
+                  aria-expanded={gestionFilterOpen}
+                  aria-haspopup="listbox"
                   className={joinClasses(
-                    "h-9 min-w-[9rem] rounded-lg px-2.5 text-sm",
+                    "flex h-10 w-full items-center justify-between gap-2 rounded-lg px-3 text-left text-sm sm:h-9",
                     ui.input,
                   )}
                 >
-                  {CLIENTS_SORT_OPTIONS.filter(
-                    (option) => isAdmin || !option.adminOnly,
-                  ).map((option) => (
-                    <option key={option.key} value={option.key}>
-                      Ordenar: {option.label}
+                  <span className="truncate">{gestionFilterLabel}</span>
+                  <span className="text-[10px] text-muted" aria-hidden>
+                    ▾
+                  </span>
+                </button>
+                {gestionFilterOpen ? (
+                  <div
+                    role="listbox"
+                    aria-multiselectable="true"
+                    className="absolute left-0 z-30 mt-1 w-full min-w-[14rem] rounded-xl border border-border bg-white p-2 shadow-lg sm:left-auto sm:right-0 sm:w-56"
+                  >
+                    <p className="px-2 pb-1.5 text-[11px] font-medium text-muted">
+                      Filtrar por gestión
+                    </p>
+                    <ul className="space-y-0.5">
+                      {CLIENT_GESTION_FILTER_OPTIONS.map((option) => {
+                        const checked = gestionFilters.includes(option.value);
+                        return (
+                          <li key={option.value}>
+                            <label className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-surface-hover">
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() =>
+                                  toggleGestionFilter(option.value)
+                                }
+                                className="size-3.5 rounded border-border"
+                              />
+                              <span>{option.label}</span>
+                            </label>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                    <div className="mt-1.5 flex gap-1 border-t border-border pt-1.5">
+                      <button
+                        type="button"
+                        className="flex-1 rounded-md px-2 py-1 text-[11px] font-medium text-muted hover:bg-surface-hover"
+                        onClick={() =>
+                          setGestionFilters([...DEFAULT_CLIENT_GESTION_FILTERS])
+                        }
+                      >
+                        Solo pendientes
+                      </button>
+                      <button
+                        type="button"
+                        className="flex-1 rounded-md px-2 py-1 text-[11px] font-medium text-muted hover:bg-surface-hover"
+                        onClick={() =>
+                          setGestionFilters(
+                            CLIENT_GESTION_FILTER_OPTIONS.map(
+                              (option) => option.value,
+                            ),
+                          )
+                        }
+                      >
+                        Todas
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+              <label className="relative block w-full sm:w-auto sm:min-w-[12rem]">
+                <span className="sr-only">Filtrar por estatus</span>
+                <select
+                  value={statusFilter}
+                  onChange={(event) =>
+                    setStatusFilter(
+                      event.target.value as "" | ClientPipelineStatus,
+                    )
+                  }
+                  className={joinClasses(
+                    "h-10 w-full rounded-lg px-3 text-sm sm:h-9",
+                    ui.input,
+                  )}
+                >
+                  <option value="">Estatus: todos</option>
+                  {CLIENT_PIPELINE_STATUS_OPTIONS.map((status) => (
+                    <option key={status} value={status}>
+                      {CLIENT_PIPELINE_STATUS_LABELS[status]}
                     </option>
                   ))}
                 </select>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  onClick={() =>
-                    setSortDirection((current) =>
-                      current === "asc" ? "desc" : "asc",
-                    )
-                  }
-                  className={joinClasses(touchTarget, "h-9 px-2.5")}
-                  aria-label={
-                    sortDirection === "asc"
-                      ? "Orden ascendente"
-                      : "Orden descendente"
-                  }
-                  title={
-                    sortDirection === "asc" ? "Ascendente" : "Descendente"
-                  }
-                >
-                  {sortDirection === "asc" ? "A→Z" : "Z→A"}
-                </Button>
-              </div>
-            ) : null}
+              </label>
+              {showExecutiveFilter ? (
+                <label className="relative block w-full sm:w-auto sm:min-w-[12rem]">
+                  <span className="sr-only">Filtrar por ejecutivo</span>
+                  <select
+                    value={executiveFilterId}
+                    onChange={(event) =>
+                      setExecutiveFilterId(event.target.value)
+                    }
+                    className={joinClasses(
+                      "h-10 w-full rounded-lg px-3 text-sm sm:h-9",
+                      ui.input,
+                    )}
+                  >
+                    <option value="">Ejecutivo: todos</option>
+                    <option value="__unassigned__">Sin asignar</option>
+                    {sortedExecutives.map((executive) => (
+                      <option key={executive.id} value={executive.id}>
+                        {formatPersonDisplayName(executive.fullName)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
+              {viewMode === "cards" ? (
+                <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+                  <label className="sr-only" htmlFor="clients-sort-key">
+                    Ordenar por
+                  </label>
+                  <select
+                    id="clients-sort-key"
+                    value={sortKey}
+                    onChange={(event) => {
+                      const nextKey = event.target.value as ClientsSortKey;
+                      setSortKey(nextKey);
+                      setSortDirection(nextKey === "registro" ? "desc" : "asc");
+                    }}
+                    className={joinClasses(
+                      "h-10 min-w-0 flex-1 rounded-lg px-3 text-sm sm:h-9 sm:min-w-[11rem] sm:flex-none",
+                      ui.input,
+                    )}
+                  >
+                    {CLIENTS_SORT_OPTIONS.filter(
+                      (option) => isAdmin || !option.adminOnly,
+                    ).map((option) => (
+                      <option key={option.key} value={option.key}>
+                        Ordenar: {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() =>
+                      setSortDirection((current) =>
+                        current === "asc" ? "desc" : "asc",
+                      )
+                    }
+                    className={joinClasses(touchTarget, "h-10 px-2.5 sm:h-9")}
+                    aria-label={
+                      sortDirection === "asc"
+                        ? "Orden ascendente"
+                        : "Orden descendente"
+                    }
+                    title={
+                      sortDirection === "asc" ? "Ascendente" : "Descendente"
+                    }
+                  >
+                    {sortDirection === "asc" ? "A→Z" : "Z→A"}
+                  </Button>
+                </div>
+              ) : null}
+            </div>
           </div>
         }
         actions={
@@ -1003,11 +1260,11 @@ export function ExecutiveClientsPanel({
               title="Agregar cliente"
               className={joinClasses(
                 touchTarget,
-                "px-0 sm:h-9 sm:min-h-9 sm:min-w-0 sm:px-3",
+                "px-0 sm:h-9 sm:min-h-9 sm:min-w-9 lg:min-w-0 lg:px-3",
               )}
             >
-              <IconUserPlus className="size-4 sm:mr-1.5" />
-              <span className="hidden sm:inline">Agregar cliente</span>
+              <IconUserPlus className="size-4 lg:mr-1.5" />
+              <span className="hidden lg:inline">Agregar cliente</span>
             </Button>
             {isAdmin && unassignedCount > 0 ? (
               <Button
@@ -1027,14 +1284,14 @@ export function ExecutiveClientsPanel({
                 }
                 className={joinClasses(
                   touchTarget,
-                  "relative border-rose-300 !bg-rose-600 px-0 !text-white shadow-sm hover:!bg-rose-500 active:scale-[0.98] sm:h-9 sm:min-h-9 sm:min-w-0 sm:px-3",
+                  "relative border-rose-300 !bg-rose-600 px-0 !text-white shadow-sm hover:!bg-rose-500 active:scale-[0.98] sm:h-9 sm:min-h-9 sm:min-w-9 lg:min-w-0 lg:px-3",
                 )}
               >
-                <IconUsers className="size-4 sm:mr-1.5" />
-                <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-900 px-1 text-[10px] font-bold text-white sm:hidden">
+                <IconUsers className="size-4 lg:mr-1.5" />
+                <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-900 px-1 text-[10px] font-bold text-white lg:hidden">
                   {unassignedCount}
                 </span>
-                <span className="hidden sm:inline">
+                <span className="hidden lg:inline">
                   {distributing
                     ? "Asignando…"
                     : `Asignar pendientes (${unassignedCount})`}
@@ -1065,6 +1322,26 @@ export function ExecutiveClientsPanel({
           >
             Derivados{derivadosCount > 0 ? ` (${derivadosCount})` : ""}
           </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={segment === "devueltos" ? "primary" : "ghost"}
+            onClick={() => setSegment("devueltos")}
+            className={touchTarget}
+          >
+            Devueltos{devueltosCount > 0 ? ` (${devueltosCount})` : ""}
+          </Button>
+          {canBrowseAllClients ? (
+            <Button
+              type="button"
+              size="sm"
+              variant={segment === "todos" ? "primary" : "ghost"}
+              onClick={() => setSegment("todos")}
+              className={touchTarget}
+            >
+              Todos los clientes
+            </Button>
+          ) : null}
         </div>
       ) : null}
 
@@ -1074,14 +1351,20 @@ export function ExecutiveClientsPanel({
         emptyTitle={
           segment === "derivados"
             ? "Sin clientes derivados"
-            : "Aún no tienes clientes"
+            : segment === "devueltos"
+              ? "Sin clientes devueltos"
+              : segment === "todos"
+                ? "Sin clientes"
+                : "Aún no tienes clientes"
         }
         emptyDescription={
           segment === "derivados"
             ? "Cuando redirijas un cliente a otro ejecutivo, quedará aquí en seguimiento hasta el cierre."
-            : isAdmin
-              ? "Los clientes aparecerán cuando soliciten cotizaciones o cuando un ejecutivo los registre manualmente."
-              : "Agrega clientes que captaste por tu cuenta o espera leads asignados desde el cotizador."
+            : segment === "devueltos"
+              ? "Aquí verás clientes que otro ejecutivo te devolvió (por ejemplo Premium → Zoom o Isapres → Premium)."
+              : segment === "todos" || isAdmin
+                ? "Los clientes aparecerán cuando soliciten cotizaciones o cuando un ejecutivo los registre manualmente."
+                : "Agrega clientes que captaste por tu cuenta o espera leads asignados desde el cotizador."
         }
         loadingMessage="Cargando clientes…"
         footer={listFooter}
@@ -1137,7 +1420,9 @@ export function ExecutiveClientsPanel({
                     valign="top"
                     className="max-w-[12rem] min-w-[10.5rem] py-3.5"
                   >
-                    <div className="min-w-0">{renderClientIdentity(client)}</div>
+                    <div className="min-w-0">
+                      {renderClientIdentity(client)}
+                    </div>
                   </AdminTableCell>
                   <AdminTableCell
                     valign="top"
@@ -1245,8 +1530,8 @@ export function ExecutiveClientsPanel({
                 isAdmin={isAdmin}
                 isTrackingOnly={Boolean(
                   !isAdmin &&
-                    user?.id &&
-                    isTrackingOnlyForExecutive(client, user.id),
+                  user?.id &&
+                  isTrackingOnlyForExecutive(client, user.id),
                 )}
                 registeredByLabel={resolveRegisteredByLabel(client)}
                 assignedLabel={resolveAssignedExecutiveLabel(client)}

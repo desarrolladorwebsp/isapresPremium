@@ -88,11 +88,14 @@ export async function POST(request: Request, context: RouteContext) {
         : null;
     const canRunZoomWorkflow =
       isAdmin || canUseZoomExecutiveWorkflow(executiveKind);
+    /** Isapres también puede devolver / redirigir a Premium desde su vista. */
+    const canRedirectToPremium =
+      canRunZoomWorkflow || executiveKind === "ISAPRES";
 
     const updated = await redirectClientToIsapresPremium(id, input, {
       executiveAccountId: user.id,
       isAdmin,
-      canRunZoomWorkflow,
+      canRunZoomWorkflow: canRedirectToPremium,
     });
 
     return NextResponse.json(updated);
