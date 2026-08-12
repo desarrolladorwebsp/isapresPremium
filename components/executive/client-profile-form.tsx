@@ -1743,6 +1743,7 @@ export function userRecordToProfileFormValue(
       weightKg?: string;
       maritalStatus?: string;
       employerRut?: string;
+      contributorType?: string;
       rentaImponible?: string;
       motivoCotizacion?: string;
       motivoCotizacionOther?: string;

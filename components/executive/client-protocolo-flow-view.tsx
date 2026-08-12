@@ -1194,7 +1194,10 @@ export function ClientProtocoloFlowView({
                           setHoverSummary(null);
                           requestRemoveMember({
                             id: member.id,
-                            kind: member.kind,
+                            kind:
+                              member.kind === "additional"
+                                ? "additional"
+                                : "dependent",
                             role: member.role,
                             name: member.name,
                           });
