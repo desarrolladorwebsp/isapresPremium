@@ -21,7 +21,7 @@ export function appendPipelineNoteLine(
 
 /** Cuerpo de la línea sin el prefijo `[fecha · actor]`. */
 export function stripPipelineNotePrefix(line: string): string {
-  const match = line.trim().match(/^\[[^\]]+\]\s*(.*)$/s);
+  const match = line.trim().match(/^\[[^\]]+\]\s*([\s\S]*)$/);
   return (match?.[1] ?? line).trim();
 }
 
