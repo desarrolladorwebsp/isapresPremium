@@ -82,6 +82,7 @@ export function AdminShell({
               <UserMenu
                 fullName={staffUser.fullName}
                 subtitle="Administrador"
+                avatarUrl={staffUser.avatarUrl}
               />
             ) : null}
           </div>

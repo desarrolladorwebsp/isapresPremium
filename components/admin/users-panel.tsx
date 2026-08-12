@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -18,7 +18,6 @@ import {
   AdminTableHead,
   AdminTableHeaderCell,
   AdminTableRow,
-  AdminToolbar,
 } from "@/components/admin/admin-data-table";
 import {
   cancelPendingStaffInvite,
@@ -117,6 +116,12 @@ function getInviteRoleLabel(invite: PendingStaffInviteRecord): string {
   });
 }
 
+function isMembershipDirectoryRow(row: ExecutiveDirectoryRow): boolean {
+  const kind =
+    row.kind === "invite" ? row.invite.executiveKind : row.account.executiveKind;
+  return kind === "MEMBRESIA_ISAPRES_PREMIUM";
+}
+
 export interface UsersPanelProps {
   onNotify: (message: string, tone?: "success" | "error") => void;
   /** Si true, muestra solo ejecutivos (vista principal de Usuarios). */
@@ -138,6 +143,13 @@ type UsersSortKey =
   | "acceso";
 
 type SortDirection = "asc" | "desc";
+
+type DirectoryGroup = "usuarios" | "membresia";
+
+const DIRECTORY_GROUP_OPTIONS: Array<{ value: DirectoryGroup; label: string }> = [
+  { value: "usuarios", label: "Usuarios" },
+  { value: "membresia", label: "Membresía" },
+];
 
 function formatDate(value: string | null): string {
   if (!value) return "—";
@@ -218,6 +230,304 @@ function usersSortValue(
   }
 }
 
+function ActionIcon({ children }: { children: ReactNode }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="size-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      aria-hidden
+    >
+      {children}
+    </svg>
+  );
+}
+
+function UsersIconButton({
+  label,
+  onClick,
+  tone = "neutral",
+  children,
+}: {
+  label: string;
+  onClick: () => void;
+  tone?: "neutral" | "danger" | "success";
+  children: ReactNode;
+}) {
+  const toneClass =
+    tone === "danger"
+      ? "text-danger hover:bg-danger-muted"
+      : tone === "success"
+        ? "text-emerald-700 hover:bg-emerald-50"
+        : "text-foreground hover:bg-surface-hover";
+
+  return (
+    <button
+      type="button"
+      title={label}
+      aria-label={label}
+      onClick={onClick}
+      className={joinClasses(
+        "group relative inline-flex size-9 items-center justify-center rounded-lg border bg-white transition",
+        ui.border,
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35",
+        toneClass,
+      )}
+    >
+      {children}
+      <span
+        role="tooltip"
+        className={joinClasses(
+          "pointer-events-none absolute bottom-full right-0 z-20 mb-1.5 whitespace-nowrap rounded-md px-2 py-1 text-[11px] font-semibold shadow-sm",
+          "bg-[color:var(--dash-navy,#092558)] text-white",
+          "opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100",
+        )}
+      >
+        {label}
+      </span>
+    </button>
+  );
+}
+
+function UsersDirectoryTable({
+  rows,
+  executivesOnly,
+  canManage,
+  assignmentCounts,
+  sortProps,
+  onResendInvite,
+  onCancelInvite,
+  onChangeRole,
+  onToggleAssignments,
+  onToggleActive,
+  onDelete,
+}: {
+  rows: ExecutiveDirectoryRow[];
+  executivesOnly: boolean;
+  canManage: boolean;
+  assignmentCounts: Record<string, number>;
+  sortProps: (key: UsersSortKey) => {
+    sortable: true;
+    sortDirection: SortDirection | null;
+    onSort: () => void;
+  };
+  onResendInvite: (inviteId: string) => void;
+  onCancelInvite: (inviteId: string) => void;
+  onChangeRole: (account: StaffAccountRecord) => void;
+  onToggleAssignments: (account: StaffAccountRecord) => void;
+  onToggleActive: (account: StaffAccountRecord) => void;
+  onDelete: (account: StaffAccountRecord) => void;
+}) {
+  return (
+    <AdminTable minWidth="56rem">
+      <AdminTableHead>
+        <tr>
+          <AdminTableHeaderCell {...sortProps("usuario")}>
+            Usuario
+          </AdminTableHeaderCell>
+          <AdminTableHeaderCell {...sortProps("rol")}>
+            Rol
+          </AdminTableHeaderCell>
+          <AdminTableHeaderCell {...sortProps("contacto")}>
+            Contacto
+          </AdminTableHeaderCell>
+          {executivesOnly ? (
+            <AdminTableHeaderCell {...sortProps("clientes")}>
+              Clientes
+            </AdminTableHeaderCell>
+          ) : null}
+          <AdminTableHeaderCell {...sortProps("estado")}>
+            Estado
+          </AdminTableHeaderCell>
+          <AdminTableHeaderCell {...sortProps("acceso")}>
+            Último acceso
+          </AdminTableHeaderCell>
+          <AdminTableHeaderCell align="right">Acciones</AdminTableHeaderCell>
+        </tr>
+      </AdminTableHead>
+      <AdminTableBody>
+        {rows.map((row) => {
+          if (row.kind === "invite") {
+            const { invite } = row;
+
+            return (
+              <AdminTableRow key={`invite-${invite.id}`}>
+                <AdminTableCell>
+                  <p className="font-semibold text-foreground">{invite.email}</p>
+                  <p className="mt-1 text-xs text-muted">
+                    Invitado {formatDate(invite.createdAt)}
+                  </p>
+                </AdminTableCell>
+                <AdminTableCell>
+                  <AdminBadge tone="neutral">{getInviteRoleLabel(invite)}</AdminBadge>
+                </AdminTableCell>
+                <AdminTableCell>
+                  <p>{invite.email}</p>
+                  {invite.rut ? (
+                    <p className="mt-1 text-xs text-muted">RUT {invite.rut}</p>
+                  ) : null}
+                </AdminTableCell>
+                {executivesOnly ? (
+                  <AdminTableCell className="text-muted">—</AdminTableCell>
+                ) : null}
+                <AdminTableCell>
+                  <AdminBadge tone="warning">Pendiente por activar</AdminBadge>
+                  <p className="mt-2 text-xs text-muted">
+                    Debe crear su cuenta desde el correo · expira {formatDate(invite.expiresAt)}
+                  </p>
+                </AdminTableCell>
+                <AdminTableCell className="text-muted">—</AdminTableCell>
+                <AdminTableCell align="right">
+                  {canManage ? (
+                    <AdminRowActions className="flex-nowrap justify-end">
+                      <UsersIconButton
+                        label="Reenviar invitación"
+                        onClick={() => onResendInvite(invite.id)}
+                      >
+                        <ActionIcon>
+                          <rect x="3" y="5" width="18" height="14" rx="2" />
+                          <path d="M3 7l9 6 9-6" strokeLinecap="round" strokeLinejoin="round" />
+                        </ActionIcon>
+                      </UsersIconButton>
+                      <UsersIconButton
+                        label="Cancelar invitación"
+                        tone="danger"
+                        onClick={() => onCancelInvite(invite.id)}
+                      >
+                        <ActionIcon>
+                          <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
+                        </ActionIcon>
+                      </UsersIconButton>
+                    </AdminRowActions>
+                  ) : (
+                    <span className="text-xs text-muted">Esperando activación</span>
+                  )}
+                </AdminTableCell>
+              </AdminTableRow>
+            );
+          }
+
+          const { account } = row;
+          const status = getAccountStatus(account);
+
+          return (
+            <AdminTableRow key={account.id}>
+              <AdminTableCell>
+                <p className="font-semibold text-foreground">
+                  {account.fullName}
+                </p>
+                <p className="mt-1 text-xs text-muted">
+                  Registrado {formatDate(account.createdAt)}
+                </p>
+              </AdminTableCell>
+              <AdminTableCell>
+                <AdminBadge tone="neutral">{getAccountRoleLabel(account)}</AdminBadge>
+              </AdminTableCell>
+              <AdminTableCell>
+                <p>{account.email}</p>
+                {account.phone ? (
+                  <p className="mt-1 text-xs text-muted">{account.phone}</p>
+                ) : null}
+                {account.rut ? (
+                  <p className="mt-1 text-xs text-muted">RUT {account.rut}</p>
+                ) : null}
+              </AdminTableCell>
+              {executivesOnly ? (
+                <AdminTableCell>
+                  {account.onboardingCompleted && account.active ? (
+                    <span className="font-semibold text-foreground">
+                      {assignmentCounts[account.id] ?? 0}
+                    </span>
+                  ) : (
+                    <span className="text-muted">—</span>
+                  )}
+                </AdminTableCell>
+              ) : null}
+              <AdminTableCell>
+                <AdminBadge tone={status.tone}>{status.label}</AdminBadge>
+              </AdminTableCell>
+              <AdminTableCell className="text-muted">
+                {formatDate(account.lastLoginAt)}
+              </AdminTableCell>
+              <AdminTableCell align="right">
+                {canManage ? (
+                  <AdminRowActions className="flex-nowrap justify-end">
+                    {account.realm === "executive" ? (
+                      <UsersIconButton
+                        label="Cambiar rol"
+                        onClick={() => onChangeRole(account)}
+                      >
+                        <ActionIcon>
+                          <path d="M16 3l4 4-4 4M20 7H4M8 21l-4-4 4-4M4 17h16" strokeLinecap="round" strokeLinejoin="round" />
+                        </ActionIcon>
+                      </UsersIconButton>
+                    ) : null}
+                    {account.realm === "executive" &&
+                    account.active &&
+                    account.onboardingCompleted ? (
+                      <UsersIconButton
+                        label={
+                          account.assignmentsSuspended
+                            ? "Reanudar asignaciones"
+                            : "Suspender asignaciones"
+                        }
+                        onClick={() => onToggleAssignments(account)}
+                      >
+                        {account.assignmentsSuspended ? (
+                          <ActionIcon>
+                            <path d="M8 5v14l11-7-11-7z" strokeLinejoin="round" />
+                          </ActionIcon>
+                        ) : (
+                          <ActionIcon>
+                            <path d="M8 5v14M16 5v14" strokeLinecap="round" />
+                          </ActionIcon>
+                        )}
+                      </UsersIconButton>
+                    ) : null}
+                    <UsersIconButton
+                      label={
+                        account.active ? "Suspender usuario" : "Reactivar usuario"
+                      }
+                      tone={account.active ? "neutral" : "success"}
+                      onClick={() => onToggleActive(account)}
+                    >
+                      {account.active ? (
+                        <ActionIcon>
+                          <circle cx="12" cy="8" r="4" />
+                          <path d="M4 21a8 8 0 0113.5-5.8M16 16l5 5M21 16l-5 5" strokeLinecap="round" />
+                        </ActionIcon>
+                      ) : (
+                        <ActionIcon>
+                          <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2" strokeLinecap="round" />
+                          <circle cx="9" cy="7" r="4" />
+                          <path d="M16 11l2 2 4-4" strokeLinecap="round" strokeLinejoin="round" />
+                        </ActionIcon>
+                      )}
+                    </UsersIconButton>
+                    <UsersIconButton
+                      label="Eliminar"
+                      tone="danger"
+                      onClick={() => onDelete(account)}
+                    >
+                      <ActionIcon>
+                        <path d="M4 7h16M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2M10 11v6M14 11v6M6 7l1 12a2 2 0 002 2h6a2 2 0 002-2l1-12" strokeLinecap="round" strokeLinejoin="round" />
+                      </ActionIcon>
+                    </UsersIconButton>
+                  </AdminRowActions>
+                ) : (
+                  <span className="text-xs text-muted">—</span>
+                )}
+              </AdminTableCell>
+            </AdminTableRow>
+          );
+        })}
+      </AdminTableBody>
+    </AdminTable>
+  );
+}
+
 export function UsersPanel({
   onNotify,
   executivesOnly = false,
@@ -229,6 +539,7 @@ export function UsersPanel({
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [directoryGroup, setDirectoryGroup] = useState<DirectoryGroup>("usuarios");
   const [sortKey, setSortKey] = useState<UsersSortKey | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [modalOpen, setModalOpen] = useState(false);
@@ -342,6 +653,17 @@ export function UsersPanel({
     return rows;
   }, [filteredRows, sortKey, sortDirection, assignmentCounts]);
 
+  const staffRows = useMemo(
+    () => sortedRows.filter((row) => !isMembershipDirectoryRow(row)),
+    [sortedRows],
+  );
+  const membershipRows = useMemo(
+    () => sortedRows.filter(isMembershipDirectoryRow),
+    [sortedRows],
+  );
+  const visibleRows =
+    directoryGroup === "membresia" ? membershipRows : staffRows;
+
   function handleSort(nextKey: UsersSortKey) {
     if (sortKey === nextKey) {
       setSortDirection((current) => (current === "asc" ? "desc" : "asc"));
@@ -372,10 +694,6 @@ export function UsersPanel({
   const inviteRoleOptions = executivesOnly
     ? INVITE_ROLE_OPTIONS.filter((option) => option.value !== "admin")
     : [...INVITE_ROLE_OPTIONS];
-
-  const panelDescription = executivesOnly
-    ? "Ejecutivos que reciben solicitudes de clientes. La invitación por correo es el único medio para crear un usuario en el sistema."
-    : "Administradores y ejecutivos del panel. La invitación por correo es el único medio para crear un usuario en el sistema.";
 
   async function handleInvite(event: React.FormEvent) {
     event.preventDefault();
@@ -523,7 +841,26 @@ export function UsersPanel({
     <AdminPanel>
       <AdminPanelHeader
         title="Usuarios"
-        description={panelDescription}
+        compactMobile
+        middle={
+          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_13.5rem]">
+            <Input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Buscar por nombre, correo, RUT o teléfono…"
+              className={joinClasses("h-11", ui.input)}
+            />
+            <Select
+              aria-label="Ver usuarios o membresía"
+              value={directoryGroup}
+              options={DIRECTORY_GROUP_OPTIONS}
+              onChange={(event) =>
+                setDirectoryGroup(event.target.value as DirectoryGroup)
+              }
+              className={joinClasses("h-11", ui.input)}
+            />
+          </div>
+        }
         actions={
           <>
             <AdminRefreshButton onClick={() => void loadAccounts()} />
@@ -535,15 +872,6 @@ export function UsersPanel({
           </>
         }
       />
-
-      <AdminToolbar>
-        <Input
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Buscar por nombre, correo, RUT o teléfono…"
-          className={joinClasses("h-11", ui.input)}
-        />
-      </AdminToolbar>
 
       {loadError ? (
         <div
@@ -557,197 +885,49 @@ export function UsersPanel({
 
       <AdminTableCard
         loading={loading}
-        empty={!loading && sortedRows.length === 0}
-        emptyTitle={executivesOnly ? "No hay ejecutivos registrados" : "No hay usuarios registrados"}
+        empty={!loading && visibleRows.length === 0}
+        emptyTitle={
+          directoryRows.length === 0
+            ? executivesOnly
+              ? "No hay ejecutivos registrados"
+              : "No hay usuarios registrados"
+            : directoryGroup === "membresia"
+              ? search.trim()
+                ? "Sin coincidencias en membresía"
+                : "No hay usuarios de membresía"
+              : search.trim()
+                ? "Sin coincidencias"
+                : "No hay ejecutivos en esta lista"
+        }
         emptyDescription={
-          executivesOnly
-            ? "Invita a un ejecutivo. Aparecerá como pendiente hasta que active su cuenta y complete su perfil."
-            : "Invita a un administrador o ejecutivo. Aparecerán como pendientes hasta que activen su cuenta."
+          directoryRows.length === 0
+            ? executivesOnly
+              ? "Invita a un ejecutivo. Aparecerá como pendiente hasta que active su cuenta y complete su perfil."
+              : "Invita a un administrador o ejecutivo. Aparecerán como pendientes hasta que activen su cuenta."
+            : search.trim()
+              ? "Prueba con otro nombre, correo, RUT o teléfono."
+              : undefined
         }
         loadingMessage="Cargando usuarios…"
-        footer={`Mostrando ${sortedRows.length} de ${directoryRows.length} registros.`}
+        footer={
+          visibleRows.length > 0
+            ? `Mostrando ${visibleRows.length} de ${directoryRows.length} registros.`
+            : undefined
+        }
       >
-        <AdminTable minWidth="56rem">
-          <AdminTableHead>
-            <tr>
-              <AdminTableHeaderCell {...sortProps("usuario")}>
-                Usuario
-              </AdminTableHeaderCell>
-              <AdminTableHeaderCell {...sortProps("rol")}>
-                Rol
-              </AdminTableHeaderCell>
-              <AdminTableHeaderCell {...sortProps("contacto")}>
-                Contacto
-              </AdminTableHeaderCell>
-              {executivesOnly ? (
-                <AdminTableHeaderCell {...sortProps("clientes")}>
-                  Clientes
-                </AdminTableHeaderCell>
-              ) : null}
-              <AdminTableHeaderCell {...sortProps("estado")}>
-                Estado
-              </AdminTableHeaderCell>
-              <AdminTableHeaderCell {...sortProps("acceso")}>
-                Último acceso
-              </AdminTableHeaderCell>
-              <AdminTableHeaderCell align="right">Acciones</AdminTableHeaderCell>
-            </tr>
-          </AdminTableHead>
-          <AdminTableBody>
-            {sortedRows.map((row) => {
-              if (row.kind === "invite") {
-                const { invite } = row;
-
-                return (
-                  <AdminTableRow key={`invite-${invite.id}`}>
-                    <AdminTableCell>
-                      <p className="font-semibold text-foreground">{invite.email}</p>
-                      <p className="mt-1 text-xs text-muted">
-                        Invitado {formatDate(invite.createdAt)}
-                      </p>
-                    </AdminTableCell>
-                    <AdminTableCell>
-                      <AdminBadge tone="neutral">{getInviteRoleLabel(invite)}</AdminBadge>
-                    </AdminTableCell>
-                    <AdminTableCell>
-                      <p>{invite.email}</p>
-                      {invite.rut ? (
-                        <p className="mt-1 text-xs text-muted">RUT {invite.rut}</p>
-                      ) : null}
-                    </AdminTableCell>
-                    {executivesOnly ? (
-                      <AdminTableCell className="text-muted">—</AdminTableCell>
-                    ) : null}
-                    <AdminTableCell>
-                      <AdminBadge tone="warning">Pendiente por activar</AdminBadge>
-                      <p className="mt-2 text-xs text-muted">
-                        Debe crear su cuenta desde el correo · expira {formatDate(invite.expiresAt)}
-                      </p>
-                    </AdminTableCell>
-                    <AdminTableCell className="text-muted">—</AdminTableCell>
-                    <AdminTableCell align="right">
-                      {canManage ? (
-                        <AdminRowActions>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => void handleResendPendingInvite(invite.id)}
-                          >
-                            Reenviar invitación
-                          </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="danger"
-                            onClick={() => void handleCancelPendingInvite(invite.id)}
-                          >
-                            Cancelar
-                          </Button>
-                        </AdminRowActions>
-                      ) : (
-                        <span className="text-xs text-muted">Esperando activación</span>
-                      )}
-                    </AdminTableCell>
-                  </AdminTableRow>
-                );
-              }
-
-              const { account } = row;
-              const status = getAccountStatus(account);
-
-              return (
-                <AdminTableRow key={account.id}>
-                  <AdminTableCell>
-                    <p className="font-semibold text-foreground">
-                      {account.fullName}
-                    </p>
-                    <p className="mt-1 text-xs text-muted">
-                      Registrado {formatDate(account.createdAt)}
-                    </p>
-                  </AdminTableCell>
-                  <AdminTableCell>
-                    <AdminBadge tone="neutral">{getAccountRoleLabel(account)}</AdminBadge>
-                  </AdminTableCell>
-                  <AdminTableCell>
-                    <p>{account.email}</p>
-                    {account.phone ? (
-                      <p className="mt-1 text-xs text-muted">{account.phone}</p>
-                    ) : null}
-                    {account.rut ? (
-                      <p className="mt-1 text-xs text-muted">RUT {account.rut}</p>
-                    ) : null}
-                  </AdminTableCell>
-                  {executivesOnly ? (
-                    <AdminTableCell>
-                      {account.onboardingCompleted && account.active ? (
-                        <span className="font-semibold text-foreground">
-                          {assignmentCounts[account.id] ?? 0}
-                        </span>
-                      ) : (
-                        <span className="text-muted">—</span>
-                      )}
-                    </AdminTableCell>
-                  ) : null}
-                  <AdminTableCell>
-                    <AdminBadge tone={status.tone}>{status.label}</AdminBadge>
-                  </AdminTableCell>
-                  <AdminTableCell className="text-muted">
-                    {formatDate(account.lastLoginAt)}
-                  </AdminTableCell>
-                  <AdminTableCell align="right">
-                    {canManage ? (
-                      <AdminRowActions>
-                        {account.realm === "executive" ? (
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => openRoleModal(account)}
-                          >
-                            Cambiar rol
-                          </Button>
-                        ) : null}
-                        {account.realm === "executive" &&
-                        account.active &&
-                        account.onboardingCompleted ? (
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => void handleToggleAssignments(account)}
-                          >
-                            {account.assignmentsSuspended
-                              ? "Reanudar asignaciones"
-                              : "Suspender asignaciones"}
-                          </Button>
-                        ) : null}
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant={account.active ? "ghost" : "secondary"}
-                          onClick={() => void handleToggleActive(account)}
-                        >
-                          {account.active ? "Suspender usuario" : "Reactivar usuario"}
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="danger"
-                          onClick={() => setDeleteTarget(account)}
-                        >
-                          Eliminar
-                        </Button>
-                      </AdminRowActions>
-                    ) : (
-                      <span className="text-xs text-muted">—</span>
-                    )}
-                  </AdminTableCell>
-                </AdminTableRow>
-              );
-            })}
-          </AdminTableBody>
-        </AdminTable>
+        <UsersDirectoryTable
+          rows={visibleRows}
+          executivesOnly={executivesOnly}
+          canManage={canManage}
+          assignmentCounts={assignmentCounts}
+          sortProps={sortProps}
+          onResendInvite={(id) => void handleResendPendingInvite(id)}
+          onCancelInvite={(id) => void handleCancelPendingInvite(id)}
+          onChangeRole={openRoleModal}
+          onToggleAssignments={(account) => void handleToggleAssignments(account)}
+          onToggleActive={(account) => void handleToggleActive(account)}
+          onDelete={setDeleteTarget}
+        />
       </AdminTableCard>
 
       {canManage ? (

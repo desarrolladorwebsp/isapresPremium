@@ -52,6 +52,7 @@ const SECTION_LABELS: Record<
     shortLabel: "Convenios",
     adminOnly: true,
   },
+  perfil: { label: "Perfil", shortLabel: "Perfil" },
 };
 
 function NavIcon({ children }: { children: ReactNode }) {
@@ -143,6 +144,12 @@ const SECTION_ICONS: Record<StaffSection, ReactNode> = {
       <path d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2" strokeLinecap="round" />
       <rect x="4" y="7" width="16" height="14" rx="2" />
       <path d="M9 12h6M9 16h4" strokeLinecap="round" />
+    </NavIcon>
+  ),
+  perfil: (
+    <NavIcon>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 21a8 8 0 0116 0" strokeLinecap="round" />
     </NavIcon>
   ),
 };
@@ -237,6 +244,7 @@ export function ExecutiveShell({
                 <UserMenu
                   fullName={staffUser.fullName}
                   subtitle={userSubtitle}
+                  avatarUrl={staffUser.avatarUrl}
                   compact
                   onDark
                   menuMode="dropdown"
@@ -269,6 +277,7 @@ export function ExecutiveShell({
         sectionIcons={SECTION_ICONS}
         userFullName={staffUser?.fullName}
         userSubtitle={staffUser ? userSubtitle : null}
+        userAvatarUrl={staffUser?.avatarUrl}
       />
 
       {isFullBleed ? (

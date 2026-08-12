@@ -1,10 +1,15 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { StaffAvatar } from "@/components/auth/staff-avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useStaffSession } from "@/hooks/use-auth-session";
+import {
+  uploadStaffAvatar,
+  withAvatarCacheBust,
+} from "@/lib/auth/staff-avatar-client";
 import {
   EXECUTIVE_HOME_PATH,
   STAFF_LOGIN_PATH,
@@ -26,6 +31,9 @@ export function ExecutiveOnboardingForm() {
   const [phone, setPhone] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarBusy, setAvatarBusy] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (loading) return;
@@ -50,6 +58,7 @@ export function ExecutiveOnboardingForm() {
       return;
     }
 
+    if (executive.avatarUrl) setAvatarUrl(executive.avatarUrl);
     if (executive.rut) setRut(executive.rut);
 
     const parts = executive.fullName.trim().split(/\s+/);
@@ -111,6 +120,64 @@ export function ExecutiveOnboardingForm() {
         </p>
 
         <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
+          <div className="flex items-center gap-4">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="sr-only"
+              onChange={async (event) => {
+                const file = event.target.files?.[0];
+                if (!file) return;
+                setAvatarBusy(true);
+                setError(null);
+                try {
+                  const url = withAvatarCacheBust(await uploadStaffAvatar(file));
+                  setAvatarUrl(url);
+                } catch (err: unknown) {
+                  setError(
+                    err instanceof Error
+                      ? err.message
+                      : "No se pudo subir la foto.",
+                  );
+                } finally {
+                  setAvatarBusy(false);
+                }
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={avatarBusy || saving}
+              className="rounded-full disabled:opacity-60"
+              title="Agregar foto de perfil"
+            >
+              <StaffAvatar
+                fullName={`${firstName} ${lastName}`.trim() || executive.fullName}
+                avatarUrl={avatarUrl}
+                className="flex size-16 items-center justify-center border border-border bg-bg-layout text-sm text-muted"
+              />
+            </button>
+            <div className="min-w-0">
+              <p className="text-sm font-medium">Foto de perfil</p>
+              <p className="text-xs text-muted">
+                Opcional. JPG, PNG o WEBP de hasta 4 MB.
+              </p>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={avatarBusy || saving}
+                className="mt-1 text-xs font-semibold text-primary disabled:opacity-60"
+              >
+                {avatarBusy
+                  ? "Subiendo…"
+                  : avatarUrl
+                    ? "Cambiar foto"
+                    : "Subir foto"}
+              </button>
+            </div>
+          </div>
+
           <label className="block space-y-2">
             <span className="text-sm font-medium">Correo</span>
             <Input value={executive.email} readOnly disabled />

@@ -356,6 +356,9 @@ model StaffAccount {
   assignmentsSuspended  Boolean             @default(false) @map("assignments_suspended")
   /// Perfil obligatorio completado tras activación (solo ejecutivos).
   onboardingCompleted   Boolean             @default(false) @map("onboarding_completed")
+  /// Foto de perfil (URL pública Blob o ruta /api/staff/avatars/:id).
+  avatarUrl             String?             @map("avatar_url")
+  avatarStorageKey      String?             @map("avatar_storage_key")
   subscriptionStatus    SubscriptionStatus? @map("subscription_status")
   subscriptionPlanId    String?             @map("subscription_plan_id")
   subscriptionExpiresAt DateTime?           @map("subscription_expires_at")

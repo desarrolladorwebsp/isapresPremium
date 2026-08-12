@@ -95,6 +95,7 @@ export function CotizadorHeader({
             {staffUser ? (
               <UserMenu
                 fullName={staffUser.fullName}
+                avatarUrl={staffUser.avatarUrl}
                 subtitle={getStaffRoleLabel({
                   realm: realm ?? (isAdmin ? "admin" : "executive"),
                   executiveKind:

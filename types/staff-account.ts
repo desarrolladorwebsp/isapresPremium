@@ -36,6 +36,7 @@ export interface StaffAccountRecord {
   subscriptionExpiresAt?: string | null;
   assignmentsSuspended?: boolean;
   onboardingCompleted?: boolean;
+  avatarUrl?: string | null;
 }
 
 export interface CreateStaffAccountInput {

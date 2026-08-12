@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type {
   AdminSessionUser,
   ExecutiveSessionUser,
@@ -12,6 +12,27 @@ export function useStaffSession() {
   const [data, setData] = useState<StaffMeResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const refresh = useCallback(async () => {
+    try {
+      const response = await fetch("/api/auth/me", { cache: "no-store" });
+
+      if (!response.ok) {
+        setData(null);
+        setError(null);
+        return;
+      }
+
+      const payload = (await response.json()) as StaffMeResponse;
+      setData(payload);
+      setError(null);
+    } catch {
+      setData(null);
+      setError("No se pudo validar la sesión.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -70,6 +91,7 @@ export function useStaffSession() {
       !(data.user as ExecutiveSessionUser).onboardingCompleted,
     loading,
     error,
+    refresh,
   };
 }
 

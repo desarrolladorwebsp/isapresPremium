@@ -54,3 +54,4 @@ scripts/.*-audit-parsed.json
 public/images/Untitled
 
 !/storage/client-docs/.gitkeep
+!/storage/staff-avatars/.gitkeep

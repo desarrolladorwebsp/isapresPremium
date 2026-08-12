@@ -2,10 +2,15 @@
 
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
-import { useCallback, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { StaffAvatar } from "@/components/auth/staff-avatar";
 import { useScrollLock } from "@/hooks/use-scroll-lock";
 import { performStaffLogout } from "@/lib/auth/client-logout";
 import { STAFF_LOGIN_PATH } from "@/lib/auth/constants";
+import {
+  uploadStaffAvatar,
+  withAvatarCacheBust,
+} from "@/lib/auth/staff-avatar-client";
 import type { StaffSection } from "@/lib/staff/staff-sections";
 import { touchTarget, ui } from "@/lib/ui-tokens";
 import { joinClasses } from "@/lib/utils";
@@ -26,13 +31,7 @@ export interface ExecutiveMobileNavDrawerProps {
   sectionIcons?: Partial<Record<StaffSection, ReactNode>>;
   userFullName?: string | null;
   userSubtitle?: string | null;
-}
-
-function getInitials(fullName: string): string {
-  const parts = fullName.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "?";
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return `${parts[0][0] ?? ""}${parts[1][0] ?? ""}`.toUpperCase();
+  userAvatarUrl?: string | null;
 }
 
 function CloseIcon() {
@@ -57,9 +56,42 @@ export function ExecutiveMobileNavDrawer({
   sectionIcons,
   userFullName,
   userSubtitle,
+  userAvatarUrl,
 }: ExecutiveMobileNavDrawerProps) {
   useScrollLock(open);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [avatarBusy, setAvatarBusy] = useState(false);
+  const [currentAvatarUrl, setCurrentAvatarUrl] = useState(userAvatarUrl ?? null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePickPhoto = useCallback(() => {
+    if (avatarBusy) return;
+    fileInputRef.current?.click();
+  }, [avatarBusy]);
+
+  const handleFileChange = useCallback(
+    async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      event.target.value = "";
+      if (!file) return;
+      setAvatarBusy(true);
+      try {
+        const url = withAvatarCacheBust(await uploadStaffAvatar(file));
+        setCurrentAvatarUrl(url);
+      } catch (error) {
+        window.alert(
+          error instanceof Error ? error.message : "No se pudo subir la foto.",
+        );
+      } finally {
+        setAvatarBusy(false);
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    setCurrentAvatarUrl(userAvatarUrl ?? null);
+  }, [userAvatarUrl]);
 
   const handleSelect = (section: StaffSection) => {
     onSectionChange(section);
@@ -123,12 +155,26 @@ export function ExecutiveMobileNavDrawer({
 
         {userFullName ? (
           <div className="flex shrink-0 items-center gap-3 border-b border-border px-4 py-3.5">
-            <div
-              className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[color:var(--dash-cyan)] text-xs font-bold text-white"
-              aria-hidden
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="sr-only"
+              onChange={(event) => void handleFileChange(event)}
+            />
+            <button
+              type="button"
+              onClick={handlePickPhoto}
+              disabled={avatarBusy}
+              title="Cambiar foto de perfil"
+              className="shrink-0 rounded-full disabled:opacity-60"
             >
-              {getInitials(userFullName)}
-            </div>
+              <StaffAvatar
+                fullName={userFullName}
+                avatarUrl={currentAvatarUrl}
+                className="flex size-10 items-center justify-center bg-[color:var(--dash-cyan)] text-white"
+              />
+            </button>
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-[color:var(--dash-navy)]">
                 {userFullName}
@@ -136,6 +182,9 @@ export function ExecutiveMobileNavDrawer({
               {userSubtitle ? (
                 <p className="truncate text-xs text-muted">{userSubtitle}</p>
               ) : null}
+              <p className="mt-0.5 text-[11px] text-muted">
+                {avatarBusy ? "Subiendo foto…" : "Toca la foto para cambiarla"}
+              </p>
             </div>
           </div>
         ) : null}

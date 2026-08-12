@@ -16,6 +16,7 @@ import { ExecutiveClientsPanel } from "@/components/executive/executive-clients-
 import { ExecutiveCalendarPanel } from "@/components/executive/executive-calendar-panel";
 import { ExecutiveClinicsMapPanel } from "@/components/executive/executive-clinics-map-panel";
 import { ExecutiveDashboardHome } from "@/components/executive/executive-dashboard-home";
+import { ExecutiveProfilePanel } from "@/components/executive/executive-profile-panel";
 import { ExecutiveQuotesPanel } from "@/components/executive/executive-quotes-panel";
 import {
   ExecutiveShell,
@@ -214,6 +215,10 @@ function ExecutiveDashboardContent() {
 
         {section === "convenios" && canAccessSection("convenios") ? (
           <CompanyAgreementsPanel onNotify={notify} />
+        ) : null}
+
+        {section === "perfil" && canAccessSection("perfil") ? (
+          <ExecutiveProfilePanel onNotify={notify} />
         ) : null}
       </ExecutiveShell>
 

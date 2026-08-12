@@ -7,6 +7,7 @@ import {
   STAFF_LIMITED_EXECUTIVE_SECTIONS,
   STAFF_MEMBERSHIP_SECTIONS,
   STAFF_PREMIUM_SECTIONS,
+  withStaffProfileSection,
   type StaffSection,
 } from "@/lib/staff/staff-sections";
 import { ApiError } from "@/lib/api/api-error";
@@ -126,18 +127,21 @@ export function getStaffSectionsForAccount(input: {
   executiveKind?: ExecutiveKind | null;
 }): StaffSection[] {
   if (input.realm === "admin") {
-    return [...STAFF_BASE_SECTIONS, ...STAFF_ADMIN_SECTIONS];
+    return withStaffProfileSection([
+      ...STAFF_BASE_SECTIONS,
+      ...STAFF_ADMIN_SECTIONS,
+    ]);
   }
 
   switch (normalizeExecutiveKind(input.executiveKind)) {
     case "ZOOM":
     case "ISAPRES":
-      return [...STAFF_LIMITED_EXECUTIVE_SECTIONS];
+      return withStaffProfileSection(STAFF_LIMITED_EXECUTIVE_SECTIONS);
     case "MEMBRESIA_ISAPRES_PREMIUM":
-      return [...STAFF_MEMBERSHIP_SECTIONS];
+      return withStaffProfileSection(STAFF_MEMBERSHIP_SECTIONS);
     case "ISAPRES_PREMIUM":
     default:
-      return [...STAFF_PREMIUM_SECTIONS];
+      return withStaffProfileSection(STAFF_PREMIUM_SECTIONS);
   }
 }
 

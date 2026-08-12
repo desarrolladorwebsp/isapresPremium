@@ -214,3 +214,7 @@ DO $$ BEGIN
 EXCEPTION
   WHEN duplicate_object THEN null;
 END $$;
+
+-- Foto de perfil staff
+ALTER TABLE "staff_accounts" ADD COLUMN IF NOT EXISTS "avatar_url" TEXT;
+ALTER TABLE "staff_accounts" ADD COLUMN IF NOT EXISTS "avatar_storage_key" TEXT;

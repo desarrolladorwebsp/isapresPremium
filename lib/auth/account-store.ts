@@ -59,6 +59,7 @@ function mapStaffRecord(account: StaffAccount): StaffAccountRecord {
     subscriptionExpiresAt: account.subscriptionExpiresAt?.toISOString() ?? null,
     assignmentsSuspended: account.assignmentsSuspended,
     onboardingCompleted: account.onboardingCompleted,
+    avatarUrl: account.avatarUrl,
   };
 }
 
@@ -73,6 +74,7 @@ function mapExecutiveSessionUser(account: StaffAccount): ExecutiveSessionUser {
     id: account.id,
     email: account.email,
     fullName: account.fullName,
+    avatarUrl: account.avatarUrl,
     phone: account.phone,
     rut: account.rut,
     executiveKind: normalizeExecutiveKind(account.executiveKind),
@@ -90,6 +92,9 @@ function mapAdminSessionUser(account: StaffAccount): AdminSessionUser {
     id: account.id,
     email: account.email,
     fullName: account.fullName,
+    avatarUrl: account.avatarUrl,
+    phone: account.phone,
+    rut: account.rut,
     mustChangePassword: account.mustChangePassword,
   };
 }
@@ -496,4 +501,136 @@ export async function seedAuthAccountPassword(
   password: string,
 ): Promise<string> {
   return hashPassword(password);
+}
+
+export async function updateOwnStaffProfile(
+  accountId: string,
+  input: { firstName: string; lastName: string; phone: string; rut: string },
+): Promise<AdminSessionUser | ExecutiveSessionUser> {
+  const account = await prisma.staffAccount.findUnique({
+    where: { id: accountId },
+  });
+  if (!account || !account.active) {
+    throw new ApiError("Cuenta no encontrada.", 404, "NOT_FOUND");
+  }
+
+  const firstName = input.firstName.trim();
+  const lastName = input.lastName.trim();
+  const fullName = `${firstName} ${lastName}`.trim();
+  const phone = input.phone.trim();
+  const rutRaw = input.rut.trim();
+
+  if (!firstName || !lastName) {
+    throw new ApiError("Nombre y apellido son obligatorios.", 400, "INVALID_INPUT");
+  }
+
+  let formattedRut: string | null = account.rut;
+  if (rutRaw) {
+    const { formatRut, isValidRut } = await import("@/lib/auth/rut");
+    if (!isValidRut(rutRaw)) {
+      throw new ApiError("El RUT no es válido.", 400, "INVALID_RUT");
+    }
+    formattedRut = formatRut(rutRaw);
+  } else if (isExecutiveRole(account.role)) {
+    throw new ApiError("El RUT es obligatorio.", 400, "INVALID_RUT");
+  } else {
+    formattedRut = null;
+  }
+
+  if (isExecutiveRole(account.role) && !phone) {
+    throw new ApiError("El teléfono de contacto es obligatorio.", 400, "INVALID_INPUT");
+  }
+
+  const updated = await prisma.staffAccount.update({
+    where: { id: account.id },
+    data: {
+      fullName,
+      phone: phone || null,
+      rut: formattedRut,
+    },
+  });
+
+  return isAdminRole(updated.role)
+    ? mapAdminSessionUser(updated)
+    : mapExecutiveSessionUser(updated);
+}
+
+export async function setStaffAvatar(
+  accountId: string,
+  input: { fileBuffer: Buffer; mimeType: string },
+): Promise<{ avatarUrl: string }> {
+  const account = await prisma.staffAccount.findUnique({
+    where: { id: accountId },
+  });
+  if (!account || !account.active) {
+    throw new ApiError("Cuenta no encontrada.", 404, "NOT_FOUND");
+  }
+
+  const { saveStaffAvatarFile } = await import("@/lib/staff-avatar-storage");
+  const saved = await saveStaffAvatarFile({
+    staffId: account.id,
+    fileBuffer: input.fileBuffer,
+    mimeType: input.mimeType,
+    previousStorageKey: account.avatarStorageKey,
+  });
+
+  await prisma.staffAccount.update({
+    where: { id: account.id },
+    data: {
+      avatarUrl: saved.url,
+      avatarStorageKey: saved.storageKey,
+    },
+  });
+
+  return { avatarUrl: saved.url };
+}
+
+export async function clearStaffAvatar(accountId: string): Promise<void> {
+  const account = await prisma.staffAccount.findUnique({
+    where: { id: accountId },
+  });
+  if (!account || !account.active) {
+    throw new ApiError("Cuenta no encontrada.", 404, "NOT_FOUND");
+  }
+
+  if (account.avatarStorageKey) {
+    const { deleteStaffAvatarFile } = await import("@/lib/staff-avatar-storage");
+    await deleteStaffAvatarFile(account.avatarStorageKey);
+  }
+
+  await prisma.staffAccount.update({
+    where: { id: account.id },
+    data: {
+      avatarUrl: null,
+      avatarStorageKey: null,
+    },
+  });
+}
+
+export async function readStaffAvatarFile(staffId: string): Promise<{
+  buffer: Buffer;
+  mimeType: string;
+} | null> {
+  const account = await prisma.staffAccount.findUnique({
+    where: { id: staffId },
+    select: {
+      avatarUrl: true,
+      avatarStorageKey: true,
+      active: true,
+    },
+  });
+  if (!account?.active || !account.avatarStorageKey) return null;
+
+  const { readStaffAvatarFile: readFile, getStaffAvatarMimeType } = await import(
+    "@/lib/staff-avatar-storage"
+  );
+  try {
+    const buffer = await readFile(account.avatarStorageKey);
+    return {
+      buffer,
+      mimeType: getStaffAvatarMimeType(account.avatarStorageKey, account.avatarUrl),
+    };
+  } catch {
+    return null;
+  }
 }

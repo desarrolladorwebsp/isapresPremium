@@ -10,7 +10,8 @@ export type StaffSection =
   | "clinicas"
   | "ges"
   | "reportes-pdf"
-  | "convenios";
+  | "convenios"
+  | "perfil";
 
 export const STAFF_SECTION_QUERY = "section";
 export const STAFF_CLIENT_ID_QUERY = "clientId";
@@ -85,9 +86,13 @@ export const STAFF_LIMITED_EXECUTIVE_SECTIONS: StaffSection[] = [
 ];
 
 /**
- * Membresía Isapres Premium: solo cotizador (usuarios externos, no staff operativo).
+ * Membresía Isapres Premium: cotizador (usuarios externos, no staff operativo).
+ * El perfil se agrega aparte para todos los roles.
  */
 export const STAFF_MEMBERSHIP_SECTIONS: StaffSection[] = ["cotizador"];
+
+/** Disponible para todos los roles; se agrega al final del menú. */
+export const STAFF_PROFILE_SECTION: StaffSection = "perfil";
 
 const ALL_SECTIONS = new Set<StaffSection>([
   ...STAFF_BASE_SECTIONS,
@@ -95,7 +100,15 @@ const ALL_SECTIONS = new Set<StaffSection>([
   ...STAFF_PREMIUM_SECTIONS,
   ...STAFF_LIMITED_EXECUTIVE_SECTIONS,
   ...STAFF_MEMBERSHIP_SECTIONS,
+  STAFF_PROFILE_SECTION,
 ]);
+
+export function withStaffProfileSection(
+  sections: readonly StaffSection[],
+): StaffSection[] {
+  if (sections.includes(STAFF_PROFILE_SECTION)) return [...sections];
+  return [...sections, STAFF_PROFILE_SECTION];
+}
 
 export function isStaffSection(value: string | null | undefined): value is StaffSection {
   return Boolean(value && ALL_SECTIONS.has(value as StaffSection));

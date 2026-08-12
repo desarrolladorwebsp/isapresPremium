@@ -17,6 +17,9 @@ export interface AdminSessionUser {
   id: string;
   email: string;
   fullName: string;
+  avatarUrl: string | null;
+  phone: string | null;
+  rut: string | null;
   mustChangePassword: boolean;
 }
 
@@ -24,6 +27,7 @@ export interface ExecutiveSessionUser {
   id: string;
   email: string;
   fullName: string;
+  avatarUrl: string | null;
   phone: string | null;
   rut: string | null;
   executiveKind: ExecutiveKind;
@@ -51,12 +55,6 @@ export interface StaffMeResponse {
     sections: StaffSection[];
   };
 }
-
-export interface LoginCredentials {
-  email: string;
-  password: string;
-}
-
 
 export interface LoginCredentials {
   email: string;
