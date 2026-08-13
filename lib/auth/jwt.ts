@@ -5,7 +5,7 @@ import {
   SESSION_MAX_AGE_SECONDS,
   type AuthRealm,
 } from "@/lib/auth/constants";
-import type { SessionPayload } from "@/lib/auth/types";
+import type { SessionPayload } from "@/lib/auth/session-payload";
 
 function getAuthSecret(): Uint8Array {
   const secret = process.env.AUTH_SECRET;

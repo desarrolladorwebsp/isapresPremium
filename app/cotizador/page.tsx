@@ -10,7 +10,7 @@ import {
 import { resolvePartnerEntityForCotizador } from "@/lib/partner-entity/server";
 import { isEmbedSearchParam } from "@/lib/embed/is-embed-request";
 import { buildPageMetadata } from "@/lib/seo/build-page-metadata";
-import { isLegacySeoRequest } from "@/lib/seo/request-host";
+import { isLegacySeoRequest } from "@/lib/seo/request-host-server";
 import { buildCotizadorPageJsonLd } from "@/lib/seo/json-ld";
 
 interface CotizadorPageProps {

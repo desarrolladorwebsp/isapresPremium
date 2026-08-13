@@ -2,16 +2,7 @@ import type { ExecutiveKind, SubscriptionStatus } from "@prisma/client";
 import type { AuthRealm } from "@/lib/auth/constants";
 import type { StaffSection } from "@/lib/staff/staff-sections";
 
-export interface SessionPayload {
-  sub: string;
-  email: string;
-  realm: AuthRealm;
-  mustChangePassword: boolean;
-  iat: number;
-  exp: number;
-  /** Unix timestamp de la última actividad (sliding session). */
-  lastActive: number;
-}
+export type { SessionPayload } from "@/lib/auth/session-payload";
 
 export interface AdminSessionUser {
   id: string;

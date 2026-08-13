@@ -17,7 +17,7 @@ import {
   staffSectionHref,
 } from "@/lib/staff/staff-sections";
 import { refreshSessionToken, verifySessionToken } from "@/lib/auth/jwt";
-import type { SessionPayload } from "@/lib/auth/types";
+import type { SessionPayload } from "@/lib/auth/session-payload";
 import {
   AGENT_QUERY_PARAM,
   DEFAULT_PARTNER_ENTITY_SLUG,
@@ -145,7 +145,6 @@ function readAgentKeyFromSearchParams(request: NextRequest): string | null {
   return agent;
 }
 
-/** Marca por hostname cuando no hay `?agent=` / `?entidad=`. */
 function defaultPartnerSlugForRequest(request: NextRequest): string {
   const host = normalizeHostname(
     request.headers.get("x-forwarded-host") ?? request.headers.get("host"),
@@ -169,7 +168,6 @@ function redirectToCotizadorWithAgent(
   );
 }
 
-/** `/` con `?agent=` → `/cotizador?agent=` (conserva query). El home marketing no redirige. */
 function redirectRootWithAgentToCotizador(
   request: NextRequest,
   agent: string,
@@ -183,7 +181,7 @@ function redirectToLogin(request: NextRequest, nextPath: string): NextResponse {
   return NextResponse.redirect(loginUrl);
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (pathname === "/") {
@@ -191,7 +189,6 @@ export async function middleware(request: NextRequest) {
     if (agent) {
       return redirectRootWithAgentToCotizador(request, agent);
     }
-    // Home marketing de isaprespremium.cl — no redirigir al cotizador.
     return forwardRequest(request);
   }
 
@@ -203,7 +200,6 @@ export async function middleware(request: NextRequest) {
       return setPartnerEntityCookie(response, agent);
     }
 
-    // Sin agent: forzar marca del host (no reutilizar cookie de otro partner).
     return setPartnerEntityCookie(
       response,
       defaultPartnerSlugForRequest(request),

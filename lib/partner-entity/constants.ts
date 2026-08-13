@@ -35,4 +35,5 @@ export const RESERVED_ROOT_SEGMENTS = new Set([
 
 export const DEFAULT_PARTNER_ENTITY_ENV = "DEFAULT_PARTNER_ENTITY_SLUG";
 
-export { DEFAULT_PARTNER_ENTITY_SLUG } from "@/lib/partner-entity/fallback-entities";
+/** Debe coincidir con ISAPRE_PREMIUM_AGENT_KEY. Inline para no arrastrar temas al middleware. */
+export const DEFAULT_PARTNER_ENTITY_SLUG = "isaprespremium";

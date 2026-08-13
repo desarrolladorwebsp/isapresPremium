@@ -1,6 +1,21 @@
 @import "tailwindcss";
 @config "../tailwind.config.mjs";
 
+@font-face {
+  font-family: "Inter";
+  src: url("/fonts/inter-latin-wght.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  src: url("/fonts/plus-jakarta-sans-latin-wght.woff2") format("woff2");
+  font-weight: 200 800;
+  font-style: normal;
+  font-display: swap;
+}
 
 :root {
   --background: #ffffff;
@@ -8,6 +23,8 @@
   --brand-green: #00b894;
   --brand-teal: #0a6b5e;
   --brand-teal-dark: #064e45;
+  --font-inter: "Inter";
+  --font-heading-sans: "Plus Jakarta Sans";
 }
 
 @theme inline {

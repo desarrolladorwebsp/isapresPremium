@@ -1,4 +1,3 @@
-import { headers } from "next/headers";
 import {
   LEGACY_APP_BASE_URL,
   PROD_APP_BASE_URL,
@@ -33,21 +32,4 @@ export function isLegacySeoHostname(hostname: string): boolean {
 export function isCanonicalSeoHostname(hostname: string): boolean {
   const host = normalizeHostname(hostname);
   return host === CANONICAL_SEO_HOST || host.endsWith(`.${CANONICAL_SEO_HOST}`);
-}
-
-/** Lee el host del request (App Router). */
-export async function readRequestHostname(): Promise<string> {
-  const headerList = await headers();
-  const forwarded = headerList.get("x-forwarded-host");
-  const host = headerList.get("host");
-  return normalizeHostname(forwarded ?? host);
-}
-
-/**
- * true cuando el request llega por el dominio legacy
- * (cotizador.cotizaloantes.cl). Ese host no debe indexarse
- * con la marca Cotizador Premium.
- */
-export async function isLegacySeoRequest(): Promise<boolean> {
-  return isLegacySeoHostname(await readRequestHostname());
 }

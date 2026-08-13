@@ -253,8 +253,11 @@ export async function activateStaffAccountFromInvite(
 
   const trialExpiresAt = new Date();
   trialExpiresAt.setDate(trialExpiresAt.getDate() + 30);
-  const subscriptionStatus: SubscriptionStatus = "TRIAL";
   const executiveKind = normalizeExecutiveKind(invite.executiveKind);
+  const isMembership = executiveKind === "MEMBRESIA_ISAPRES_PREMIUM";
+  const subscriptionStatus: SubscriptionStatus = isMembership
+    ? "TRIAL"
+    : "ACTIVE";
 
   const account = await prisma.staffAccount.create({
     data: {
@@ -268,7 +271,7 @@ export async function activateStaffAccountFromInvite(
       mustChangePassword: false,
       onboardingCompleted: false,
       subscriptionStatus,
-      subscriptionExpiresAt: trialExpiresAt,
+      subscriptionExpiresAt: isMembership ? trialExpiresAt : null,
     },
   });
 

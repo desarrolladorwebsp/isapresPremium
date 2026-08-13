@@ -9,9 +9,9 @@ import {
   COTIZADOR_PREMIUM_THEME,
   PLATFORM_AGENT_KEY,
 } from "@/lib/partner-entity/platform-agent";
+import { DEFAULT_PARTNER_ENTITY_SLUG } from "@/lib/partner-entity/constants";
 
-/** Slug de la entidad por defecto en isaprespremium.cl (sin ?agent=). */
-export const DEFAULT_PARTNER_ENTITY_SLUG = ISAPRE_PREMIUM_AGENT_KEY;
+export { DEFAULT_PARTNER_ENTITY_SLUG };
 
 export { COTIZADOR_PREMIUM_THEME };
 

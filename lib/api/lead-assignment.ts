@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { isSubscriptionActive } from "@/lib/auth/subscription";
+import { isExecutiveSubscriptionAllowingAccess } from "@/lib/auth/subscription";
 import {
   adminCanReceiveAssignmentsForKind,
   isClientAssignableExecutiveKind,
@@ -97,7 +97,8 @@ export async function listEligibleExecutivesForAssignment(
   const eligible = accounts
     .filter((account) => {
       if (account.role === "ADMIN") return true;
-      return isSubscriptionActive({
+      return isExecutiveSubscriptionAllowingAccess({
+        executiveKind: account.executiveKind,
         subscriptionStatus: account.subscriptionStatus ?? "TRIAL",
         subscriptionExpiresAt: account.subscriptionExpiresAt,
       });
@@ -152,7 +153,8 @@ async function listInboundPoolExecutives(
     .map((email) => byEmail.get(email))
     .filter((account): account is (typeof accounts)[number] => Boolean(account))
     .filter((account) =>
-      isSubscriptionActive({
+      isExecutiveSubscriptionAllowingAccess({
+        executiveKind: account.executiveKind,
         subscriptionStatus: account.subscriptionStatus ?? "TRIAL",
         subscriptionExpiresAt: account.subscriptionExpiresAt,
       }),

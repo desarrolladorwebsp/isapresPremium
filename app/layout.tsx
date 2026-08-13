@@ -1,23 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
-import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { EMBED_DOCUMENT_HEADER } from "@/lib/embed/is-embed-request";
 import { createRootMetadata } from "@/constants/seo";
 import "./globals.css";
 import "@/styles/cotizador-engine.css";
-
-const inter = Inter({
-  subsets: ["latin"],
-  display: "swap",
-  variable: "--font-inter",
-});
-
-const plusJakartaSans = Plus_Jakarta_Sans({
-  subsets: ["latin"],
-  display: "swap",
-  variable: "--font-heading-sans",
-});
 
 export const metadata: Metadata = createRootMetadata();
 
@@ -43,7 +30,7 @@ export default async function RootLayout({
     <html
       lang="es-CL"
       data-cotizador-embed={isEmbedDocument ? "true" : undefined}
-      className={`${inter.variable} ${plusJakartaSans.variable} ${isEmbedDocument ? "" : "h-full"} overflow-x-clip overscroll-none antialiased`}
+      className={`${isEmbedDocument ? "" : "h-full"} overflow-x-clip overscroll-none antialiased`}
     >
       <body
         className={

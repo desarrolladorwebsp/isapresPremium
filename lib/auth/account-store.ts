@@ -20,7 +20,7 @@ import {
 } from "@/lib/auth/staff-role";
 import {
   getSubscriptionBlockReason,
-  isSubscriptionActive,
+  isExecutiveSubscriptionAllowingAccess,
 } from "@/lib/auth/subscription";
 import type {
   AdminSessionUser,
@@ -65,7 +65,8 @@ function mapStaffRecord(account: StaffAccount): StaffAccountRecord {
 
 function mapExecutiveSessionUser(account: StaffAccount): ExecutiveSessionUser {
   const subscriptionStatus = account.subscriptionStatus ?? "TRIAL";
-  const subscriptionActive = isSubscriptionActive({
+  const subscriptionActive = isExecutiveSubscriptionAllowingAccess({
+    executiveKind: account.executiveKind,
     subscriptionStatus,
     subscriptionExpiresAt: account.subscriptionExpiresAt,
   });
@@ -183,7 +184,8 @@ async function authenticateStaffAccount(
 
   if (isExecutiveRole(account.role)) {
     const subscriptionStatus = account.subscriptionStatus ?? "TRIAL";
-    const subscriptionActive = isSubscriptionActive({
+    const subscriptionActive = isExecutiveSubscriptionAllowingAccess({
+      executiveKind: account.executiveKind,
       subscriptionStatus,
       subscriptionExpiresAt: account.subscriptionExpiresAt,
     });
@@ -463,7 +465,8 @@ export async function changeStaffPassword(
 
   if (isExecutiveRole(account.role)) {
     const subscriptionStatus = account.subscriptionStatus ?? "TRIAL";
-    const subscriptionActive = isSubscriptionActive({
+    const subscriptionActive = isExecutiveSubscriptionAllowingAccess({
+      executiveKind: account.executiveKind,
       subscriptionStatus,
       subscriptionExpiresAt: account.subscriptionExpiresAt,
     });

@@ -17,7 +17,7 @@ import {
   pickExecutiveRoundRobin,
 } from "@/lib/api/lead-assignment";
 import { queueExecutiveClientAssignmentEmail } from "@/lib/email/notify-executive-client-assignment";
-import { isSubscriptionActive } from "@/lib/auth/subscription";
+import { isExecutiveSubscriptionAllowingAccess } from "@/lib/auth/subscription";
 import {
   adminCanReceiveAssignmentsForKind,
   isClientAssignableExecutiveKind,
@@ -470,6 +470,7 @@ async function assertIsapresPremiumExecutive(
     select: {
       id: true,
       role: true,
+      executiveKind: true,
       subscriptionStatus: true,
       subscriptionExpiresAt: true,
     },
@@ -485,7 +486,8 @@ async function assertIsapresPremiumExecutive(
 
   if (account.role === "ADMIN") return;
 
-  const subscriptionActive = isSubscriptionActive({
+  const subscriptionActive = isExecutiveSubscriptionAllowingAccess({
+    executiveKind: account.executiveKind,
     subscriptionStatus: account.subscriptionStatus ?? "TRIAL",
     subscriptionExpiresAt: account.subscriptionExpiresAt,
   });
@@ -704,6 +706,7 @@ async function assertEligibleExecutiveOfKind(
     select: {
       id: true,
       role: true,
+      executiveKind: true,
       subscriptionStatus: true,
       subscriptionExpiresAt: true,
     },
@@ -721,7 +724,8 @@ async function assertEligibleExecutiveOfKind(
 
   if (account.role === "ADMIN") return;
 
-  const subscriptionActive = isSubscriptionActive({
+  const subscriptionActive = isExecutiveSubscriptionAllowingAccess({
+    executiveKind: account.executiveKind,
     subscriptionStatus: account.subscriptionStatus ?? "TRIAL",
     subscriptionExpiresAt: account.subscriptionExpiresAt,
   });

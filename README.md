@@ -13,6 +13,8 @@ Sitio marketing de [isaprespremium.cl](https://isaprespremium.cl) + **motor del 
 
 ## Desarrollo
 
+Node 20–22 (`.nvmrc`). En local `npm run dev` usa webpack.
+
 ```bash
 npm install
 # Copia `.env.example` → `.env.local` y completa DATABASE_URL, AUTH_SECRET, Resend, Blob

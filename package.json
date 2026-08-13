@@ -2,8 +2,9 @@
   "name": "isapres-premium",
   "version": "0.1.0",
   "private": true,
+  "type": "commonjs",
   "scripts": {
-    "dev": "prisma generate && next dev",
+    "dev": "sh scripts/run-dev.sh",
     "build": "prisma generate && node scripts/try-migrate-deploy.mjs && next build",
     "start": "next start",
     "lint": "eslint",
@@ -83,5 +84,8 @@
     "tsx": "^4.22.4",
     "typescript": "^5",
     "xlsx": "^0.18.5"
+  },
+  "engines": {
+    "node": ">=20.9.0 <24"
   }
 }

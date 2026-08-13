@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+/node_modules.nosync
 /.pnp
 .pnp.*
 .yarn/*
@@ -49,6 +50,9 @@ scripts/.*-audit-parsed.json
 # PDFs y artefactos locales (Blob/DB en prod)
 /storage/
 !/storage/planes-pdf/.gitkeep
+
+# Node local de desarrollo (no commitear binarios).
+/.tools/
 
 # basura local
 public/images/Untitled

@@ -1,6 +1,13 @@
-import type { SubscriptionStatus } from "@prisma/client";
+import type { ExecutiveKind, SubscriptionStatus } from "@prisma/client";
 
 const ACTIVE_STATUSES: SubscriptionStatus[] = ["TRIAL", "ACTIVE"];
+
+/** Solo la membresía paga se bloquea al vencer el trial. El staff operativo no. */
+export function executiveKindRequiresPaidSubscription(
+  kind: ExecutiveKind | null | undefined,
+): boolean {
+  return kind === "MEMBRESIA_ISAPRES_PREMIUM";
+}
 
 export function isSubscriptionActive(input: {
   subscriptionStatus: SubscriptionStatus;
@@ -21,6 +28,19 @@ export function isSubscriptionActive(input: {
   }
 
   return true;
+}
+
+export function isExecutiveSubscriptionAllowingAccess(input: {
+  executiveKind?: ExecutiveKind | null;
+  subscriptionStatus: SubscriptionStatus;
+  subscriptionExpiresAt: Date | null;
+  now?: Date;
+}): boolean {
+  if (!executiveKindRequiresPaidSubscription(input.executiveKind)) {
+    return true;
+  }
+
+  return isSubscriptionActive(input);
 }
 
 export function getSubscriptionBlockReason(input: {
