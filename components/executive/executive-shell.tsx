@@ -24,7 +24,6 @@ import {
 import {
   appShellRoot,
   appShellScroll,
-  horizontalScrollRail,
   safeWidth,
   touchTarget,
 } from "@/lib/ui-tokens";
@@ -243,12 +242,7 @@ export function ExecutiveShell({
             className="premium-executive-tabs hidden min-w-0 flex-1 lg:block"
             aria-label="Secciones del panel"
           >
-            <div
-              className={joinClasses(
-                horizontalScrollRail,
-                "flex gap-1 py-0.5",
-              )}
-            >
+            <div className="flex flex-wrap items-center gap-1 overflow-visible py-0.5">
               {navEntries.map((entry) => {
                 if (entry.kind === "group") {
                   const groupActive = staffNavGroupIsActive(entry, activeSection);

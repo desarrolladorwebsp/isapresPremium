@@ -1,6 +1,14 @@
 "use client";
 
-import { useEffect, useId, useRef, type ReactNode } from "react";
+import {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import { createPortal } from "react-dom";
 import { touchTarget } from "@/lib/ui-tokens";
 import { joinClasses } from "@/lib/utils";
 
@@ -22,6 +30,13 @@ function ChevronIcon({ open }: { open: boolean }) {
   );
 }
 
+function menuPosition(button: HTMLElement): { top: number; left: number } {
+  const rect = button.getBoundingClientRect();
+  const menuWidth = 216;
+  const left = Math.min(rect.left, window.innerWidth - menuWidth - 8);
+  return { top: rect.bottom + 6, left: Math.max(8, left) };
+}
+
 export function ExecutiveNavDropdown({
   label,
   icon,
@@ -40,14 +55,34 @@ export function ExecutiveNavDropdown({
   children: ReactNode;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const menuId = useId();
+  const [position, setPosition] = useState<{ top: number; left: number } | null>(
+    null,
+  );
+
+  useLayoutEffect(() => {
+    if (!open || !buttonRef.current) {
+      setPosition(null);
+      return;
+    }
+    setPosition(menuPosition(buttonRef.current));
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
 
+    function updatePosition() {
+      if (!buttonRef.current) return;
+      setPosition(menuPosition(buttonRef.current));
+    }
+
     function handlePointerDown(event: MouseEvent) {
-      const root = rootRef.current;
-      if (!root || root.contains(event.target as Node)) return;
+      const target = event.target as Node;
+      if (rootRef.current?.contains(target) || menuRef.current?.contains(target)) {
+        return;
+      }
       onClose();
     }
 
@@ -55,9 +90,13 @@ export function ExecutiveNavDropdown({
       if (event.key === "Escape") onClose();
     }
 
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
     document.addEventListener("mousedown", handlePointerDown);
     document.addEventListener("keydown", handleKeyDown);
     return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
       document.removeEventListener("mousedown", handlePointerDown);
       document.removeEventListener("keydown", handleKeyDown);
     };
@@ -66,6 +105,7 @@ export function ExecutiveNavDropdown({
   return (
     <div ref={rootRef} className="relative shrink-0">
       <button
+        ref={buttonRef}
         type="button"
         onClick={onToggle}
         aria-haspopup="menu"
@@ -82,16 +122,21 @@ export function ExecutiveNavDropdown({
         <ChevronIcon open={open} />
       </button>
 
-      {open ? (
-        <div
-          id={menuId}
-          role="menu"
-          aria-label={label}
-          className="absolute left-0 z-50 mt-1.5 min-w-[13.5rem] overflow-hidden rounded-lg border border-white/15 bg-[color:var(--dash-navy)] py-1 shadow-lg"
-        >
-          {children}
-        </div>
-      ) : null}
+      {open && position && typeof document !== "undefined"
+        ? createPortal(
+            <div
+              ref={menuRef}
+              id={menuId}
+              role="menu"
+              aria-label={label}
+              style={{ top: position.top, left: position.left }}
+              className="fixed z-[80] min-w-[13.5rem] overflow-hidden rounded-lg border border-white/15 bg-[color:var(--dash-navy)] py-1 shadow-lg"
+            >
+              {children}
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }

@@ -24,6 +24,7 @@
   border-bottom: none;
   box-shadow: 0 8px 28px -12px rgb(9 37 88 / 0.45);
   color: #ffffff;
+  overflow: visible;
 }
 
 [data-premium-surface] .premium-executive-menu-btn {
@@ -40,6 +41,7 @@
 [data-premium-surface] .premium-executive-header .premium-executive-tabs {
   background: transparent;
   border: none;
+  overflow: visible;
 }
 
 [data-premium-surface] .premium-executive-header .premium-executive-tab {
