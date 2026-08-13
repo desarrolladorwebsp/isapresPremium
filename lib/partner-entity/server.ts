@@ -11,7 +11,7 @@ import {
   readPartnerEntityBySlug,
   toPublicPartnerEntity,
 } from "@/lib/partner-entity/store";
-import { isLegacySeoRequest } from "@/lib/seo/request-host";
+import { isLegacySeoRequest } from "@/lib/seo/request-host-server";
 import type { PartnerEntityPublic } from "@/types/partner-entity";
 
 const LEGACY_DEFAULT_PARTNER_SLUG = "cotizaloantes";

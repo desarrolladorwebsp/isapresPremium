@@ -56,7 +56,7 @@ function normalizeAddress(value: string): string {
 }
 
 function loadJsonLocations(): Record<string, LocationRecord> {
-  const filePath = path.join(process.cwd(), "src/assets/clinic-locations.json");
+  const filePath = path.join(process.cwd(), "assets/clinic-locations.json");
   const parsed = JSON.parse(fs.readFileSync(filePath, "utf8")) as {
     locations: Record<string, LocationRecord>;
   };

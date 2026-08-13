@@ -1,5 +1,5 @@
 /**
- * Genera src/assets/clinic-locations.json con coordenadas reales por clínica.
+ * Genera assets/clinic-locations.json con coordenadas reales por clínica.
  * Usa ubicaciones curadas (Superintendencia de Salud, sitios oficiales) y
  * geocodificación Nominatim como respaldo con dirección estructurada.
  *
@@ -10,7 +10,7 @@ import path from "node:path";
 
 const ROOT = process.cwd();
 const REPORT_PATH = path.join(ROOT, "storage/reportes/.clinic-zones-report.json");
-const OUTPUT_PATH = path.join(ROOT, "src/assets/clinic-locations.json");
+const OUTPUT_PATH = path.join(ROOT, "assets/clinic-locations.json");
 
 /** Ubicaciones físicas verificadas de prestadores en Chile. */
 const CURATED = {

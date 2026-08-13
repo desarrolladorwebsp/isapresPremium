@@ -391,12 +391,15 @@ export async function createManualClient(
     );
   }
 
+  // Alta manual: el cliente queda en la cartera de quien lo registra.
+  // Solo admin puede reasignar en el mismo request (u omitir asignación con null).
   let assignedExecutiveId: string | null = actor.executiveAccountId;
   if (actor.isAdmin && input.assignedExecutiveId !== undefined) {
     assignedExecutiveId = input.assignedExecutiveId;
-    if (assignedExecutiveId) {
-      await assertAssignableExecutive(assignedExecutiveId);
-    }
+  }
+
+  if (assignedExecutiveId) {
+    await assertAssignableExecutive(assignedExecutiveId);
   }
 
   const user = await prisma.user.create({

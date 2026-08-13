@@ -70,12 +70,11 @@ async function loadClinics(): Promise<{ clinics: ClinicRow[]; source: string }> 
     }
   } catch (error) {
     console.warn(
-      "No se pudo conectar a la base de datos, usando snapshot local (src/assets/clinics.json).",
+      "No se pudo conectar a la base de datos, usando snapshot local (assets/clinics.json).",
       error instanceof Error ? `(${error.message})` : "",
     );
     const filePath = path.join(
       process.cwd(),
-      "src",
       "assets",
       "clinics.json",
     );

@@ -32,7 +32,7 @@ function ChevronIcon({ open }: { open: boolean }) {
 
 function menuPosition(button: HTMLElement): { top: number; left: number } {
   const rect = button.getBoundingClientRect();
-  const menuWidth = 216;
+  const menuWidth = 200;
   const left = Math.min(rect.left, window.innerWidth - menuWidth - 8);
   return { top: rect.bottom + 6, left: Math.max(8, left) };
 }
@@ -129,8 +129,9 @@ export function ExecutiveNavDropdown({
               id={menuId}
               role="menu"
               aria-label={label}
+              data-premium-surface=""
               style={{ top: position.top, left: position.left }}
-              className="fixed z-[80] min-w-[13.5rem] overflow-hidden rounded-lg border border-white/15 bg-[color:var(--dash-navy)] py-1 shadow-lg"
+              className="fixed z-[80] min-w-[12.5rem] overflow-hidden rounded-lg border border-[#092558]/12 bg-white py-1 text-[#092558] shadow-[0_12px_28px_-10px_rgb(9_37_88_/_0.35)]"
             >
               {children}
             </div>,
@@ -158,14 +159,22 @@ export function ExecutiveNavDropdownItem({
       role="menuitem"
       onClick={onSelect}
       className={joinClasses(
-        "flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm font-semibold transition",
+        "flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] font-semibold transition",
         active
-          ? "bg-[color:var(--dash-cyan)] text-white"
-          : "text-white hover:bg-white/10",
+          ? "bg-[color:var(--dash-cyan,#1ac9ea)] text-white"
+          : "text-[color:var(--dash-navy,#092558)] hover:bg-[color:color-mix(in_srgb,var(--dash-navy,#092558)_6%,white)]",
       )}
       aria-current={active ? "page" : undefined}
     >
-      {icon}
+      <span
+        className={joinClasses(
+          "inline-flex size-4 shrink-0 items-center justify-center [&>svg]:size-4",
+          active ? "text-white" : "text-[color:var(--dash-cyan,#1ac9ea)]",
+        )}
+        aria-hidden
+      >
+        {icon}
+      </span>
       <span>{label}</span>
     </button>
   );

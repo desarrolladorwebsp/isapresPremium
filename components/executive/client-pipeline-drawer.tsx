@@ -16,6 +16,7 @@ import {
   type PipelineRoleId,
 } from "@/components/executive/client-pipeline-role-card";
 import { ClientProtocoloFlowView } from "@/components/executive/client-protocolo-flow-view";
+import { ClientSeguimientoFlowView } from "@/components/executive/client-seguimiento-flow-view";
 import {
   ClientProfileForm,
   userRecordToProfileFormValue,
@@ -4144,19 +4145,14 @@ export function ClientPipelineDrawer({
       <div className={activeFlow && isOperationsLayout ? "" : "space-y-5"}>
         {isOperationsLayout ? (
           activeFlow === "seguimiento" ? (
-            <div className="-mx-3 -mb-5 -mt-5 flex min-h-[50vh] flex-col sm:-mx-4 sm:-mb-7 sm:-mt-7 lg:-mx-5 lg:-mb-8 lg:-mt-8">
-              <div className="flex justify-start px-3 py-4 sm:px-4 lg:px-5">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setActiveFlow(null)}
-                  className="justify-center gap-2 border border-border"
-                >
-                  Volver
-                </Button>
-              </div>
-            </div>
+            <ClientSeguimientoFlowView
+              client={client}
+              pipelineStatus={pipelineStatus}
+              pipelineNotes={pipelineNotes}
+              canViewInternalNotes={canViewInternalNotes}
+              isTrackingOnly={isTrackingOnly}
+              onBack={() => setActiveFlow(null)}
+            />
           ) : activeFlow ? (
             <ClientProtocoloFlowView
               client={client}

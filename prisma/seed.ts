@@ -18,8 +18,8 @@ import type { HealthPlan } from "../types/plan";
 
 const prisma = new PrismaClient();
 
-const PLANS_PATH = path.join(process.cwd(), "src/assets/planes.json");
-const CLINICS_PATH = path.join(process.cwd(), "src/assets/clinics.json");
+const PLANS_PATH = path.join(process.cwd(), "assets/planes.json");
+const CLINICS_PATH = path.join(process.cwd(), "assets/clinics.json");
 
 const ADMIN_ACCOUNTS = [
   {

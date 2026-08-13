@@ -136,7 +136,7 @@ export function CreateClientModal({
         pipelineNotes: null,
         clientOrigin,
       });
-      onNotify("Cliente registrado. Completa el resto en la ficha.");
+      onNotify("Cliente registrado y asignado a tu cartera. Completa el resto en la ficha.");
       onCreated(created);
       handleClose();
     } catch (error) {

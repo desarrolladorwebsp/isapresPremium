@@ -69,6 +69,12 @@ export function isManualSelectableClientOrigin(
 
 export interface CreateManualClientInput extends ClientProfileInput {
   pipelineNotes?: string | null;
+  /**
+   * Solo admin: destino de cartera.
+   * Si se omite, el cliente se asigna a quien registra.
+   * `null` deja el cliente sin asignar (p. ej. para distribución).
+   * En ejecutivos se ignora y siempre se asigna al actor.
+   */
   assignedExecutiveId?: string | null;
   /** Origen del alta manual. Por defecto MANUAL. */
   clientOrigin?: Exclude<ClientOrigin, "COTIZADOR" | "FORMULARIO_WEB">;

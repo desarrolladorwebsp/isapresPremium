@@ -45,16 +45,26 @@ function parseCreateClientPayload(payload: unknown): CreateManualClientInput {
     clientOrigin = data.clientOrigin;
   }
 
-  return {
+  const input: CreateManualClientInput = {
     ...profile,
     pipelineNotes:
       typeof data.pipelineNotes === "string" ? data.pipelineNotes : null,
-    assignedExecutiveId:
-      typeof data.assignedExecutiveId === "string"
-        ? data.assignedExecutiveId
-        : null,
     clientOrigin,
   };
+
+  // Solo admin puede elegir destino; si no viene en el payload, createManualClient
+  // asigna al actor. No enviar `null` por defecto: eso anulaba la autoasignación.
+  if ("assignedExecutiveId" in data) {
+    if (data.assignedExecutiveId === null) {
+      input.assignedExecutiveId = null;
+    } else if (typeof data.assignedExecutiveId === "string") {
+      input.assignedExecutiveId = data.assignedExecutiveId;
+    } else {
+      throw new Error("El ejecutivo asignado no es válido.");
+    }
+  }
+
+  return input;
 }
 
 export async function GET(request: Request) {
