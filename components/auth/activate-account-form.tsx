@@ -21,7 +21,7 @@ interface ActivateAccountFormProps {
 
 function ActivateAccountForm({ realm, title }: ActivateAccountFormProps) {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const searchParams = useSearchParams() ?? new URLSearchParams();
   const token = searchParams.get("token") ?? "";
 
   const [invite, setInvite] = useState<InviteInfo | null>(null);

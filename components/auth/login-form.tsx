@@ -46,7 +46,7 @@ export function LoginForm({
   subtitle = "Ingresa con tu cuenta de administrador o ejecutivo comercial.",
   redirectTo,
 }: LoginFormProps) {
-  const searchParams = useSearchParams();
+  const searchParams = useSearchParams() ?? new URLSearchParams();
   const passwordResetSuccess = searchParams.get("passwordReset") === "1";
 
   const [email, setEmail] = useState("");

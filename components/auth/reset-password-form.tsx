@@ -18,7 +18,7 @@ const fieldClass =
 
 function ResetPasswordFormInner() {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const searchParams = useSearchParams() ?? new URLSearchParams();
   const token = searchParams.get("token") ?? "";
 
   const [email, setEmail] = useState<string | null>(null);

@@ -229,33 +229,28 @@ export function assertSessionStaffSection(
 export async function buildStaffMeResponse(
   request?: Request,
 ): Promise<(StaffMeResponse & { sessionUpgraded?: boolean }) | null> {
-  try {
-    const resolved = await resolveEffectiveStaffSession(request);
-    if (!resolved) return null;
+  const resolved = await resolveEffectiveStaffSession(request);
+  if (!resolved) return null;
 
-    const executiveKind =
-      resolved.realm === AUTH_REALM.executive
-        ? (resolved.user as ExecutiveSessionUser).executiveKind
-        : null;
+  const executiveKind =
+    resolved.realm === AUTH_REALM.executive
+      ? (resolved.user as ExecutiveSessionUser).executiveKind
+      : null;
 
-    return {
-      realm: resolved.realm,
-      executiveKind,
-      user: resolved.user,
-      capabilities: {
-        adminPanel: staffCanAccessAdminRoutes(resolved.realm),
-        executivePanel: staffCanAccessExecutiveRoutes(resolved.realm),
-        sections: getStaffSectionsForAccount({
-          realm: resolved.realm,
-          executiveKind,
-        }),
-      },
-      sessionUpgraded: resolved.sessionUpgraded,
-    };
-  } catch (error) {
-    console.error("[buildStaffMeResponse] Failed to resolve staff session:", error);
-    return null;
-  }
+  return {
+    realm: resolved.realm,
+    executiveKind,
+    user: resolved.user,
+    capabilities: {
+      adminPanel: staffCanAccessAdminRoutes(resolved.realm),
+      executivePanel: staffCanAccessExecutiveRoutes(resolved.realm),
+      sections: getStaffSectionsForAccount({
+        realm: resolved.realm,
+        executiveKind,
+      }),
+    },
+    sessionUpgraded: resolved.sessionUpgraded,
+  };
 }
 
 export function unauthorizedResponse(_realm?: AuthRealm): NextResponse {

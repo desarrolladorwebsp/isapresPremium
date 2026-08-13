@@ -16,7 +16,7 @@ const NAV_ITEMS = [
 ] as const;
 
 export function CotizadorNav() {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "";
 
   return (
     <nav

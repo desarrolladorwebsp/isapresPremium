@@ -143,7 +143,7 @@ function MobileMenuLink({
 }
 
 export function Navbar() {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "";
   const menuId = useId();
   const [hash, setHash] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);

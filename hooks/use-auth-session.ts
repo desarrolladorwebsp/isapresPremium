@@ -13,26 +13,35 @@ export function useStaffSession() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const applyMeResponse = useCallback(async (response: Response) => {
+    if (response.status === 401) {
+      setData(null);
+      setError(null);
+      return;
+    }
+
+    if (!response.ok) {
+      setData(null);
+      setError("No se pudo validar la sesión.");
+      return;
+    }
+
+    const payload = (await response.json()) as StaffMeResponse;
+    setData(payload);
+    setError(null);
+  }, []);
+
   const refresh = useCallback(async () => {
     try {
       const response = await fetch("/api/auth/me", { cache: "no-store" });
-
-      if (!response.ok) {
-        setData(null);
-        setError(null);
-        return;
-      }
-
-      const payload = (await response.json()) as StaffMeResponse;
-      setData(payload);
-      setError(null);
+      await applyMeResponse(response);
     } catch {
       setData(null);
       setError("No se pudo validar la sesión.");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [applyMeResponse]);
 
   useEffect(() => {
     let cancelled = false;
@@ -41,20 +50,8 @@ export function useStaffSession() {
       try {
         const response = await fetch("/api/auth/me", { cache: "no-store" });
 
-        if (!response.ok) {
-          if (!cancelled) {
-            setData(null);
-            setError(null);
-          }
-          return;
-        }
-
-        const payload = (await response.json()) as StaffMeResponse;
-
-        if (!cancelled) {
-          setData(payload);
-          setError(null);
-        }
+        if (cancelled) return;
+        await applyMeResponse(response);
       } catch {
         if (!cancelled) {
           setData(null);
@@ -70,7 +67,7 @@ export function useStaffSession() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [applyMeResponse]);
 
   const isAdmin = data?.capabilities.adminPanel ?? false;
 

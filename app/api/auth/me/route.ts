@@ -7,34 +7,42 @@ import {
 } from "@/lib/auth/session";
 
 export async function GET(request: Request) {
-  const me = await buildStaffMeResponse(request);
+  try {
+    const me = await buildStaffMeResponse(request);
 
-  if (!me) {
-    return NextResponse.json({ error: "No autorizado." }, { status: 401 });
-  }
+    if (!me) {
+      return NextResponse.json({ error: "No autorizado." }, { status: 401 });
+    }
 
-  const { sessionUpgraded, ...payload } = me;
-  const response = NextResponse.json(payload);
+    const { sessionUpgraded, ...payload } = me;
+    const response = NextResponse.json(payload);
 
-  const session = await readStaffSessionFromRequest(request);
-  if (session) {
-    const needsUpgrade =
-      sessionUpgraded ||
-      me.realm !== session.realm ||
-      me.user.id !== session.sub;
+    const session = await readStaffSessionFromRequest(request);
+    if (session) {
+      const needsUpgrade =
+        sessionUpgraded ||
+        me.realm !== session.realm ||
+        me.user.id !== session.sub;
 
-    const token = await refreshSessionToken(
-      session,
-      needsUpgrade
-        ? {
-            realm: me.realm,
-            sub: me.user.id,
-            mustChangePassword: me.user.mustChangePassword,
-          }
-        : undefined,
+      const token = await refreshSessionToken(
+        session,
+        needsUpgrade
+          ? {
+              realm: me.realm,
+              sub: me.user.id,
+              mustChangePassword: me.user.mustChangePassword,
+            }
+          : undefined,
+      );
+      applyStaffSessionCookieToResponse(response, token);
+    }
+
+    return response;
+  } catch (error) {
+    console.error("[GET /api/auth/me] Unexpected error:", error);
+    return NextResponse.json(
+      { error: "No se pudo validar la sesión." },
+      { status: 500 },
     );
-    applyStaffSessionCookieToResponse(response, token);
   }
-
-  return response;
 }

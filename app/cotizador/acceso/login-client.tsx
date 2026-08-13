@@ -7,7 +7,7 @@ import { StaffAccessLayout } from "@/components/auth/staff-access-layout";
 import { STAFF_DEFAULT_HOME } from "@/lib/auth/constants";
 
 function StaffLoginClient() {
-  const searchParams = useSearchParams();
+  const searchParams = useSearchParams() ?? new URLSearchParams();
   const next = searchParams.get("next");
   const redirectTo =
     next && next.startsWith("/cotizador") ? next : STAFF_DEFAULT_HOME;

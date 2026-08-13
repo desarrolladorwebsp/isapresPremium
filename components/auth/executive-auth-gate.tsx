@@ -23,11 +23,12 @@ export function ExecutiveAuthGate({
   children,
   returnPath = EXECUTIVE_HOME_PATH,
 }: ExecutiveAuthGateProps) {
-  const { user, loading, isExecutive, needsExecutiveOnboarding } = useStaffSession();
+  const { user, loading, error, isExecutive, needsExecutiveOnboarding } =
+    useStaffSession();
   const loginUrl = buildLoginUrl(returnPath);
 
   useEffect(() => {
-    if (loading) return;
+    if (loading || error) return;
 
     if (!user || !isExecutive) {
       window.location.replace(loginUrl);
@@ -37,7 +38,7 @@ export function ExecutiveAuthGate({
     if (needsExecutiveOnboarding) {
       window.location.replace(EXECUTIVE_ONBOARDING_PATH);
     }
-  }, [loading, user, isExecutive, needsExecutiveOnboarding, loginUrl]);
+  }, [loading, error, user, isExecutive, needsExecutiveOnboarding, loginUrl]);
 
   if (loading) {
     return (
@@ -45,6 +46,17 @@ export function ExecutiveAuthGate({
         title="Validando sesión…"
         message="Estamos comprobando tu acceso al panel."
         href={loginUrl}
+      />
+    );
+  }
+
+  if (error) {
+    return (
+      <StaffAuthRedirectFallback
+        title="No pudimos validar tu sesión"
+        message={`${error} Recarga la página o vuelve a iniciar sesión.`}
+        href={loginUrl}
+        linkLabel="Ir al inicio de sesión"
       />
     );
   }

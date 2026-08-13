@@ -328,7 +328,7 @@ export function ExecutiveClientsPanel({
   onNotify,
 }: ExecutiveClientsPanelProps) {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const searchParams = useSearchParams() ?? new URLSearchParams();
   const queryClient = useQueryClient();
   const { isAdmin, user, executiveKind } = useStaffSession();
   const clientsQuery = useExecutiveClientsQuery();

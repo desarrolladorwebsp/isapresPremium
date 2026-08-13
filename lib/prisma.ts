@@ -29,15 +29,29 @@ function createPrismaClient(): PrismaClient {
   });
 }
 
+/**
+ * Fingerprint del schema generado.
+ * En Next/Turbopack `Prisma.dmmf` a veces no está disponible en runtime;
+ * en ese caso caemos a versión + delegates para no tumbar auth/APIs.
+ */
 function computeSchemaFingerprint(): string {
-  const models = Prisma.dmmf.datamodel.models
+  const datamodel = Prisma.dmmf?.datamodel;
+  if (!datamodel?.models?.length) {
+    const version =
+      typeof Prisma.prismaVersion?.client === "string"
+        ? Prisma.prismaVersion.client
+        : "unknown";
+    return `fallback:${version}:${REQUIRED_DELEGATES.join(",")}`;
+  }
+
+  const models = datamodel.models
     .map(
       (model) =>
         `${model.name}:{${model.fields.map((field) => field.name).join(",")}}`,
     )
     .sort()
     .join("|");
-  const enums = Prisma.dmmf.datamodel.enums
+  const enums = (datamodel.enums ?? [])
     .map(
       (entry) =>
         `${entry.name}:${entry.values.map((value) => value.name).join("|")}`,

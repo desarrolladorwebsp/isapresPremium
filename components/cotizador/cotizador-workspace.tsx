@@ -209,7 +209,7 @@ function CotizadorWorkspaceInner({
   /** Membresía y roles sin sección clientes: no cargar cartera ni mostrar picker. */
   const canUseClients = !isExecutive || allowedSections.includes("clientes");
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const searchParams = useSearchParams() ?? new URLSearchParams();
   const clientPickerRef = useRef<HTMLDivElement>(null);
   const selectionBarRef = useRef<HTMLDivElement>(null);
   const prevShowSelectionBarRef = useRef(false);

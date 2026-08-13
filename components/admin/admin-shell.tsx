@@ -38,7 +38,7 @@ export function AdminShell({
   onSectionChange,
   children,
 }: AdminShellProps) {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "";
   const { user: staffUser, isAdmin } = useStaffSession();
   const onUsersPage = pathname === ADMIN_USERS_PATH;
   const useTabNavigation = Boolean(onSectionChange && activeSection);

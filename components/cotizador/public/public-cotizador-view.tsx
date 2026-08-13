@@ -135,19 +135,20 @@ export function PublicCotizadorView({
 function PublicCotizadorViewInner({ embedMode }: { embedMode: boolean }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const { validatedAgreement } = useCompanyAgreementContext();
-  const searchParams = useSearchParams();
+  const searchParams = useSearchParams() ?? new URLSearchParams();
+  const query = searchParams;
   const isEmbedded =
     embedMode ||
-    searchParams.get("embed") === "1" ||
-    searchParams.get("embed") === "true";
+    query.get("embed") === "1" ||
+    query.get("embed") === "true";
   const pageSize = isEmbedded
     ? EMBED_WIDGET_PLANS_LIMIT
     : INITIAL_PLANS_PAGE_SIZE;
 
-  const deepLinkParamKey = searchParams.toString();
+  const deepLinkParamKey = query.toString();
   const deepLink = useMemo(
-    () => parseCotizadorUrl(searchParams),
-    [searchParams],
+    () => parseCotizadorUrl(query),
+    [query],
   );
 
   const { entity, isBranded, themeStyle } = usePartnerEntity();

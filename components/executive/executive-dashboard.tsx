@@ -37,7 +37,7 @@ import {
 
 function ExecutiveDashboardContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const searchParams = useSearchParams() ?? new URLSearchParams();
   const queryClient = useQueryClient();
   const { allowedSections, loading: sessionLoading } = useStaffSession();
 
