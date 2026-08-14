@@ -24,6 +24,10 @@ import {
 } from "@/lib/client-profile/validate-client-ruts";
 import { CURRENT_COVERAGE_OPTIONS } from "@/lib/filter-options";
 import {
+  resolveCurrentCoverageId,
+  resolveTitularCurrentCoverageId,
+} from "@/lib/client-profile/current-coverage";
+import {
   CONTRIBUTOR_TYPE_OPTIONS,
   resolveContributorType,
 } from "@/lib/quote-criteria-options";
@@ -612,9 +616,11 @@ export function ClientProfileForm({
           ]
         : COVERAGE_SELECT_OPTIONS;
 
+    const selectValue = resolveCurrentCoverageId(currentValue) || currentValue;
+
     return (
       <select
-        value={currentValue}
+        value={selectValue}
         onChange={(event) => onSelect(event.target.value)}
         className={joinClasses("h-10 w-full rounded-md px-3 text-sm", ui.input)}
       >
@@ -1729,6 +1735,9 @@ export function userRecordToProfileFormValue(
     phone?: string | null;
     rut?: string | null;
     fullName?: string;
+    pipelineNotes?: string | null;
+    advisedPlan?: { isapre?: string } | null;
+    requestedPlan?: { isapre?: string } | null;
     clientProfile?: {
       firstNames?: string;
       lastNames?: string;
@@ -1777,7 +1786,12 @@ export function userRecordToProfileFormValue(
       (profile?.birthDate
         ? calculateAgeFromBirthDate(profile.birthDate)
         : ""),
-    currentIsapre: profile?.currentIsapre ?? "",
+    currentIsapre: resolveTitularCurrentCoverageId({
+      stored: profile?.currentIsapre,
+      pipelineNotes: user?.pipelineNotes,
+      chosenPlanIsapre:
+        user?.advisedPlan?.isapre ?? user?.requestedPlan?.isapre,
+    }),
     currentPlanPrice: profile?.currentPlanPrice ?? "",
     currentPlanPriceCurrency: resolveClientMoneyCurrency(
       profile?.currentPlanPriceCurrency,
@@ -1804,6 +1818,9 @@ export function userRecordToProfileFormValue(
     segurosComplementarios: profile?.segurosComplementarios ?? "",
     preexistenciasMedicas: profile?.preexistenciasMedicas ?? "",
     dependents: profile?.dependents ?? [],
-    additionalTitulares: profile?.additionalTitulares ?? [],
+    additionalTitulares: (profile?.additionalTitulares ?? []).map((titular) => ({
+      ...titular,
+      currentIsapre: resolveCurrentCoverageId(titular.currentIsapre),
+    })),
   };
 }

@@ -12,6 +12,7 @@ import {
   type ClientManagementRutOptions,
 } from "@/lib/client-profile/validate-client-ruts";
 import { formatRut } from "@/lib/auth/rut";
+import { resolveCurrentCoverageId } from "@/lib/client-profile/current-coverage";
 
 export const MARITAL_STATUS_OPTIONS = [
   "Soltero/a",
@@ -369,7 +370,9 @@ export function resolveClientProfile(
     birthDate,
     age: resolveAge(profile.age, birthDate),
     currentIsapre:
-      typeof profile.currentIsapre === "string" ? profile.currentIsapre : "",
+      typeof profile.currentIsapre === "string"
+        ? resolveCurrentCoverageId(profile.currentIsapre)
+        : "",
     currentPlanPrice:
       typeof profile.currentPlanPrice === "string"
         ? profile.currentPlanPrice
@@ -469,6 +472,7 @@ export function resolveClientProfile(
           return {
             ...titular,
             age: resolveAge(rawTitular.age, titular.birthDate),
+            currentIsapre: resolveCurrentCoverageId(titular.currentIsapre),
             currentPlanPrice:
               typeof rawTitular.currentPlanPrice === "string"
                 ? rawTitular.currentPlanPrice
@@ -606,7 +610,7 @@ export function normalizeClientProfileInput(
         weightKg: titular.weightKg.trim(),
         maritalStatus: titular.maritalStatus.trim(),
         phone: titular.phone.trim(),
-        currentIsapre: titular.currentIsapre.trim(),
+        currentIsapre: resolveCurrentCoverageId(titular.currentIsapre),
         currentPlanPrice: (titular.currentPlanPrice ?? "").trim(),
         currentPlanPriceCurrency: resolveClientMoneyCurrency(
           titular.currentPlanPriceCurrency,
@@ -639,7 +643,7 @@ export function normalizeClientProfileInput(
       lastNames,
       birthDate,
       age: ageRaw || calculateAgeFromBirthDate(birthDate),
-      currentIsapre: input.currentIsapre?.trim() || "",
+      currentIsapre: resolveCurrentCoverageId(input.currentIsapre),
       currentPlanPrice: (input.currentPlanPrice ?? "").trim(),
       currentPlanPriceCurrency: resolveClientMoneyCurrency(
         input.currentPlanPriceCurrency,

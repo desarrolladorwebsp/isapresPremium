@@ -9,7 +9,7 @@ import {
   clientNoteDisplayText,
   listClientNoteLines,
 } from "@/lib/client-pipeline/note-stamp";
-import { CURRENT_COVERAGE_OPTIONS } from "@/lib/filter-options";
+import { resolveCurrentCoverageLabel } from "@/lib/client-profile/current-coverage";
 import { contributorTypeLabel } from "@/lib/quote-criteria-options";
 import type { CompanyAgreementLookupResult } from "@/types/company-agreement";
 import type { UserRecord } from "@/types/user";
@@ -449,11 +449,10 @@ export function ClientPremiumExecutiveCapsules({
         .map((part) => part.trim())
         .filter(Boolean)
         .join(" ") || client.fullName;
-    const previsionId = profileForm.currentIsapre.trim();
-    const previsionLabel =
-      CURRENT_COVERAGE_OPTIONS.find((option) => option.id === previsionId)
-        ?.label ??
-      (previsionId || "Sin previsión registrada");
+    const previsionLabel = resolveCurrentCoverageLabel(
+      profileForm.currentIsapre,
+      "Sin previsión registrada",
+    );
     const planPrice = profileForm.currentPlanPrice.trim();
     const planPriceLabel = planPrice
       ? `${planPrice} ${profileForm.currentPlanPriceCurrency === "CLP" ? "CLP" : "UF"}`

@@ -82,6 +82,49 @@ function MetaCell({
   );
 }
 
+function RoleCell({
+  label,
+  value,
+  highlight = false,
+  className,
+}: {
+  label: string;
+  value: string;
+  highlight?: boolean;
+  className?: string;
+}) {
+  return (
+    <div
+      className={joinClasses(
+        "space-y-0.5 rounded-xl px-2.5 py-2",
+        highlight
+          ? "border border-[color:var(--dash-cyan,#1ac9ea)] bg-[color-mix(in_srgb,var(--dash-cyan,#1ac9ea)_14%,white)]"
+          : "border border-transparent",
+        className,
+      )}
+    >
+      <dt className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-primary-dark/60">
+        {label}
+        {highlight ? (
+          <span className="rounded-full bg-[color:var(--dash-navy,#092558)] px-1.5 py-0.5 text-[9px] font-bold normal-case tracking-wide text-white">
+            Responsable actual
+          </span>
+        ) : null}
+      </dt>
+      <dd
+        className={joinClasses(
+          "text-sm font-semibold",
+          highlight
+            ? "text-[color:var(--dash-navy,#092558)]"
+            : "text-foreground",
+        )}
+      >
+        {value}
+      </dd>
+    </div>
+  );
+}
+
 function Section({
   title,
   description,
@@ -126,38 +169,47 @@ function TimelineList({
   }
 
   return (
-    <div
-      className="max-h-[min(28rem,55vh)] overflow-y-auto"
-      role="log"
-      aria-label={ariaLabel}
-    >
-      <ol className="relative space-y-0 border-l border-[color:var(--dash-navy,#092558)]/15 pl-4">
-        {lines.map((line, index) => {
-          const stamp = extractPipelineNoteStamp(line);
-          const body =
-            mode === "notes"
-              ? clientNoteDisplayText(line)
-              : stamp
-                ? line.replace(stamp, "").trim()
-                : line;
-          return (
-            <li key={`${index}-${line.slice(0, 32)}`} className="relative pb-4 last:pb-0">
-              <span
-                className="absolute -left-[1.28rem] top-1.5 size-2.5 rounded-full bg-[color:var(--dash-cyan,#1ac9ea)] ring-4 ring-white"
-                aria-hidden
-              />
-              {stamp ? (
-                <p className="text-[11px] font-semibold text-primary-dark">
-                  {stamp}
+    <div className="space-y-2">
+      <p className="text-[11px] font-medium text-muted">
+        {lines.length}{" "}
+        {lines.length === 1 ? "registro" : "registros"} · más reciente primero
+      </p>
+      <div
+        className="max-h-72 min-h-0 overflow-y-auto overscroll-contain rounded-xl border border-border bg-bg-layout/40 px-3 py-3"
+        role="log"
+        aria-label={ariaLabel}
+      >
+        <ol className="relative space-y-0 border-l border-[color:var(--dash-navy,#092558)]/15 pl-4">
+          {lines.map((line, index) => {
+            const stamp = extractPipelineNoteStamp(line);
+            const body =
+              mode === "notes"
+                ? clientNoteDisplayText(line)
+                : stamp
+                  ? line.replace(stamp, "").trim()
+                  : line;
+            return (
+              <li
+                key={`${index}-${line.slice(0, 32)}`}
+                className="relative pb-4 last:pb-0"
+              >
+                <span
+                  className="absolute -left-[1.28rem] top-1.5 size-2.5 rounded-full bg-[color:var(--dash-cyan,#1ac9ea)] ring-4 ring-white"
+                  aria-hidden
+                />
+                {stamp ? (
+                  <p className="text-[11px] font-semibold text-primary-dark">
+                    {stamp}
+                  </p>
+                ) : null}
+                <p className="mt-0.5 whitespace-pre-wrap text-[13px] leading-snug text-foreground">
+                  {body || line}
                 </p>
-              ) : null}
-              <p className="mt-0.5 whitespace-pre-wrap text-[13px] leading-snug text-foreground">
-                {body || line}
-              </p>
-            </li>
-          );
-        })}
-      </ol>
+              </li>
+            );
+          })}
+        </ol>
+      </div>
     </div>
   );
 }
@@ -243,6 +295,12 @@ export function ClientSeguimientoFlowView({
   const contactMethod = client.preferredContactMethod
     ? CLIENT_CONTACT_METHOD_LABELS[client.preferredContactMethod]
     : null;
+  const responsibleRole: "assigned" | "tracking" | null =
+    client.assignedExecutiveName?.trim() || client.assignedExecutiveId
+      ? "assigned"
+      : client.trackingExecutiveName?.trim() || client.trackingExecutiveId
+        ? "tracking"
+        : null;
 
   const agendaRows = [
     {
@@ -320,52 +378,34 @@ export function ClientSeguimientoFlowView({
         </Section>
 
         <div className="grid gap-4 lg:grid-cols-2">
-          <Section
-            title="Quién interviene"
-            description="Alta, cartera activa y seguimiento post-handoff."
-          >
+          <Section title="Quién interviene">
             <dl className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-0.5">
-                <dt className="text-[10px] font-semibold uppercase tracking-wide text-primary-dark/60">
-                  Registrado por
-                </dt>
-                <dd className="text-sm font-semibold text-foreground">
-                  {client.registeredByName?.trim() || "Sistema / lead inbound"}
-                </dd>
-              </div>
-              <div className="space-y-0.5">
-                <dt className="text-[10px] font-semibold uppercase tracking-wide text-primary-dark/60">
-                  Ejecutivo asignado
-                </dt>
-                <dd className="text-sm font-semibold text-foreground">
-                  {client.assignedExecutiveName?.trim() || "Sin asignar"}
-                </dd>
-              </div>
-              <div className="space-y-0.5">
-                <dt className="text-[10px] font-semibold uppercase tracking-wide text-primary-dark/60">
-                  En seguimiento
-                </dt>
-                <dd className="text-sm font-semibold text-foreground">
-                  {client.trackingExecutiveName?.trim() || "Sin seguimiento activo"}
-                </dd>
-              </div>
-              <div className="space-y-0.5">
-                <dt className="text-[10px] font-semibold uppercase tracking-wide text-primary-dark/60">
-                  Origen
-                </dt>
-                <dd className="text-sm font-semibold text-foreground">
-                  {originLabel(client)}
-                </dd>
-              </div>
+              <RoleCell
+                label="Registrado por"
+                value={
+                  client.registeredByName?.trim() || "Sistema / lead inbound"
+                }
+              />
+              <RoleCell
+                label="Ejecutivo asignado"
+                value={client.assignedExecutiveName?.trim() || "Sin asignar"}
+                highlight={responsibleRole === "assigned"}
+              />
+              <RoleCell
+                label="En seguimiento"
+                value={
+                  client.trackingExecutiveName?.trim() ||
+                  "Sin seguimiento activo"
+                }
+                highlight={responsibleRole === "tracking"}
+              />
+              <RoleCell label="Origen" value={originLabel(client)} />
               {contactMethod ? (
-                <div className="space-y-0.5 sm:col-span-2">
-                  <dt className="text-[10px] font-semibold uppercase tracking-wide text-primary-dark/60">
-                    Canal preferido
-                  </dt>
-                  <dd className="text-sm font-semibold text-foreground">
-                    {contactMethod}
-                  </dd>
-                </div>
+                <RoleCell
+                  label="Canal preferido"
+                  value={contactMethod}
+                  className="sm:col-span-2"
+                />
               ) : null}
             </dl>
           </Section>

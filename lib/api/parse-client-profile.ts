@@ -4,6 +4,7 @@ import type {
   ClientProfileInput,
 } from "@/types/client-profile";
 import { resolveClientMoneyCurrency } from "@/lib/client-profile/constants";
+import { resolveCurrentCoverageId } from "@/lib/client-profile/current-coverage";
 import { resolveContributorType } from "@/lib/quote-criteria-options";
 
 function resolveCoverageArea(value: unknown): ClientCoverageArea {
@@ -92,7 +93,7 @@ export function parseClientProfilePayload(payload: unknown): ClientProfileInput 
             phone: typeof titular.phone === "string" ? titular.phone : "",
             currentIsapre:
               typeof titular.currentIsapre === "string"
-                ? titular.currentIsapre
+                ? resolveCurrentCoverageId(titular.currentIsapre)
                 : "",
             currentPlanPrice: resolveMoneyAmount(titular.currentPlanPrice),
             currentPlanPriceCurrency: resolveMoneyCurrency(
@@ -133,7 +134,9 @@ export function parseClientProfilePayload(payload: unknown): ClientProfileInput 
     birthDate: typeof data.birthDate === "string" ? data.birthDate : null,
     age: typeof data.age === "string" ? data.age : null,
     currentIsapre:
-      typeof data.currentIsapre === "string" ? data.currentIsapre : null,
+      typeof data.currentIsapre === "string"
+        ? resolveCurrentCoverageId(data.currentIsapre) || data.currentIsapre
+        : null,
     currentPlanPrice:
       typeof data.currentPlanPrice === "string" ? data.currentPlanPrice : null,
     currentPlanPriceCurrency: resolveMoneyCurrency(

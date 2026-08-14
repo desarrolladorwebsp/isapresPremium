@@ -51,6 +51,10 @@ import {
   CLIENT_PIPELINE_STATUS_OPTIONS,
 } from "@/lib/client-pipeline/constants";
 import { CURRENT_COVERAGE_OPTIONS } from "@/lib/filter-options";
+import {
+  resolveCurrentCoverageId,
+  resolveCurrentCoverageLabel,
+} from "@/lib/client-profile/current-coverage";
 import { formatPersonDisplayName } from "@/lib/format-person-name";
 import { ui } from "@/lib/ui-tokens";
 import { joinClasses } from "@/lib/utils";
@@ -112,15 +116,6 @@ function FieldLabel({ children }: { children: ReactNode }) {
   );
 }
 
-function resolveIsapreLabel(value: string | null | undefined): string {
-  const trimmed = value?.trim() ?? "";
-  if (!trimmed) return "Sin previsión";
-  return (
-    CURRENT_COVERAGE_OPTIONS.find(
-      (option) => option.id === trimmed || option.label === trimmed,
-    )?.label ?? trimmed
-  );
-}
 
 function formatPlanPayLabel(
   amount: string | null | undefined,
@@ -329,6 +324,7 @@ export interface ClientProtocoloFlowViewProps {
   onSave: () => void;
   onWhatsApp: () => void;
   onScheduleZoom: () => void;
+  onMeetingDone: () => void;
   onCallback: () => void;
   onReminder: () => void;
   onRedirectPremium: () => void;
@@ -367,6 +363,7 @@ export function ClientProtocoloFlowView({
   onSave,
   onWhatsApp,
   onScheduleZoom,
+  onMeetingDone,
   onCallback,
   onReminder,
   onRedirectPremium,
@@ -841,7 +838,7 @@ export function ClientProtocoloFlowView({
       rut: profileForm.rut || client.rut || "—",
       age: formatAgeLabel(profileForm.age),
       renta: formatRentaLabel(profileForm.rentaImponible),
-      prevision: resolveIsapreLabel(profileForm.currentIsapre),
+      prevision: resolveCurrentCoverageLabel(profileForm.currentIsapre),
       pay: formatPlanPayLabel(
         profileForm.currentPlanPrice,
         profileForm.currentPlanPriceCurrency,
@@ -860,7 +857,7 @@ export function ClientProtocoloFlowView({
       rut: titular.rut || "—",
       age: formatAgeLabel(titular.age),
       renta: formatRentaLabel(titular.rentaImponible),
-      prevision: resolveIsapreLabel(titular.currentIsapre),
+      prevision: resolveCurrentCoverageLabel(titular.currentIsapre),
       pay: formatPlanPayLabel(
         titular.currentPlanPrice,
         titular.currentPlanPriceCurrency,
@@ -1446,6 +1443,9 @@ export function ClientProtocoloFlowView({
               canEdit={canEditScheduledMeeting}
               editDisabled={busy}
               onEdit={onScheduleZoom}
+              canComplete={canEditScheduledMeeting}
+              completeDisabled={busy}
+              onComplete={onMeetingDone}
             />
             <ClientPremiumExecutiveCapsules
               client={client}
@@ -1465,6 +1465,9 @@ export function ClientProtocoloFlowView({
               canEdit={canEditScheduledMeeting}
               editDisabled={busy}
               onEdit={onScheduleZoom}
+              canComplete={canEditScheduledMeeting}
+              completeDisabled={busy}
+              onComplete={onMeetingDone}
             />
           ) : (
             <ClientZoomScheduleCard client={client} mode="confirmation" />
@@ -1620,7 +1623,7 @@ export function ClientProtocoloFlowView({
                 <label className="block space-y-1">
                   <FieldLabel>Isapre actual</FieldLabel>
                   <Select
-                    value={activeIsapre}
+                    value={resolveCurrentCoverageId(activeIsapre)}
                     disabled={!canEdit}
                     placeholder="Selecciona…"
                     options={CURRENT_COVERAGE_OPTIONS.map((option) => ({

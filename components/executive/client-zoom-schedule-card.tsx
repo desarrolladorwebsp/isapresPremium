@@ -248,6 +248,10 @@ type ClientZoomScheduleCardProps = {
   onEdit?: () => void;
   canEdit?: boolean;
   editDisabled?: boolean;
+  /** Marcar la reunión como realizada y abrir acciones de seguimiento. */
+  onComplete?: () => void;
+  canComplete?: boolean;
+  completeDisabled?: boolean;
 };
 
 export function ClientZoomScheduleCard({
@@ -257,11 +261,16 @@ export function ClientZoomScheduleCard({
   onEdit,
   canEdit = false,
   editDisabled = false,
+  onComplete,
+  canComplete = false,
+  completeDisabled = false,
 }: ClientZoomScheduleCardProps) {
   const schedule = parseSchedule(client, mode);
   if (!schedule) return null;
 
   const showEdit = mode === "meeting" && canEdit && Boolean(onEdit);
+  const showComplete =
+    mode === "meeting" && canComplete && Boolean(onComplete);
   const editLabel = schedule.isWhatsApp
     ? "Editar llamado WhatsApp"
     : "Editar reunión Zoom";
@@ -318,7 +327,7 @@ export function ClientZoomScheduleCard({
         <div
           className={joinClasses(
             "flex min-w-0 items-stretch",
-            showEdit ? "gap-1" : null,
+            showEdit || showComplete ? "gap-1" : null,
           )}
         >
           <ScheduleColumn
@@ -334,20 +343,36 @@ export function ClientZoomScheduleCard({
             </p>
           </ScheduleColumn>
 
-          {showEdit ? (
-            <div className="flex shrink-0 items-center pr-3 sm:pr-4">
-              <Button
-                type="button"
-                size="sm"
-                variant={schedule.isWhatsApp ? "whatsapp" : "info"}
-                disabled={editDisabled}
-                onClick={onEdit}
-                aria-label={editLabel}
-                title={editLabel}
-                className="shrink-0"
-              >
-                Editar
-              </Button>
+          {showEdit || showComplete ? (
+            <div className="flex shrink-0 flex-col justify-center gap-1.5 pr-3 sm:pr-4">
+              {showEdit ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={schedule.isWhatsApp ? "whatsapp" : "info"}
+                  disabled={editDisabled}
+                  onClick={onEdit}
+                  aria-label={editLabel}
+                  title={editLabel}
+                  className="shrink-0"
+                >
+                  Editar
+                </Button>
+              ) : null}
+              {showComplete ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="success"
+                  disabled={completeDisabled}
+                  onClick={onComplete}
+                  aria-label="Marcar reunión como realizada"
+                  title="Marcar reunión como realizada"
+                  className="shrink-0"
+                >
+                  Realizada
+                </Button>
+              ) : null}
             </div>
           ) : null}
         </div>

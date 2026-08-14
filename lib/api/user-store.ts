@@ -7,6 +7,7 @@ import {
   resolveClientChecklist,
 } from "@/lib/client-pipeline/constants";
 import { resolveClientProfile, normalizeClientProfileInput } from "@/lib/client-profile/constants";
+import { resolveTitularCurrentCoverageId } from "@/lib/client-profile/current-coverage";
 import { resolveCotizadorSourceFromQuote } from "@/lib/partner-entity/source-label";
 import { extractWebFormSource } from "@/lib/clients/web-form-source";
 import type { ClientPipelineStatus } from "@/types/client-pipeline";
@@ -199,10 +200,23 @@ export function mapDbClientRecord(user: ClientRecordWithPlans): UserRecord {
     mapPlanSummary(user.advisedPlan, { isChosen: true }) ??
     assignedPlans.find((plan) => plan.isChosen) ??
     null;
+  const requestedPlan = mapRequestedPlan(latestQuote);
+  const mapped = mapDbUser(user);
+  const profile = mapped.clientProfile;
 
   return {
-    ...mapDbUser(user),
-    requestedPlan: mapRequestedPlan(latestQuote),
+    ...mapped,
+    clientProfile: profile
+      ? {
+          ...profile,
+          currentIsapre: resolveTitularCurrentCoverageId({
+            stored: profile.currentIsapre,
+            pipelineNotes: user.pipelineNotes,
+            chosenPlanIsapre: advisedPlan?.isapre ?? requestedPlan?.isapre,
+          }),
+        }
+      : profile,
+    requestedPlan,
     advisedPlan,
     assignedPlans,
     cotizadorSource,

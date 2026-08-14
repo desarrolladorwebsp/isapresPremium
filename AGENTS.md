@@ -16,3 +16,5 @@ Este repo es el **motor del cotizador** + marketing de isaprespremium.cl.
 - `README.md` — overview y deploy
 
 Regla Cursor relacionada: `.cursor/rules/public-api-leads-clients.mdc`.
+
+Convención de agentes: ver `.cursor/README.md` (rules vs skills; no usar `skills-cursor` ni `.agents/skills`).

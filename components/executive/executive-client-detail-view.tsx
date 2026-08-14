@@ -30,7 +30,7 @@ import {
   listClientNoteLines,
   listPipelineModificationLines,
 } from "@/lib/client-pipeline/note-stamp";
-import { CURRENT_COVERAGE_OPTIONS } from "@/lib/filter-options";
+import { resolveCurrentCoverageLabel } from "@/lib/client-profile/current-coverage";
 import { formatPersonDisplayName } from "@/lib/format-person-name";
 import { syncClientMutationCache } from "@/lib/query/executive-cache";
 import {
@@ -174,11 +174,10 @@ function buildCapsuleBullets(
   const lastNotePreview = lastNote
     ? clientNoteDisplayText(lastNote)
     : null;
-  const previsionId = profile?.currentIsapre?.trim() ?? "";
-  const previsionLabel =
-    CURRENT_COVERAGE_OPTIONS.find((option) => option.id === previsionId)
-      ?.label ??
-    (previsionId || "Sin previsión registrada");
+  const previsionLabel = resolveCurrentCoverageLabel(
+    profile?.currentIsapre,
+    "Sin previsión registrada",
+  );
   const planPrice = profile?.currentPlanPrice?.trim();
   const planPriceLabel = planPrice
     ? `${planPrice} ${profile?.currentPlanPriceCurrency === "CLP" ? "CLP" : "UF"}`

@@ -13,6 +13,7 @@ import { CalendlyInlineEmbed } from "@/components/executive/calendly-inline-embe
 import { RescheduleDayAgenda } from "@/components/executive/reschedule-day-agenda";
 import {
   ClientPipelineRoleCard,
+  visiblePipelineRoleIds,
   type PipelineRoleId,
 } from "@/components/executive/client-pipeline-role-card";
 import { ClientProtocoloFlowView } from "@/components/executive/client-protocolo-flow-view";
@@ -64,11 +65,9 @@ import {
   type AgendaUrgency,
 } from "@/lib/client-pipeline/agenda-urgency";
 import { motivoCotizacionIncludesOtros } from "@/lib/client-profile/constants";
+import { resolveCurrentCoverageLabel } from "@/lib/client-profile/current-coverage";
 import { getClientManagementRutErrors } from "@/lib/client-profile/validate-client-ruts";
-import {
-  CURRENT_COVERAGE_OPTIONS,
-  ISAPRE_FILTER_OPTIONS,
-} from "@/lib/filter-options";
+import { ISAPRE_FILTER_OPTIONS } from "@/lib/filter-options";
 import { buildWhatsAppUrl } from "@/lib/partner-entity/theme";
 import { ui } from "@/lib/ui-tokens";
 import { joinClasses } from "@/lib/utils";
@@ -102,6 +101,18 @@ type PendingConfirm =
     }
   | { kind: "send_zoom"; targetLabel: string }
   | { kind: "send_isapres"; targetLabel: string };
+
+type FlowActionKind =
+  | "reschedule"
+  | "redirect"
+  | "lost"
+  | "send_zoom"
+  | "send_isapres"
+  | "derive"
+  | "reminder"
+  | "recepcionado"
+  | "meeting_done"
+  | "meeting_note";
 
 export type ClientFichaModal =
   | null
@@ -663,12 +674,7 @@ const PROFILE_FIELD_LABELS: Array<{
 ];
 
 function coverageLabel(value: string): string {
-  const trimmed = value.trim();
-  if (!trimmed) return "Sin registrar";
-  return (
-    CURRENT_COVERAGE_OPTIONS.find((option) => option.id === trimmed)?.label ??
-    trimmed
-  );
+  return resolveCurrentCoverageLabel(value, "Sin registrar");
 }
 
 function moneyLabel(amount: string, currency: string): string {
@@ -1128,6 +1134,10 @@ export function ClientPipelineDrawer({
   });
   const actorDisplayName =
     sessionUser?.fullName?.trim() || (isAdmin ? "Administrador" : "Ejecutivo");
+  const pipelineRoleIds = visiblePipelineRoleIds({
+    isAdmin,
+    executiveKind,
+  });
 
   const [pipelineStatus, setPipelineStatus] = useState<ClientPipelineStatus>("NUEVO");
   const [checklist, setChecklist] = useState<ClientChecklist>(buildDefaultClientChecklist());
@@ -1214,17 +1224,9 @@ export function ClientPipelineDrawer({
   const [calendlyError, setCalendlyError] = useState<string | null>(null);
   const [calendlyBookedHint, setCalendlyBookedHint] = useState(false);
   const [showCloseForm, setShowCloseForm] = useState(false);
-  const [flowActionModal, setFlowActionModal] = useState<
-    | null
-    | "reschedule"
-    | "redirect"
-    | "lost"
-    | "send_zoom"
-    | "send_isapres"
-    | "derive"
-    | "reminder"
-    | "recepcionado"
-  >(null);
+  const [flowActionModal, setFlowActionModal] = useState<FlowActionKind | null>(
+    null,
+  );
   const [reminderAtLocal, setReminderAtLocal] = useState("");
   const [reminderNoteLocal, setReminderNoteLocal] = useState("");
   const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(
@@ -2332,6 +2334,9 @@ export function ClientPipelineDrawer({
       setMeetingNote("");
       onUpdated(updated);
       onNotify("Nota guardada.");
+      if (flowActionModal === "meeting_note") {
+        setFlowActionModal(null);
+      }
     } catch (error) {
       onNotify(
         error instanceof Error ? error.message : "No se pudo guardar la nota.",
@@ -3013,20 +3018,13 @@ export function ClientPipelineDrawer({
     openFlowActionModal("recepcionado");
   }
 
-  function openFlowActionModal(
-    kind:
-      | "reschedule"
-      | "redirect"
-      | "lost"
-      | "send_zoom"
-      | "send_isapres"
-      | "derive"
-      | "reminder"
-      | "recepcionado",
-  ) {
+  function openFlowActionModal(kind: FlowActionKind) {
     if (kind === "reminder" && client) {
       setReminderAtLocal(toDatetimeLocalValue(client.reminderAt));
       setReminderNoteLocal(client.reminderNote ?? "");
+    }
+    if (kind === "meeting_note") {
+      setMeetingNote("");
     }
     setFlowActionModal(kind);
   }
@@ -3035,6 +3033,45 @@ export function ClientPipelineDrawer({
     clearManagementPanels();
     setShowCloseForm(false);
     setFlowActionModal(null);
+  }
+
+  async function handleMeetingDone() {
+    if (!client || saving || actionBusy) return;
+    setActionBusy(true);
+    try {
+      if (client.nextCallAt) {
+        const noteBody = "Reunión realizada.";
+        const nextNotes = appendPipelineNoteLine(
+          client.pipelineNotes,
+          noteBody,
+          actorDisplayName,
+        );
+        const nextStatus = advancePipelineStatus(pipelineStatus, "CONTACTADO");
+        const updated = await updateClientPipeline(client.id, {
+          pipelineStatus: nextStatus,
+          pipelineNotes: nextNotes,
+          lastCallOutcome: "Reunión realizada",
+          nextCallAt: null,
+          clientProfile: buildProfilePayload(),
+        });
+        setPipelineStatus(nextStatus);
+        setNextCallLocal("");
+        if (canViewInternalNotes) setPipelineNotes(nextNotes);
+        onUpdated(updated);
+      }
+      clearManagementPanels();
+      setMeetingNote("");
+      openFlowActionModal("meeting_done");
+    } catch (error) {
+      onNotify(
+        error instanceof Error
+          ? error.message
+          : "No se pudo marcar la reunión como realizada.",
+        "error",
+      );
+    } finally {
+      setActionBusy(false);
+    }
   }
 
   function openZoomAction(
@@ -3571,6 +3608,20 @@ export function ClientPipelineDrawer({
     title: string;
     description: string;
   } {
+    if (flowActionModal === "meeting_done") {
+      return {
+        title: "Reunión realizada",
+        description:
+          "Elige el siguiente paso: dejar un recordatorio, una nota o derivar al cliente.",
+      };
+    }
+    if (flowActionModal === "meeting_note") {
+      return {
+        title: "Dejar una nota",
+        description:
+          "Queda en anotaciones del cliente, con tu nombre y la fecha.",
+      };
+    }
     if (flowActionModal === "reschedule") {
       const isPremiumFlow = activeFlow === "premium";
       const hasScheduledCall = Boolean(client?.nextCallAt);
@@ -3783,6 +3834,92 @@ export function ClientPipelineDrawer({
 
   function renderFlowActionModalBody() {
     if (!client) return null;
+
+    if (flowActionModal === "meeting_done") {
+      return (
+        <div className="grid gap-3">
+          <Button
+            type="button"
+            variant="warning"
+            className="h-auto justify-start px-4 py-3 text-left"
+            onClick={() => {
+              clearManagementPanels();
+              openFlowActionModal("reminder");
+            }}
+          >
+            <span className="block">
+              <span className="block text-sm font-semibold">
+                Dejar un recordatorio
+              </span>
+              <span className="mt-0.5 block text-xs font-normal opacity-90">
+                Agenda una gestión posterior en el calendario.
+              </span>
+            </span>
+          </Button>
+          <Button
+            type="button"
+            variant="info"
+            className="h-auto justify-start px-4 py-3 text-left"
+            onClick={() => openFlowActionModal("meeting_note")}
+          >
+            <span className="block">
+              <span className="block text-sm font-semibold">Dejar una nota</span>
+              <span className="mt-0.5 block text-xs font-normal opacity-90">
+                Registra lo conversado en la reunión.
+              </span>
+            </span>
+          </Button>
+          <Button
+            type="button"
+            variant="success"
+            className="h-auto justify-start px-4 py-3 text-left"
+            onClick={() => {
+              if (canManagePremium) {
+                clearManagementPanels();
+                openFlowActionModal("derive");
+                return;
+              }
+              if (canManageZoom || canManageIsapres) {
+                clearManagementPanels();
+                setShowRedirect(true);
+                openFlowActionModal("redirect");
+                return;
+              }
+              onNotify("No tienes permiso para derivar este cliente.", "error");
+            }}
+          >
+            <span className="block">
+              <span className="block text-sm font-semibold">Derivar</span>
+              <span className="mt-0.5 block text-xs font-normal opacity-90">
+                {canManagePremium
+                  ? "Enviar a Ejecutivo Zoom o a Ejecutivo Isapres."
+                  : canManageIsapres
+                    ? "Devolver a Ejecutivo Isapre Premium."
+                    : "Asignar a Ejecutivo Premium."}
+              </span>
+            </span>
+          </Button>
+        </div>
+      );
+    }
+
+    if (flowActionModal === "meeting_note") {
+      return (
+        <label className="block space-y-1.5">
+          <span className="text-xs font-medium">Nota *</span>
+          <textarea
+            value={meetingNote}
+            onChange={(event) => setMeetingNote(event.target.value)}
+            rows={4}
+            placeholder="Ej. Cliente aceptó cotización, pidió revisar con su pareja…"
+            className={joinClasses(
+              "min-h-[6rem] w-full resize-y rounded-xl px-3 py-2.5 text-sm",
+              ui.input,
+            )}
+          />
+        </label>
+      );
+    }
 
     if (flowActionModal === "recepcionado") {
       return <div className="space-y-3">{renderRecepcionadoFormFields()}</div>;
@@ -4212,6 +4349,9 @@ export function ClientPipelineDrawer({
                 prepareAgendaReschedulePanels();
                 openFlowActionModal("reschedule");
               }}
+              onMeetingDone={() => {
+                void handleMeetingDone();
+              }}
               onCallback={() => {
                 if (saving || actionBusy) return;
                 clearManagementPanels();
@@ -4297,7 +4437,11 @@ export function ClientPipelineDrawer({
           ) : (
             <ClientPipelineRoleCard
               selectedId={activeFlow}
-              onSelect={setActiveFlow}
+              visibleIds={pipelineRoleIds}
+              onSelect={(id) => {
+                if (!pipelineRoleIds.includes(id)) return;
+                setActiveFlow(id);
+              }}
             />
           )
         ) : null}
@@ -4448,15 +4592,22 @@ export function ClientPipelineDrawer({
               disabled={saving || actionBusy}
               onClick={() => closeFlowActionModal()}
             >
-              {flowActionModal === "derive" ? "Cerrar" : "Cancelar"}
+              {flowActionModal === "derive" || flowActionModal === "meeting_done"
+                ? "Cerrar"
+                : "Cancelar"}
             </Button>
-            {flowActionModal !== "derive" ? (
+            {flowActionModal !== "derive" &&
+            flowActionModal !== "meeting_done" ? (
               <Button
                 type="button"
                 disabled={saving || actionBusy}
                 onClick={() => {
                   if (flowActionModal === "reminder") {
                     void handleSaveReminder();
+                    return;
+                  }
+                  if (flowActionModal === "meeting_note") {
+                    void handleSaveMeetingNoteModal();
                     return;
                   }
                   if (flowActionModal === "recepcionado") {
@@ -4474,11 +4625,13 @@ export function ClientPipelineDrawer({
                   ? "Guardando…"
                   : flowActionModal === "reminder"
                     ? "Guardar recordatorio"
-                    : flowActionModal === "recepcionado"
-                      ? pipelineStatus === "RECEPCIONADO"
-                        ? "Guardar recepcionado"
-                        : "Confirmar recepcionado"
-                      : saveButtonLabel}
+                    : flowActionModal === "meeting_note"
+                      ? "Guardar nota"
+                      : flowActionModal === "recepcionado"
+                        ? pipelineStatus === "RECEPCIONADO"
+                          ? "Guardar recepcionado"
+                          : "Confirmar recepcionado"
+                        : saveButtonLabel}
               </Button>
             ) : null}
           </div>

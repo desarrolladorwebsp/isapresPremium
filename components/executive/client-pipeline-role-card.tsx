@@ -52,6 +52,20 @@ const ROLE_TILES: PipelineRoleTile[] = [
 export interface ClientPipelineRoleCardProps {
   selectedId: PipelineRoleId | null;
   onSelect: (id: PipelineRoleId) => void;
+  /** Si se omite, se muestran los 4 flujos (admin). */
+  visibleIds?: PipelineRoleId[];
+}
+
+const ALL_ROLE_IDS: PipelineRoleId[] = ROLE_TILES.map((tile) => tile.id);
+
+/** Zoom y Premium: Zoom, Premium y Seguimiento. Isapre: solo Isapre. Admin: los 4. */
+export function visiblePipelineRoleIds(input: {
+  isAdmin: boolean;
+  executiveKind: string | null | undefined;
+}): PipelineRoleId[] {
+  if (input.isAdmin) return ALL_ROLE_IDS;
+  if (input.executiveKind === "ISAPRES") return ["isapres"];
+  return ["zoom", "premium", "seguimiento"];
 }
 
 /**
@@ -60,11 +74,28 @@ export interface ClientPipelineRoleCardProps {
 export function ClientPipelineRoleCard({
   selectedId,
   onSelect,
+  visibleIds,
 }: ClientPipelineRoleCardProps) {
+  const tiles = visibleIds?.length
+    ? ROLE_TILES.filter((tile) => visibleIds.includes(tile.id))
+    : ROLE_TILES;
+  const count = tiles.length;
+
   return (
     <div className="px-1 py-1 sm:px-2 sm:py-2" aria-label="Flujos de gestión">
-      <div className="grid grid-cols-2 justify-items-center gap-3 sm:grid-cols-4 sm:gap-4">
-        {ROLE_TILES.map((tile) => {
+      <div
+        className={joinClasses(
+          "grid justify-items-center gap-3 sm:gap-4",
+          count <= 1
+            ? "grid-cols-1"
+            : count === 2
+              ? "grid-cols-2"
+              : count === 3
+                ? "grid-cols-2 sm:grid-cols-3"
+                : "grid-cols-2 sm:grid-cols-4",
+        )}
+      >
+        {tiles.map((tile) => {
           const selected = selectedId === tile.id;
           const Icon = tile.Icon;
           return (

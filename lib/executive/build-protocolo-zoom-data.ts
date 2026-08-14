@@ -4,6 +4,7 @@ import {
   motivoCotizacionIncludesOtros,
   parseMotivoCotizacionIds,
 } from "@/lib/client-profile/constants";
+import { resolveCurrentCoverageLabel } from "@/lib/client-profile/current-coverage";
 import { formatPersonDisplayName } from "@/lib/format-person-name";
 import type { UserRecord } from "@/types/user";
 
@@ -208,7 +209,7 @@ export function buildProtocoloZoomData(client: UserRecord): ProtocoloZoomData {
     clinicaPref: profile?.preferredClinics?.trim() || "",
     preexistencia: preexistencias,
     rentaImponible: profile?.rentaImponible?.trim() || "",
-    isapreActual: profile?.currentIsapre?.trim() || "",
+    isapreActual: resolveCurrentCoverageLabel(profile?.currentIsapre, ""),
     costoUf,
     anualidadSi: profile?.anualidad === true,
     anualidadNo: profile?.anualidad === false,
@@ -245,7 +246,7 @@ export function buildProtocoloZoomData(client: UserRecord): ProtocoloZoomData {
     zoomIp1: "",
     zoomIp2: "",
     zoomIpAuxiliar: "",
-    zoomIsapre: client.advisedPlan?.isapre?.trim() || profile?.currentIsapre?.trim() || "",
+    zoomIsapre: client.advisedPlan?.isapre?.trim() || "",
     diaReunion: formatShortDate(client.nextCallAt),
     horaReunion: formatTime(client.nextCallAt),
     cotizaciones: quotes.slice(0, 4),

@@ -2,6 +2,11 @@ import type { ClientOrigin, ExecutiveKind, Prisma } from "@prisma/client";
 import { ApiError } from "@/lib/api/api-error";
 import { autoAssignClientExecutive } from "@/lib/api/lead-assignment";
 import { prisma } from "@/lib/prisma";
+import {
+  buildEmptyClientProfile,
+  splitFullName,
+} from "@/lib/client-profile/constants";
+import { resolveCurrentCoverageId } from "@/lib/client-profile/current-coverage";
 import { isValidPhone, isValidRut, cleanRut } from "@/lib/leads/validation";
 import {
   appendBoundedNotes,
@@ -52,6 +57,29 @@ function mapPreferenciaToContactMethod(
 
 function formatMetadataLine(key: string, value: string): string {
   return `${key}: ${value}`;
+}
+
+function coverageFromLeadMetadata(
+  metadata?: Record<string, string>,
+): string {
+  const raw =
+    metadata?.["previsión actual"] ?? metadata?.["prevision actual"] ?? "";
+  return resolveCurrentCoverageId(String(raw));
+}
+
+function buildLeadClientProfile(input: {
+  fullName: string;
+  metadata?: Record<string, string>;
+}) {
+  const fromName = splitFullName(input.fullName);
+  return {
+    ...buildEmptyClientProfile(),
+    firstNames: fromName.firstNames,
+    lastNames: fromName.lastNames,
+    age: String(input.metadata?.edad ?? "").trim(),
+    currentIsapre: coverageFromLeadMetadata(input.metadata),
+    rentaImponible: String(input.metadata?.["renta imponible"] ?? "").trim(),
+  };
 }
 
 function buildPipelineNotes(input: {
@@ -173,6 +201,10 @@ export async function registerLeadClient(
         clientOrigin,
         pipelineNotes: leadNotes,
         preferredContactMethod: preferredContactMethod ?? undefined,
+        clientProfile: buildLeadClientProfile({
+          fullName: normalized.fullName,
+          metadata: safeMetadata,
+        }) as Prisma.InputJsonValue,
       },
       select: { id: true, assignedExecutiveId: true },
     });
