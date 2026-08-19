@@ -204,7 +204,7 @@ export async function registerLeadClient(
         clientProfile: buildLeadClientProfile({
           fullName: normalized.fullName,
           metadata: safeMetadata,
-        }) as Prisma.InputJsonValue,
+        }) as unknown as Prisma.InputJsonValue,
       },
       select: { id: true, assignedExecutiveId: true },
     });
