@@ -158,12 +158,11 @@ export function CreateClientModal({
     (typeof MANUAL_CLIENT_ORIGIN_OPTIONS)[number]["value"]
   >("MANUAL");
   const [pipelineNotes, setPipelineNotes] = useState("");
+  const [fullNameInput, setFullNameInput] = useState("");
   const [saving, setSaving] = useState(false);
   const [titularRutError, setTitularRutError] = useState<string | undefined>();
 
-  const displayName = [profile.firstNames, profile.lastNames]
-    .filter((part) => part !== "")
-    .join(" ");
+  const displayName = fullNameInput;
   const hasSeguroCompl = profile.segurosComplementarios.trim().length > 0;
   const hasPreexistencia = profile.preexistenciasMedicas.trim().length > 0;
 
@@ -171,11 +170,14 @@ export function CreateClientModal({
     setProfile(buildEmptyClientProfileFormValue());
     setClientOrigin("MANUAL");
     setPipelineNotes("");
+    setFullNameInput("");
     setTitularRutError(undefined);
     onClose();
   }
 
   function setFullName(raw: string) {
+    setFullNameInput(raw);
+
     const parts = raw.trim().split(/\s+/).filter(Boolean);
     if (parts.length <= 1) {
       setProfile((current) => ({
