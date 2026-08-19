@@ -1,5 +1,5 @@
 import {
-  CLIENT_PIPELINE_STATUS_LABELS,
+  CLIENT_PIPELINE_STATUS_DISPLAY_LABELS,
   CLIENT_PIPELINE_STATUS_TONES,
 } from "@/lib/client-pipeline/constants";
 import { joinClasses } from "@/lib/utils";
@@ -39,7 +39,7 @@ export function ClientPipelineStatusBadge({
   return (
     <span
       className={joinClasses(
-        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold",
+        "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold",
         toneClass,
         className,
       )}
@@ -48,7 +48,7 @@ export function ClientPipelineStatusBadge({
         className={joinClasses("size-1.5 shrink-0 rounded-full", dotClass)}
         aria-hidden
       />
-      {CLIENT_PIPELINE_STATUS_LABELS[resolved]}
+      {CLIENT_PIPELINE_STATUS_DISPLAY_LABELS[resolved]}
     </span>
   );
 }

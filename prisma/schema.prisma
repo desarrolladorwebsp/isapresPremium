@@ -62,6 +62,7 @@ enum ClientPipelineStatus {
   NO_CONTESTA
   EN_SEGUIMIENTO
   ENVIADO_ISAPRE
+  CERRADO
   RECEPCIONADO
   PERDIDO
 }
@@ -113,13 +114,13 @@ enum CalendlyBookingStatus {
 }
 
 model Isapre {
-  id                 String   @id
+  id                 String             @id
   name               String
-  active             Boolean  @default(true)
-  gesPremiumUf       Float    @default(0.731) @map("ges_premium_uf")
-  gesPremiumUfLegacy Float?   @map("ges_premium_uf_legacy")
-  createdAt          DateTime @default(now()) @map("created_at")
-  updatedAt          DateTime @updatedAt @map("updated_at")
+  active             Boolean            @default(true)
+  gesPremiumUf       Float              @default(0.731) @map("ges_premium_uf")
+  gesPremiumUfLegacy Float?             @map("ges_premium_uf_legacy")
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
   plans              Plan[]
   companyAgreements  CompanyAgreement[]
 
@@ -163,24 +164,24 @@ model Clinic {
 }
 
 model Plan {
-  uniqueCode      String          @id @map("unique_code")
-  isapreId        String          @map("isapre_id")
-  planName        String          @map("plan_name")
-  basePriceUf     Float           @map("base_price_uf")
-  planType        PlanType        @default(free_choice) @map("plan_type")
-  hasTop          Boolean         @default(false) @map("has_top")
-  additionalNotes String?         @map("additional_notes")
-  pdfUrl          String?         @map("pdf_url")
-  pdfPublicId     String?         @map("pdf_public_id")
-  zones           String[]        @default([])
-  createdAt       DateTime        @default(now()) @map("created_at")
-  updatedAt       DateTime        @updatedAt @map("updated_at")
-  isapreRef       Isapre          @relation(fields: [isapreId], references: [id])
-  coverages       CoverageEntry[]
-  quotes          Quote[]
-  advisedClients  User[]          @relation("AdvisedPlans")
+  uniqueCode        String               @id @map("unique_code")
+  isapreId          String               @map("isapre_id")
+  planName          String               @map("plan_name")
+  basePriceUf       Float                @map("base_price_uf")
+  planType          PlanType             @default(free_choice) @map("plan_type")
+  hasTop            Boolean              @default(false) @map("has_top")
+  additionalNotes   String?              @map("additional_notes")
+  pdfUrl            String?              @map("pdf_url")
+  pdfPublicId       String?              @map("pdf_public_id")
+  zones             String[]             @default([])
+  createdAt         DateTime             @default(now()) @map("created_at")
+  updatedAt         DateTime             @updatedAt @map("updated_at")
+  isapreRef         Isapre               @relation(fields: [isapreId], references: [id])
+  coverages         CoverageEntry[]
+  quotes            Quote[]
+  advisedClients    User[]               @relation("AdvisedPlans")
   assignedToClients ClientAssignedPlan[]
-  reviews         PlanReview[]
+  reviews           PlanReview[]
 
   @@index([isapreId])
   @@index([planType])
@@ -221,52 +222,52 @@ model CoverageEntry {
 
 /// Clientes del cotizador público (sin credenciales de acceso).
 model User {
-  id                   String            @id @default(cuid())
-  email                String            @unique
-  phone                String?
-  fullName             String            @map("full_name")
-  rut                  String?
-  role                 UserRole              @default(CLIENT)
-  active               Boolean               @default(true)
-  assignedExecutiveId  String?               @map("assigned_executive_id")
+  id                     String               @id @default(cuid())
+  email                  String               @unique
+  phone                  String?
+  fullName               String               @map("full_name")
+  rut                    String?
+  role                   UserRole             @default(CLIENT)
+  active                 Boolean              @default(true)
+  assignedExecutiveId    String?              @map("assigned_executive_id")
   /// Ejecutivo o admin que registró el cliente (alta manual). Null en leads del cotizador/formulario.
-  registeredById       String?               @map("registered_by_id")
+  registeredById         String?              @map("registered_by_id")
   /// Ejecutivo que hizo el handoff y sigue el cliente hasta RECEPCIONADO/PERDIDO (sin ser el assignee).
-  trackingExecutiveId  String?               @map("tracking_executive_id")
-  pipelineStatus       ClientPipelineStatus  @default(NUEVO) @map("pipeline_status")
-  pipelineChecklist    Json?                 @map("pipeline_checklist")
-  pipelineClosedRecord Json?                 @map("pipeline_closed_record")
-  pipelineNotes        String?               @map("pipeline_notes")
+  trackingExecutiveId    String?              @map("tracking_executive_id")
+  pipelineStatus         ClientPipelineStatus @default(NUEVO) @map("pipeline_status")
+  pipelineChecklist      Json?                @map("pipeline_checklist")
+  pipelineClosedRecord   Json?                @map("pipeline_closed_record")
+  pipelineNotes          String?              @map("pipeline_notes")
   /// Próximo llamado agendado (p. ej. Ejecutivo Zoom).
-  nextCallAt           DateTime?             @map("next_call_at")
+  nextCallAt             DateTime?            @map("next_call_at")
   /// Llamado de confirmación Zoom (típicamente 10 min antes de la reunión Premium).
-  confirmationCallAt   DateTime?             @map("confirmation_call_at")
+  confirmationCallAt     DateTime?            @map("confirmation_call_at")
   /// Recordatorio / gestión libre del ejecutivo (aparece en calendario).
-  reminderAt           DateTime?             @map("reminder_at")
+  reminderAt             DateTime?            @map("reminder_at")
   /// Texto de la gestión del recordatorio (ej. "Llamar al cliente a las 8pm").
-  reminderNote         String?               @map("reminder_note")
+  reminderNote           String?              @map("reminder_note")
   /// Último resultado / nota corta del llamado.
-  lastCallOutcome      String?               @map("last_call_outcome")
+  lastCallOutcome        String?              @map("last_call_outcome")
   /// Cómo debe contactar el ejecutivo Premium (tras redirección Zoom).
   preferredContactMethod ClientContactMethod? @map("preferred_contact_method")
   /// Equipo Calendly asignado (reuniones Zoom).
-  calendlyTeam           CalendlyTeam?          @map("calendly_team")
+  calendlyTeam           CalendlyTeam?        @map("calendly_team")
   /// Link de Zoom de la última reunión Calendly activa.
-  zoomJoinUrl            String?                @map("zoom_join_url")
-  advisedPlanCode        String?                @map("advised_plan_code")
-  clientOrigin           ClientOrigin           @default(COTIZADOR) @map("client_origin")
-  clientProfile          Json?                  @map("client_profile")
-  createdAt              DateTime               @default(now()) @map("created_at")
-  updatedAt              DateTime               @updatedAt @map("updated_at")
+  zoomJoinUrl            String?              @map("zoom_join_url")
+  advisedPlanCode        String?              @map("advised_plan_code")
+  clientOrigin           ClientOrigin         @default(COTIZADOR) @map("client_origin")
+  clientProfile          Json?                @map("client_profile")
+  createdAt              DateTime             @default(now()) @map("created_at")
+  updatedAt              DateTime             @updatedAt @map("updated_at")
   quotes                 Quote[]
   activities             ClientActivity[]
   documents              ClientDocument[]
   reviews                PlanReview[]
   calendlyBookings       CalendlyBooking[]
-  assignedExecutive      StaffAccount? @relation("AssignedClients", fields: [assignedExecutiveId], references: [id], onDelete: SetNull)
-  registeredBy           StaffAccount? @relation("RegisteredClients", fields: [registeredById], references: [id], onDelete: SetNull)
-  trackingExecutive      StaffAccount? @relation("TrackingClients", fields: [trackingExecutiveId], references: [id], onDelete: SetNull)
-  advisedPlan            Plan?         @relation("AdvisedPlans", fields: [advisedPlanCode], references: [uniqueCode], onDelete: SetNull)
+  assignedExecutive      StaffAccount?        @relation("AssignedClients", fields: [assignedExecutiveId], references: [id], onDelete: SetNull)
+  registeredBy           StaffAccount?        @relation("RegisteredClients", fields: [registeredById], references: [id], onDelete: SetNull)
+  trackingExecutive      StaffAccount?        @relation("TrackingClients", fields: [trackingExecutiveId], references: [id], onDelete: SetNull)
+  advisedPlan            Plan?                @relation("AdvisedPlans", fields: [advisedPlanCode], references: [uniqueCode], onDelete: SetNull)
   assignedPlans          ClientAssignedPlan[]
 
   @@index([role])
@@ -342,40 +343,40 @@ model CalendlyBooking {
 
 /// Cuentas del panel (administradores y ejecutivos) con credenciales compartidas.
 model StaffAccount {
-  id                    String              @id @default(cuid())
-  email                 String              @unique
-  passwordHash          String              @map("password_hash")
-  fullName              String              @map("full_name")
-  role                  StaffRole
+  id                      String               @id @default(cuid())
+  email                   String               @unique
+  passwordHash            String               @map("password_hash")
+  fullName                String               @map("full_name")
+  role                    StaffRole
   /// Solo para role=EXECUTIVE. Null en ADMIN.
-  executiveKind         ExecutiveKind?      @map("executive_kind")
-  phone                 String?
-  rut                   String?
-  active                Boolean             @default(true)
+  executiveKind           ExecutiveKind?       @map("executive_kind")
+  phone                   String?
+  rut                     String?
+  active                  Boolean              @default(true)
   /// Sin recibir nuevos clientes/solicitudes (solo ejecutivos).
-  assignmentsSuspended  Boolean             @default(false) @map("assignments_suspended")
+  assignmentsSuspended    Boolean              @default(false) @map("assignments_suspended")
   /// Perfil obligatorio completado tras activación (solo ejecutivos).
-  onboardingCompleted   Boolean             @default(false) @map("onboarding_completed")
+  onboardingCompleted     Boolean              @default(false) @map("onboarding_completed")
   /// Foto de perfil (URL pública Blob o ruta /api/staff/avatars/:id).
-  avatarUrl             String?             @map("avatar_url")
-  avatarStorageKey      String?             @map("avatar_storage_key")
-  subscriptionStatus    SubscriptionStatus? @map("subscription_status")
-  subscriptionPlanId    String?             @map("subscription_plan_id")
-  subscriptionExpiresAt DateTime?           @map("subscription_expires_at")
-  stripeCustomerId      String?             @unique @map("stripe_customer_id")
-  failedLoginAttempts   Int                 @default(0) @map("failed_login_attempts")
-  lockedUntil           DateTime?           @map("locked_until")
-  lastLoginAt           DateTime?           @map("last_login_at")
-  passwordChangedAt     DateTime            @default(now()) @map("password_changed_at")
-  mustChangePassword    Boolean             @default(false) @map("must_change_password")
-  createdAt             DateTime            @default(now()) @map("created_at")
-  updatedAt             DateTime            @updatedAt @map("updated_at")
-  assignedQuotes        Quote[]
-  assignedClients       User[]              @relation("AssignedClients")
-  registeredClients     User[]              @relation("RegisteredClients")
-  trackingClients       User[]              @relation("TrackingClients")
-  uploadedClientDocuments ClientDocument[]  @relation("UploadedClientDocuments")
-  passwordResetTokens   PasswordResetToken[]
+  avatarUrl               String?              @map("avatar_url")
+  avatarStorageKey        String?              @map("avatar_storage_key")
+  subscriptionStatus      SubscriptionStatus?  @map("subscription_status")
+  subscriptionPlanId      String?              @map("subscription_plan_id")
+  subscriptionExpiresAt   DateTime?            @map("subscription_expires_at")
+  stripeCustomerId        String?              @unique @map("stripe_customer_id")
+  failedLoginAttempts     Int                  @default(0) @map("failed_login_attempts")
+  lockedUntil             DateTime?            @map("locked_until")
+  lastLoginAt             DateTime?            @map("last_login_at")
+  passwordChangedAt       DateTime             @default(now()) @map("password_changed_at")
+  mustChangePassword      Boolean              @default(false) @map("must_change_password")
+  createdAt               DateTime             @default(now()) @map("created_at")
+  updatedAt               DateTime             @updatedAt @map("updated_at")
+  assignedQuotes          Quote[]
+  assignedClients         User[]               @relation("AssignedClients")
+  registeredClients       User[]               @relation("RegisteredClients")
+  trackingClients         User[]               @relation("TrackingClients")
+  uploadedClientDocuments ClientDocument[]     @relation("UploadedClientDocuments")
+  passwordResetTokens     PasswordResetToken[]
 
   @@index([role])
   @@index([executiveKind])
@@ -418,40 +419,40 @@ model StaffInvite {
 }
 
 model Quote {
-  id                String      @id @default(cuid())
-  userId            String?     @map("user_id")
-  planCode          String?     @map("plan_code")
-  status            QuoteStatus @default(PENDING)
-  fullName          String      @map("full_name")
-  email             String
-  phone             String
-  rut               String?
-  region            String?
-  sex               String?
-  monthlyIncome     String?     @map("monthly_income")
-  contributorAge    Int?        @map("contributor_age")
-  dependentsCount   Int         @default(0) @map("dependents_count")
-  dependentAges     Json?       @map("dependent_ages")
-  contactPreference String?     @map("contact_preference")
-  quoteReason       String?     @map("quote_reason")
-  finalPriceUf      Float?      @map("final_price_uf")
-  finalPriceClp     Float?      @map("final_price_clp")
-  ufValue           Float?      @map("uf_value")
-  beneficiaryCount  Int?        @map("beneficiary_count")
-  totalFactors      Float?      @map("total_factors")
-  notes             String?
-  partnerEntitySlug String?           @map("partner_entity_slug")
-  partnerEntityName String?           @map("partner_entity_name")
-  companyAgreementRut String?         @map("company_agreement_rut")
-  companyAgreementName String?        @map("company_agreement_name")
-  companyAgreementDiscount Float?     @map("company_agreement_discount")
-  executiveAccountId String?          @map("executive_account_id")
-  createdAt         DateTime          @default(now()) @map("created_at")
-  updatedAt         DateTime          @updatedAt @map("updated_at")
-  user              User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
-  plan              Plan?             @relation(fields: [planCode], references: [uniqueCode], onDelete: SetNull)
-  executiveAccount  StaffAccount? @relation(fields: [executiveAccountId], references: [id], onDelete: SetNull)
-  activities        QuoteActivity[]
+  id                       String          @id @default(cuid())
+  userId                   String?         @map("user_id")
+  planCode                 String?         @map("plan_code")
+  status                   QuoteStatus     @default(PENDING)
+  fullName                 String          @map("full_name")
+  email                    String
+  phone                    String
+  rut                      String?
+  region                   String?
+  sex                      String?
+  monthlyIncome            String?         @map("monthly_income")
+  contributorAge           Int?            @map("contributor_age")
+  dependentsCount          Int             @default(0) @map("dependents_count")
+  dependentAges            Json?           @map("dependent_ages")
+  contactPreference        String?         @map("contact_preference")
+  quoteReason              String?         @map("quote_reason")
+  finalPriceUf             Float?          @map("final_price_uf")
+  finalPriceClp            Float?          @map("final_price_clp")
+  ufValue                  Float?          @map("uf_value")
+  beneficiaryCount         Int?            @map("beneficiary_count")
+  totalFactors             Float?          @map("total_factors")
+  notes                    String?
+  partnerEntitySlug        String?         @map("partner_entity_slug")
+  partnerEntityName        String?         @map("partner_entity_name")
+  companyAgreementRut      String?         @map("company_agreement_rut")
+  companyAgreementName     String?         @map("company_agreement_name")
+  companyAgreementDiscount Float?          @map("company_agreement_discount")
+  executiveAccountId       String?         @map("executive_account_id")
+  createdAt                DateTime        @default(now()) @map("created_at")
+  updatedAt                DateTime        @updatedAt @map("updated_at")
+  user                     User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  plan                     Plan?           @relation(fields: [planCode], references: [uniqueCode], onDelete: SetNull)
+  executiveAccount         StaffAccount?   @relation(fields: [executiveAccountId], references: [id], onDelete: SetNull)
+  activities               QuoteActivity[]
 
   @@index([status])
   @@index([planCode])

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ClientPipelineStatusBadge } from "@/components/executive/client-pipeline-status-badge";
 import {
   CLIENT_PIPELINE_STATUS_DESCRIPTIONS,
-  CLIENT_PIPELINE_STATUS_LABELS,
+  CLIENT_PIPELINE_STATUS_DISPLAY_LABELS,
 } from "@/lib/client-pipeline/constants";
 import {
   clientNoteDisplayText,
@@ -248,7 +248,7 @@ function StageFunnel({ status }: { status: ClientPipelineStatus }) {
                 {index + 1}
               </p>
               <p className="mt-0.5 text-[11px] font-semibold leading-tight sm:text-xs">
-                {CLIENT_PIPELINE_STATUS_LABELS[step]}
+                {CLIENT_PIPELINE_STATUS_DISPLAY_LABELS[step]}
               </p>
             </li>
           );
@@ -259,7 +259,7 @@ function StageFunnel({ status }: { status: ClientPipelineStatus }) {
         <p className="text-xs text-muted">
           Estado lateral:{" "}
           <span className="font-semibold text-foreground">
-            {CLIENT_PIPELINE_STATUS_LABELS[status]}
+            {CLIENT_PIPELINE_STATUS_DISPLAY_LABELS[status]}
           </span>
           . No forma parte del embudo lineal de cierre.
         </p>

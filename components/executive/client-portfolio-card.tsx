@@ -126,13 +126,17 @@ function scheduleUrgencyForClient(
   pipelineStatus: ClientPipelineStatus | undefined,
 ): AgendaUrgency {
   const closed =
-    pipelineStatus === "RECEPCIONADO" || pipelineStatus === "PERDIDO";
+    pipelineStatus === "RECEPCIONADO" ||
+    pipelineStatus === "PERDIDO" ||
+    pipelineStatus === "CERRADO";
   return agendaUrgencyFromIso(iso, closed);
 }
 
 export interface ClientPortfolioCardProps {
   client: UserRecord;
   isAdmin: boolean;
+  /** Puede reasignar ejecutivo (admin, Ejecutivo Zoom o Isapres Premium). */
+  canReassign?: boolean;
   isTrackingOnly?: boolean;
   registeredByLabel: string;
   assignedLabel: string;
@@ -143,6 +147,7 @@ export interface ClientPortfolioCardProps {
 export function ClientPortfolioCard({
   client,
   isAdmin,
+  canReassign = false,
   isTrackingOnly = false,
   registeredByLabel,
   assignedLabel,
@@ -287,7 +292,7 @@ export function ClientPortfolioCard({
           >
             <span className="block truncate">{assignedLabel}</span>
           </MetaRow>
-          {isAdmin && assignControl ? (
+          {canReassign && assignControl ? (
             <MetaRow
               icon={<IconSwap className="size-3.5" />}
               label="Reasignar"

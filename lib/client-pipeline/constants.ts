@@ -12,9 +12,24 @@ export const CLIENT_PIPELINE_STATUS_LABELS: Record<ClientPipelineStatus, string>
     NO_CONTESTA: "No contesta",
     EN_SEGUIMIENTO: "En seguimiento",
     ENVIADO_ISAPRE: "Enviado a Isapre",
+    CERRADO: "Cerrado",
     RECEPCIONADO: "Recepcionado",
     PERDIDO: "Perdido",
   };
+
+export const CLIENT_PIPELINE_STATUS_DISPLAY_LABELS: Record<
+  ClientPipelineStatus,
+  string
+> = {
+  NUEVO: "Nuevo",
+  CONTACTADO: "Contactado",
+  NO_CONTESTA: "No contesta",
+  EN_SEGUIMIENTO: "En seguimiento",
+  ENVIADO_ISAPRE: "Cerrado",
+  CERRADO: "Cerrado",
+  RECEPCIONADO: "Recepcionado",
+  PERDIDO: "Perdido",
+};
 
 export const CLIENT_PIPELINE_STATUS_DESCRIPTIONS: Record<
   ClientPipelineStatus,
@@ -25,6 +40,7 @@ export const CLIENT_PIPELINE_STATUS_DESCRIPTIONS: Record<
   NO_CONTESTA: "Se intentó contactar y no respondió",
   EN_SEGUIMIENTO: "Conversación activa con el cliente",
   ENVIADO_ISAPRE: "Expediente enviado / en gestión Isapre",
+  CERRADO: "Derivado a Isapre y cerrado en gestión",
   RECEPCIONADO: "Negocio recepcionado en Isapre",
   PERDIDO: "No prosperó la contratación",
 };
@@ -38,6 +54,7 @@ export const CLIENT_PIPELINE_STATUS_TONES: Record<
   NO_CONTESTA: "warning",
   EN_SEGUIMIENTO: "info",
   ENVIADO_ISAPRE: "info",
+  CERRADO: "info",
   RECEPCIONADO: "success",
   PERDIDO: "danger",
 };
@@ -48,9 +65,37 @@ export const CLIENT_PIPELINE_STATUS_OPTIONS: ClientPipelineStatus[] = [
   "NO_CONTESTA",
   "EN_SEGUIMIENTO",
   "ENVIADO_ISAPRE",
+  "CERRADO",
   "RECEPCIONADO",
   "PERDIDO",
 ];
+
+const PIPELINE_STATUS_ALIASES: Record<string, ClientPipelineStatus> = {
+  nuevo: "NUEVO",
+  contactado: "CONTACTADO",
+  no_contesta: "NO_CONTESTA",
+  en_seguimiento: "EN_SEGUIMIENTO",
+  enviado_isapre: "ENVIADO_ISAPRE",
+  cerrado: "CERRADO",
+  recepcionado: "RECEPCIONADO",
+  perdido: "PERDIDO",
+};
+
+export function normalizeClientPipelineStatus(
+  value: string | null | undefined,
+): ClientPipelineStatus | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  const directMatch = CLIENT_PIPELINE_STATUS_OPTIONS.find(
+    (option) => option === trimmed,
+  );
+  if (directMatch) return directMatch;
+
+  const alias = trimmed.toLowerCase();
+  return PIPELINE_STATUS_ALIASES[alias] ?? null;
+}
 
 /** Estados relevantes en la gestión simplificada de Ejecutivo Zoom. */
 export const ZOOM_PIPELINE_STATUS_OPTIONS: ClientPipelineStatus[] = [
@@ -68,7 +113,8 @@ const PIPELINE_FUNNEL_RANK: Record<ClientPipelineStatus, number> = {
   CONTACTADO: 2,
   EN_SEGUIMIENTO: 3,
   ENVIADO_ISAPRE: 4,
-  RECEPCIONADO: 5,
+  CERRADO: 5,
+  RECEPCIONADO: 6,
   PERDIDO: -1,
 };
 
@@ -85,7 +131,8 @@ export function advancePipelineStatus(
   if (
     target === "PERDIDO" ||
     target === "NO_CONTESTA" ||
-    target === "RECEPCIONADO"
+    target === "RECEPCIONADO" ||
+    target === "CERRADO"
   ) {
     return target;
   }

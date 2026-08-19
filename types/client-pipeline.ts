@@ -4,6 +4,7 @@ export type ClientPipelineStatus =
   | "NO_CONTESTA"
   | "EN_SEGUIMIENTO"
   | "ENVIADO_ISAPRE"
+  | "CERRADO"
   | "RECEPCIONADO"
   | "PERDIDO";
 

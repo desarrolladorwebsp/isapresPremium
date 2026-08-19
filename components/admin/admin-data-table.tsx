@@ -360,11 +360,14 @@ export function TableCellStack({
 export function AdminBadge({
   children,
   tone = "neutral",
+  shape = "pill",
   className,
   title,
 }: {
   children: ReactNode;
   tone?: "neutral" | "success" | "warning" | "info" | "primary" | "danger";
+  /** `pill` = bordes totalmente redondeados (default). `square` = bordes suaves, menos redondeado. */
+  shape?: "pill" | "square";
   className?: string;
   title?: string;
 }) {
@@ -381,7 +384,8 @@ export function AdminBadge({
     <span
       title={title}
       className={joinClasses(
-        "inline-flex max-w-full items-center rounded-full px-2.5 py-1 text-xs font-semibold leading-none",
+        "inline-flex max-w-full items-center px-2.5 py-1 text-xs font-semibold leading-none",
+        shape === "square" ? "rounded-md" : "rounded-full",
         toneClass,
         className,
       )}

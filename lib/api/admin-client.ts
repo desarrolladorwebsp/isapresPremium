@@ -391,23 +391,16 @@ export async function fetchExecutiveAssignmentStats(): Promise<
 }
 
 export async function fetchExecutiveAccounts(): Promise<StaffAccountRecord[]> {
-  const { accounts } = await fetchStaffAccounts();
-  return accounts
-    .filter((account) => {
-      if (!account.active) return false;
-      // Membresía: solo cotizador — jamás en selectores de asignación de clientes.
-      if (account.executiveKind === "MEMBRESIA_ISAPRES_PREMIUM") return false;
-      if (account.realm === "admin") return true;
-      return (
-        account.realm === "executive" && account.onboardingCompleted !== false
-      );
-    })
-    .sort((a, b) => {
-      if (a.realm !== b.realm) {
-        return a.realm === "admin" ? 1 : -1;
-      }
-      return a.fullName.localeCompare(b.fullName, "es");
-    });
+  const response = await fetch("/api/executive/assignable-executives");
+  const { accounts } = await parseJsonResponse<{
+    accounts: StaffAccountRecord[];
+  }>(response);
+  return accounts.sort((a, b) => {
+    if (a.realm !== b.realm) {
+      return a.realm === "admin" ? 1 : -1;
+    }
+    return a.fullName.localeCompare(b.fullName, "es");
+  });
 }
 
 export async function deleteStaffAccount(

@@ -9,6 +9,7 @@ import {
 import {
   CLIENT_PIPELINE_STATUS_LABELS,
   CLIENT_PIPELINE_STATUS_OPTIONS,
+  normalizeClientPipelineStatus,
   parseClientClosedRecord,
 } from "@/lib/client-pipeline/constants";
 import { normalizeClientProfileInput } from "@/lib/client-profile/constants";
@@ -196,6 +197,10 @@ export async function updateClientPipeline(
 
   const data: Prisma.UserUpdateInput = {};
 
+  const normalizedStatus = normalizeClientPipelineStatus(
+    input.pipelineStatus as string | undefined,
+  );
+
   if (input.manualStatusChange) {
     if (input.pipelineStatus === undefined) {
       throw new ApiError(
@@ -204,7 +209,7 @@ export async function updateClientPipeline(
         "INVALID_STATUS",
       );
     }
-    if (!CLIENT_PIPELINE_STATUS_OPTIONS.includes(input.pipelineStatus)) {
+    if (!normalizedStatus) {
       throw new ApiError("Estado de cliente inválido.", 400, "INVALID_STATUS");
     }
     const reason = input.statusChangeNote?.trim() || "";
@@ -223,9 +228,9 @@ export async function updateClientPipeline(
           previousStatus as keyof typeof CLIENT_PIPELINE_STATUS_LABELS
         ] ?? previousStatus
       : "—";
-    const nextLabel = CLIENT_PIPELINE_STATUS_LABELS[input.pipelineStatus];
-    if (input.pipelineStatus !== existing.pipelineStatus) {
-      data.pipelineStatus = input.pipelineStatus;
+    const nextLabel = CLIENT_PIPELINE_STATUS_LABELS[normalizedStatus];
+    if (normalizedStatus !== existing.pipelineStatus) {
+      data.pipelineStatus = normalizedStatus;
       const actorName = await resolveActorDisplayName(
         actor.executiveAccountId,
         actor.isAdmin,
@@ -245,10 +250,10 @@ export async function updateClientPipeline(
       }
     }
   } else if (input.pipelineStatus !== undefined) {
-    if (!CLIENT_PIPELINE_STATUS_OPTIONS.includes(input.pipelineStatus)) {
+    if (!normalizedStatus) {
       throw new ApiError("Estado de cliente inválido.", 400, "INVALID_STATUS");
     }
-    data.pipelineStatus = input.pipelineStatus;
+    data.pipelineStatus = normalizedStatus;
   }
 
   if (input.checklist !== undefined) {
@@ -363,7 +368,7 @@ export async function updateClientPipeline(
     ) as unknown as Prisma.InputJsonValue;
   }
 
-  const nextStatus = input.pipelineStatus ?? existing.pipelineStatus;
+  const nextStatus = normalizedStatus ?? existing.pipelineStatus;
   if (nextStatus === "RECEPCIONADO" && !input.manualStatusChange) {
     const closed =
       input.closedRecord !== undefined
@@ -813,8 +818,8 @@ export async function redirectClientFromIsapresPremium(
     actor.isAdmin,
   );
 
-  // ZOOM: sin contacto → NO_CONTESTA (devolución). ISAPRES: aceptó → ENVIADO_ISAPRE.
-  const nextStatus = targetKind === "ZOOM" ? "NO_CONTESTA" : "ENVIADO_ISAPRE";
+  // ZOOM: sin contacto → NO_CONTESTA (devolución). ISAPRES: aceptó → CERRADO.
+  const nextStatus = targetKind === "ZOOM" ? "NO_CONTESTA" : "CERRADO";
   const reasonNote =
     targetKind === "ZOOM"
       ? "Sin contacto con el cliente."

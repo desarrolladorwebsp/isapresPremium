@@ -133,6 +133,19 @@ export function IconPhone({ className = "size-4" }: { className?: string }) {
   );
 }
 
+export function IconPhoneOff({ className = "size-4" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+      <path
+        d="M10.68 13.31a16 16 0 003.41 2.6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.42 19.42 0 01-3.53-2.9m-2.26-3.35a19.79 19.79 0 01-2.27-6.3A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11l-1.27 1.27"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M23 1L1 23" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function IconCalendar({ className = "size-4" }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>

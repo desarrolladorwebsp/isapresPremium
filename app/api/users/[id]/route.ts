@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { assignUserToExecutive, readUserById } from "@/lib/api/user-store";
-import { apiErrorResponse, parseJsonBody } from "@/lib/api/api-error";
-import { requireAdminSession } from "@/lib/auth/require-auth";
+import { apiErrorResponse, parseJsonBody, ApiError } from "@/lib/api/api-error";
+import { requireExecutiveOrAdminSession, assertSessionStaffSection } from "@/lib/auth/require-auth";
+import { AUTH_REALM } from "@/lib/auth/constants";
+import { canBrowseAllClientsAsExecutive } from "@/lib/auth/staff-role";
+import type { ExecutiveSessionUser } from "@/lib/auth/types";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -9,12 +12,28 @@ interface RouteContext {
 
 export async function PATCH(request: Request, context: RouteContext) {
   try {
-    await requireAdminSession(request);
+    const { realm, user: sessionUser } = await requireExecutiveOrAdminSession(request);
+    assertSessionStaffSection(realm, sessionUser, "clientes");
+
+    const isAdmin = realm === AUTH_REALM.admin;
+    const executiveKind =
+      realm === AUTH_REALM.executive
+        ? (sessionUser as ExecutiveSessionUser).executiveKind
+        : null;
+
+    if (!isAdmin && !canBrowseAllClientsAsExecutive(executiveKind)) {
+      throw new ApiError(
+        "No tienes permiso para reasignar clientes.",
+        403,
+        "FORBIDDEN",
+      );
+    }
+
     const { id } = await context.params;
     const payload = (await parseJsonBody(request)) as Record<string, unknown>;
 
-    const user = await readUserById(id);
-    if (!user) {
+    const client = await readUserById(id);
+    if (!client) {
       return NextResponse.json({ error: "Cliente no encontrado." }, { status: 404 });
     }
 

@@ -4,6 +4,7 @@ import { parseClientProfilePayload } from "@/lib/api/parse-client-profile";
 import { apiErrorResponse, parseJsonBody } from "@/lib/api/api-error";
 import { requireExecutiveOrAdminSession, assertSessionStaffSection } from "@/lib/auth/require-auth";
 import { AUTH_REALM } from "@/lib/auth/constants";
+import { normalizeClientPipelineStatus } from "@/lib/client-pipeline/constants";
 import type { UpdateClientPipelineInput } from "@/types/client-pipeline";
 import { isClientOrigin } from "@/types/user";
 
@@ -23,7 +24,11 @@ function parsePipelinePayload(payload: unknown): UpdateClientPipelineInput {
     if (typeof data.pipelineStatus !== "string") {
       throw new Error("Estado inválido.");
     }
-    input.pipelineStatus = data.pipelineStatus as UpdateClientPipelineInput["pipelineStatus"];
+    const normalizedStatus = normalizeClientPipelineStatus(data.pipelineStatus);
+    if (!normalizedStatus) {
+      throw new Error("Estado inválido.");
+    }
+    input.pipelineStatus = normalizedStatus;
   }
 
   if (data.manualStatusChange !== undefined) {

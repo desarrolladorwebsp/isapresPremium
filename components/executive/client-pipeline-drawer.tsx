@@ -110,6 +110,7 @@ type FlowActionKind =
   | "send_isapres"
   | "derive"
   | "reminder"
+  | "no_answer"
   | "recepcionado"
   | "meeting_done"
   | "meeting_note";
@@ -1229,6 +1230,8 @@ export function ClientPipelineDrawer({
   );
   const [reminderAtLocal, setReminderAtLocal] = useState("");
   const [reminderNoteLocal, setReminderNoteLocal] = useState("");
+  const [noAnswerDateLocal, setNoAnswerDateLocal] = useState("");
+  const [noAnswerNoteLocal, setNoAnswerNoteLocal] = useState("");
   const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(
     null,
   );
@@ -2378,6 +2381,56 @@ export function ClientPipelineDrawer({
     }
   }
 
+  async function handleSaveNoAnswer() {
+    if (!client) return;
+    if (!noAnswerDateLocal.trim()) {
+      onNotify("Indica el día en que el cliente no contestó.", "error");
+      return;
+    }
+    const dayDate = new Date(`${noAnswerDateLocal}T00:00:00`);
+    if (Number.isNaN(dayDate.getTime())) {
+      onNotify("La fecha indicada no es válida.", "error");
+      return;
+    }
+    const dayLabel = new Intl.DateTimeFormat("es-CL", {
+      timeZone: "America/Santiago",
+      dateStyle: "medium",
+    }).format(dayDate);
+    const note = noAnswerNoteLocal.trim();
+    const noteBody = note
+      ? `No contestó el ${dayLabel}: ${note}`
+      : `No contestó el ${dayLabel}.`;
+
+    setActionBusy(true);
+    try {
+      const nextNotes = appendPipelineNoteLine(
+        client.pipelineNotes,
+        noteBody,
+        actorDisplayName,
+      );
+
+      const updated = await updateClientPipeline(client.id, {
+        pipelineStatus: "NO_CONTESTA",
+        pipelineNotes: nextNotes,
+        lastCallOutcome: `No contesta · ${dayLabel}`,
+        clientProfile: buildProfilePayload(),
+      });
+      setPipelineStatus("NO_CONTESTA");
+      if (canViewInternalNotes) setPipelineNotes(nextNotes);
+      setShowNoAnswer(false);
+      onUpdated(updated);
+      onNotify("Estado actualizado: No contesta.");
+      setFlowActionModal(null);
+    } catch (error) {
+      onNotify(
+        error instanceof Error ? error.message : "No se pudo actualizar el estado.",
+        "error",
+      );
+    } finally {
+      setActionBusy(false);
+    }
+  }
+
   async function handleMarkConfirmationCall(
     annotationNote?: string,
   ): Promise<boolean> {
@@ -3022,6 +3075,10 @@ export function ClientPipelineDrawer({
     if (kind === "reminder" && client) {
       setReminderAtLocal(toDatetimeLocalValue(client.reminderAt));
       setReminderNoteLocal(client.reminderNote ?? "");
+    }
+    if (kind === "no_answer") {
+      setNoAnswerDateLocal(new Date().toISOString().slice(0, 10));
+      setNoAnswerNoteLocal("");
     }
     if (kind === "meeting_note") {
       setMeetingNote("");
@@ -3698,6 +3755,13 @@ export function ClientPipelineDrawer({
           "Deja una nota de la gestión y la fecha/hora. Aparecerá en tu calendario.",
       };
     }
+    if (flowActionModal === "no_answer") {
+      return {
+        title: "No contestó",
+        description:
+          "Indica el día en que el cliente no contestó y deja una nota. Se marcará el estado No contesta.",
+      };
+    }
     return {
       title: "Cliente perdido",
       description: "Indica el motivo del cierre como perdido.",
@@ -3958,6 +4022,39 @@ export function ClientPipelineDrawer({
           <p className="text-[11px] text-muted">
             El recordatorio no reemplaza la reunión Zoom ni el próximo llamado;
             es una gestión aparte en el calendario.
+          </p>
+        </div>
+      );
+    }
+
+    if (flowActionModal === "no_answer") {
+      return (
+        <div className="space-y-3">
+          <label className="block space-y-1.5">
+            <span className="text-xs font-medium">Día que no contestó *</span>
+            <Input
+              type="date"
+              required
+              value={noAnswerDateLocal}
+              onChange={(event) => setNoAnswerDateLocal(event.target.value)}
+            />
+          </label>
+          <label className="block space-y-1.5">
+            <span className="text-xs font-medium">Nota</span>
+            <textarea
+              value={noAnswerNoteLocal}
+              onChange={(event) => setNoAnswerNoteLocal(event.target.value)}
+              rows={3}
+              placeholder="Ej. Llamé dos veces, buzón de voz…"
+              className={joinClasses(
+                "min-h-[5rem] w-full resize-y rounded-xl px-3 py-2.5 text-sm",
+                ui.input,
+              )}
+            />
+          </label>
+          <p className="text-[11px] text-muted">
+            Se marcará el estado <span className="font-semibold">No contesta</span>{" "}
+            y quedará registrado en el historial con tu nombre y la fecha indicada.
           </p>
         </div>
       );
@@ -4363,6 +4460,11 @@ export function ClientPipelineDrawer({
                 clearManagementPanels();
                 openFlowActionModal("reminder");
               }}
+              onNoAnswer={() => {
+                if (saving || actionBusy) return;
+                clearManagementPanels();
+                openFlowActionModal("no_answer");
+              }}
               onRedirectPremium={() => {
                 if (saving || actionBusy) return;
                 // Vista Zoom o Isapre → asignar / redirigir a Premium
@@ -4606,6 +4708,10 @@ export function ClientPipelineDrawer({
                     void handleSaveReminder();
                     return;
                   }
+                  if (flowActionModal === "no_answer") {
+                    void handleSaveNoAnswer();
+                    return;
+                  }
                   if (flowActionModal === "meeting_note") {
                     void handleSaveMeetingNoteModal();
                     return;
@@ -4625,7 +4731,9 @@ export function ClientPipelineDrawer({
                   ? "Guardando…"
                   : flowActionModal === "reminder"
                     ? "Guardar recordatorio"
-                    : flowActionModal === "meeting_note"
+                    : flowActionModal === "no_answer"
+                      ? "Guardar"
+                      : flowActionModal === "meeting_note"
                       ? "Guardar nota"
                       : flowActionModal === "recepcionado"
                         ? pipelineStatus === "RECEPCIONADO"

@@ -225,7 +225,10 @@ function scheduleUrgencyForClient(
   iso: string | null | undefined,
   pipelineStatus: UserRecord["pipelineStatus"],
 ): AgendaUrgency {
-  const closed = pipelineStatus === "RECEPCIONADO" || pipelineStatus === "PERDIDO";
+  const closed =
+    pipelineStatus === "RECEPCIONADO" ||
+    pipelineStatus === "PERDIDO" ||
+    pipelineStatus === "CERRADO";
   return agendaUrgencyFromIso(iso, closed);
 }
 
@@ -332,9 +335,13 @@ export function ExecutiveClientsPanel({
   const queryClient = useQueryClient();
   const { isAdmin, user, executiveKind } = useStaffSession();
   const clientsQuery = useExecutiveClientsQuery();
-  const executivesQuery = useExecutiveAccountsQuery({ enabled: isAdmin });
   const canBrowseAllClients =
     isAdmin || canBrowseAllClientsAsExecutive(executiveKind);
+  // Admin, Ejecutivo Zoom y Ejecutivo Isapres Premium pueden reasignar clientes.
+  const canReassignClients = canBrowseAllClients;
+  const executivesQuery = useExecutiveAccountsQuery({
+    enabled: canReassignClients,
+  });
 
   const detailClientId =
     searchParams.get(STAFF_CLIENT_ID_QUERY)?.trim() || null;
@@ -345,7 +352,7 @@ export function ExecutiveClientsPanel({
   const executives = executivesQuery.data ?? [];
   const loading =
     (clientsQuery.isLoading && !clients) ||
-    (isAdmin && executivesQuery.isLoading && !executivesQuery.data);
+    (canReassignClients && executivesQuery.isLoading && !executivesQuery.data);
   const isFetching = clientsQuery.isFetching || executivesQuery.isFetching;
 
   const [search, setSearch] = useState("");
@@ -514,7 +521,9 @@ export function ExecutiveClientsPanel({
     // No se eliminan: el filtro "Gestión: pendientes" los ocultaba.
     // Si buscas por estatus terminal o por texto, no los escondemos.
     const statusBypassesGestion =
-      statusFilter === "PERDIDO" || statusFilter === "RECEPCIONADO";
+      statusFilter === "PERDIDO" ||
+      statusFilter === "RECEPCIONADO" ||
+      statusFilter === "CERRADO";
     const searchBypassesGestion = query.length > 0;
 
     let rows =
@@ -1491,7 +1500,7 @@ export function ExecutiveClientsPanel({
                     valign="top"
                     className="max-w-[9.5rem] min-w-[8rem] py-3.5"
                   >
-                    {isAdmin ? (
+                    {canReassignClients ? (
                       <TableCellStack className="min-h-0 gap-1.5">
                         <p className="truncate text-xs font-semibold text-primary-dark sm:text-sm">
                           {resolveAssignedExecutiveLabel(client)}
@@ -1528,6 +1537,7 @@ export function ExecutiveClientsPanel({
                 key={client.id}
                 client={client}
                 isAdmin={isAdmin}
+                canReassign={canReassignClients}
                 isTrackingOnly={Boolean(
                   !isAdmin &&
                   user?.id &&
@@ -1536,7 +1546,7 @@ export function ExecutiveClientsPanel({
                 registeredByLabel={resolveRegisteredByLabel(client)}
                 assignedLabel={resolveAssignedExecutiveLabel(client)}
                 assignControl={
-                  isAdmin ? renderExecutiveAssign(client) : undefined
+                  canReassignClients ? renderExecutiveAssign(client) : undefined
                 }
                 onOpenFicha={() => openClientFicha(client.id)}
               />

@@ -32,6 +32,7 @@ import {
   IconExecutive,
   IconHeadset,
   IconPhone,
+  IconPhoneOff,
   IconUser,
   IconUserPlus,
   IconWhatsApp,
@@ -327,6 +328,7 @@ export interface ClientProtocoloFlowViewProps {
   onMeetingDone: () => void;
   onCallback: () => void;
   onReminder: () => void;
+  onNoAnswer: () => void;
   onRedirectPremium: () => void;
   /** Premium → Ejecutivo Zoom. */
   onSendToZoom: () => void;
@@ -366,6 +368,7 @@ export function ClientProtocoloFlowView({
   onMeetingDone,
   onCallback,
   onReminder,
+  onNoAnswer,
   onRedirectPremium,
   onSendToZoom,
   onSendToIsapres,
@@ -1366,6 +1369,13 @@ export function ClientProtocoloFlowView({
                 onClick={onCallback}
                 icon={<IconPhone className="size-3.5" />}
                 label="Volver a llamar"
+              />
+              <SidebarAction
+                tone="amber"
+                disabled={busy}
+                onClick={onNoAnswer}
+                icon={<IconPhoneOff className="size-3.5" />}
+                label="No contestó"
               />
               <SidebarAction
                 tone="amber"
