@@ -162,8 +162,7 @@ export function CreateClientModal({
   const [titularRutError, setTitularRutError] = useState<string | undefined>();
 
   const displayName = [profile.firstNames, profile.lastNames]
-    .map((part) => part.trim())
-    .filter(Boolean)
+    .filter((part) => part !== "")
     .join(" ");
   const hasSeguroCompl = profile.segurosComplementarios.trim().length > 0;
   const hasPreexistencia = profile.preexistenciasMedicas.trim().length > 0;
