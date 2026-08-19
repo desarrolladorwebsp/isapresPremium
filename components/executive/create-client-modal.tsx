@@ -10,8 +10,18 @@ import {
   type ClientProfileFormValue,
 } from "@/components/executive/client-profile-form";
 import { createExecutiveClient } from "@/lib/api/admin-client";
+import {
+  CLIENT_MOTIVO_COTIZACION_OPTIONS,
+  motivoCotizacionIncludes,
+  motivoCotizacionIncludesOtros,
+  toggleMotivoCotizacionId,
+} from "@/lib/client-profile/constants";
+import { resolveCurrentCoverageId } from "@/lib/client-profile/current-coverage";
 import { getClientManagementRutErrors } from "@/lib/client-profile/validate-client-ruts";
 import { sanitizeRutInput } from "@/lib/auth/rut";
+import { CURRENT_COVERAGE_OPTIONS } from "@/lib/filter-options";
+import { joinClasses } from "@/lib/utils";
+import type { ClientMoneyCurrency } from "@/types/client-profile";
 import {
   MANUAL_CLIENT_ORIGIN_OPTIONS,
   type UserRecord,
@@ -32,6 +42,109 @@ function FieldLabel({ children }: { children: ReactNode }) {
   );
 }
 
+function SectionCard({
+  number,
+  title,
+  children,
+}: {
+  number: number;
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="space-y-3 rounded-xl border border-border bg-white p-3 sm:p-4">
+      <header className="flex items-center gap-2.5">
+        <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary-dark text-xs font-bold text-white">
+          {number}
+        </span>
+        <h3 className="text-sm font-bold uppercase tracking-wide text-primary-dark">
+          {title}
+        </h3>
+      </header>
+      {children}
+    </section>
+  );
+}
+
+function YesNoRow({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: boolean;
+  onChange: (next: boolean) => void;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <span className="block text-xs font-medium text-foreground">{label}</span>
+      <div className="flex flex-wrap items-center gap-2">
+        {([true, false] as const).map((option) => {
+          const selected = value === option;
+          return (
+            <button
+              key={String(option)}
+              type="button"
+              aria-pressed={selected}
+              onClick={() => onChange(option)}
+              className={joinClasses(
+                "rounded-full px-3.5 py-1 text-xs font-semibold transition",
+                selected
+                  ? "bg-primary-dark text-white"
+                  : "border border-border bg-white text-zinc-600 hover:border-primary/30",
+              )}
+            >
+              {option ? "Sí" : "No"}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function CurrencyAmountField({
+  label,
+  amount,
+  currency,
+  onAmountChange,
+  onCurrencyChange,
+}: {
+  label: string;
+  amount: string;
+  currency: ClientMoneyCurrency;
+  onAmountChange: (value: string) => void;
+  onCurrencyChange: (value: ClientMoneyCurrency) => void;
+}) {
+  return (
+    <label className="block space-y-1">
+      <FieldLabel>{label}</FieldLabel>
+      <div className="flex min-w-0 items-center gap-2">
+        <Input
+          value={amount}
+          inputMode="decimal"
+          onChange={(event) => onAmountChange(event.target.value)}
+          className="min-w-0 flex-1"
+        />
+        <button
+          type="button"
+          onClick={() => onCurrencyChange(currency === "UF" ? "CLP" : "UF")}
+          className={joinClasses(
+            "inline-flex h-10 w-12 shrink-0 items-center justify-center rounded-md border text-xs font-semibold transition",
+            currency === "UF"
+              ? "border-primary/30 bg-primary/10 text-primary-dark hover:bg-primary/15"
+              : "border-secondary/30 bg-secondary-muted/50 text-secondary hover:bg-secondary-muted",
+          )}
+          title={`Moneda: ${currency}. Clic para cambiar.`}
+          aria-label={`Moneda ${currency}`}
+        >
+          {currency === "UF" ? "UF" : "$"}
+        </button>
+      </div>
+    </label>
+  );
+}
+
 export function CreateClientModal({
   open,
   onClose,
@@ -44,6 +157,7 @@ export function CreateClientModal({
   const [clientOrigin, setClientOrigin] = useState<
     (typeof MANUAL_CLIENT_ORIGIN_OPTIONS)[number]["value"]
   >("MANUAL");
+  const [pipelineNotes, setPipelineNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [titularRutError, setTitularRutError] = useState<string | undefined>();
 
@@ -51,10 +165,13 @@ export function CreateClientModal({
     .map((part) => part.trim())
     .filter(Boolean)
     .join(" ");
+  const hasSeguroCompl = profile.segurosComplementarios.trim().length > 0;
+  const hasPreexistencia = profile.preexistenciasMedicas.trim().length > 0;
 
   function handleClose() {
     setProfile(buildEmptyClientProfileFormValue());
     setClientOrigin("MANUAL");
+    setPipelineNotes("");
     setTitularRutError(undefined);
     onClose();
   }
@@ -109,31 +226,31 @@ export function CreateClientModal({
         lastNames: profile.lastNames.trim(),
         birthDate: profile.birthDate || null,
         age: profile.age.trim() || null,
-        currentIsapre: null,
-        currentPlanPrice: null,
-        currentPlanPriceCurrency: "UF",
-        voluntaryAdditional: null,
-        voluntaryAdditionalCurrency: "UF",
+        currentIsapre: profile.currentIsapre.trim() || null,
+        currentPlanPrice: profile.currentPlanPrice.trim() || null,
+        currentPlanPriceCurrency: profile.currentPlanPriceCurrency,
+        voluntaryAdditional: profile.voluntaryAdditional.trim() || null,
+        voluntaryAdditionalCurrency: profile.voluntaryAdditionalCurrency,
         heightCm: null,
         weightKg: null,
         maritalStatus: null,
-        employerRut: null,
+        employerRut: profile.employerRut.trim() || null,
         contributorType: null,
-        rentaImponible: null,
-        motivoCotizacion: null,
-        motivoCotizacionOther: null,
+        rentaImponible: profile.rentaImponible.trim() || null,
+        motivoCotizacion: profile.motivoCotizacion.trim() || null,
+        motivoCotizacionOther: profile.motivoCotizacionOther.trim() || null,
         address: null,
         commune: null,
         coverageArea: null,
         coverageRegionId: null,
-        preferredClinics: null,
-        anualidad: false,
+        preferredClinics: profile.preferredClinics.trim() || null,
+        anualidad: profile.anualidad,
         anualidadComment: null,
-        segurosComplementarios: null,
-        preexistenciasMedicas: null,
+        segurosComplementarios: profile.segurosComplementarios.trim() || null,
+        preexistenciasMedicas: profile.preexistenciasMedicas.trim() || null,
         dependents: [],
         additionalTitulares: [],
-        pipelineNotes: null,
+        pipelineNotes: pipelineNotes.trim() || null,
         clientOrigin,
       });
       onNotify("Cliente registrado y asignado a tu cartera. Completa el resto en la ficha.");
@@ -156,8 +273,8 @@ export function CreateClientModal({
       open={open}
       onClose={handleClose}
       title="Agregar cliente"
-      description="Registra los datos personales del titular. Al guardar se abre la ficha."
-      size="md"
+      description="Registra los datos del titular. Al guardar se abre la ficha completa."
+      size="lg"
     >
       <form
         className="premium-client-form space-y-4"
@@ -181,16 +298,7 @@ export function CreateClientModal({
           />
         </label>
 
-        <section className="space-y-3 rounded-xl border border-border bg-white p-3 sm:p-4">
-          <header className="flex items-center gap-2.5">
-            <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary-dark text-xs font-bold text-white">
-              1
-            </span>
-            <h3 className="text-sm font-bold uppercase tracking-wide text-primary-dark">
-              Datos personales
-            </h3>
-          </header>
-
+        <SectionCard number={1} title="Datos personales">
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="block space-y-1 sm:col-span-2">
               <FieldLabel>Nombre completo *</FieldLabel>
@@ -263,7 +371,226 @@ export function CreateClientModal({
               />
             </label>
           </div>
-        </section>
+        </SectionCard>
+
+        <SectionCard number={2} title="Información laboral">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block space-y-1">
+              <FieldLabel>RUT empleador</FieldLabel>
+              <Input
+                value={profile.employerRut}
+                onChange={(event) =>
+                  setProfile((current) => ({
+                    ...current,
+                    employerRut: sanitizeRutInput(event.target.value),
+                  }))
+                }
+                placeholder="76.XXX.XXX-X"
+              />
+            </label>
+            <label className="block space-y-1">
+              <FieldLabel>Renta imponible</FieldLabel>
+              <Input
+                value={profile.rentaImponible}
+                onChange={(event) =>
+                  setProfile((current) => ({
+                    ...current,
+                    rentaImponible: event.target.value,
+                  }))
+                }
+                placeholder="Ej. Voluntario / $240.000"
+              />
+            </label>
+          </div>
+        </SectionCard>
+
+        <SectionCard number={3} title="Información del plan actual">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block space-y-1">
+              <FieldLabel>Isapre actual</FieldLabel>
+              <Select
+                value={resolveCurrentCoverageId(profile.currentIsapre)}
+                placeholder="Selecciona…"
+                options={CURRENT_COVERAGE_OPTIONS.map((option) => ({
+                  value: option.id,
+                  label: option.label,
+                }))}
+                onChange={(event) =>
+                  setProfile((current) => ({
+                    ...current,
+                    currentIsapre: event.target.value,
+                  }))
+                }
+              />
+            </label>
+            <label className="block space-y-1">
+              <FieldLabel>Clínicas de preferencia</FieldLabel>
+              <Input
+                value={profile.preferredClinics}
+                onChange={(event) =>
+                  setProfile((current) => ({
+                    ...current,
+                    preferredClinics: event.target.value,
+                  }))
+                }
+                placeholder="Ej. Hospital clínico UC"
+              />
+            </label>
+            <CurrencyAmountField
+              label="Valor plan"
+              amount={profile.currentPlanPrice}
+              currency={profile.currentPlanPriceCurrency}
+              onAmountChange={(value) =>
+                setProfile((current) => ({
+                  ...current,
+                  currentPlanPrice: value,
+                }))
+              }
+              onCurrencyChange={(value) =>
+                setProfile((current) => ({
+                  ...current,
+                  currentPlanPriceCurrency: value,
+                }))
+              }
+            />
+            <CurrencyAmountField
+              label="Adicional voluntario"
+              amount={profile.voluntaryAdditional}
+              currency={profile.voluntaryAdditionalCurrency}
+              onAmountChange={(value) =>
+                setProfile((current) => ({
+                  ...current,
+                  voluntaryAdditional: value,
+                }))
+              }
+              onCurrencyChange={(value) =>
+                setProfile((current) => ({
+                  ...current,
+                  voluntaryAdditionalCurrency: value,
+                }))
+              }
+            />
+            <YesNoRow
+              label="Seguro complementario"
+              value={hasSeguroCompl}
+              onChange={(next) =>
+                setProfile((current) => ({
+                  ...current,
+                  segurosComplementarios: next
+                    ? current.segurosComplementarios.trim() || "Sí"
+                    : "",
+                }))
+              }
+            />
+            <YesNoRow
+              label="Anualidad"
+              value={profile.anualidad}
+              onChange={(next) =>
+                setProfile((current) => ({ ...current, anualidad: next }))
+              }
+            />
+            <div className="sm:col-span-2">
+              <YesNoRow
+                label="Preexistencias"
+                value={hasPreexistencia}
+                onChange={(next) =>
+                  setProfile((current) => ({
+                    ...current,
+                    preexistenciasMedicas: next
+                      ? current.preexistenciasMedicas.trim() || "Sí"
+                      : "",
+                  }))
+                }
+              />
+            </div>
+            {hasPreexistencia ? (
+              <label className="block space-y-1 sm:col-span-2">
+                <FieldLabel>Describe las preexistencias</FieldLabel>
+                <textarea
+                  value={profile.preexistenciasMedicas}
+                  rows={2}
+                  onChange={(event) =>
+                    setProfile((current) => ({
+                      ...current,
+                      preexistenciasMedicas: event.target.value,
+                    }))
+                  }
+                  className="w-full rounded-md border bg-background px-3 py-2 text-sm text-foreground placeholder:text-foreground/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  placeholder="Ej. asma, alergias…"
+                />
+              </label>
+            ) : null}
+          </div>
+        </SectionCard>
+
+        <SectionCard number={4} title="Motivo de cotización">
+          <div className="space-y-3">
+            <div className="grid gap-2 sm:grid-cols-2">
+              {CLIENT_MOTIVO_COTIZACION_OPTIONS.map((option) => {
+                const selected = motivoCotizacionIncludes(
+                  profile.motivoCotizacion,
+                  option.id,
+                );
+                return (
+                  <label
+                    key={option.id}
+                    className={joinClasses(
+                      "flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-sm transition",
+                      selected
+                        ? "border-primary/40 bg-[color-mix(in_srgb,var(--dash-cyan,#1ac9ea)_12%,white)] font-semibold text-primary-dark"
+                        : "border-border bg-white text-foreground hover:border-primary/25",
+                    )}
+                  >
+                    <input
+                      type="checkbox"
+                      className="accent-[color:var(--dash-navy)]"
+                      checked={selected}
+                      onChange={() =>
+                        setProfile((current) => ({
+                          ...current,
+                          motivoCotizacion: toggleMotivoCotizacionId(
+                            current.motivoCotizacion,
+                            option.id,
+                          ),
+                        }))
+                      }
+                    />
+                    {option.label}
+                  </label>
+                );
+              })}
+            </div>
+            {motivoCotizacionIncludesOtros(profile.motivoCotizacion) ? (
+              <label className="block space-y-1">
+                <FieldLabel>Detalle de Otros</FieldLabel>
+                <Input
+                  value={profile.motivoCotizacionOther}
+                  onChange={(event) =>
+                    setProfile((current) => ({
+                      ...current,
+                      motivoCotizacionOther: event.target.value,
+                    }))
+                  }
+                  placeholder="Describe el motivo…"
+                />
+              </label>
+            ) : null}
+          </div>
+        </SectionCard>
+
+        <SectionCard number={5} title="Observaciones del ejecutivo">
+          <textarea
+            value={pipelineNotes}
+            rows={2}
+            onChange={(event) => setPipelineNotes(event.target.value)}
+            placeholder="Notas de la gestión o reunión…"
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm text-foreground placeholder:text-foreground/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          />
+        </SectionCard>
+
+        <p className="text-xs text-muted">
+          Podrás adjuntar documentos y completar la ficha del cliente después de guardar.
+        </p>
 
         <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
           <Button type="button" variant="ghost" onClick={handleClose}>
