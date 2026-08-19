@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { CotizadorWorkspace } from "@/components/cotizador/cotizador-workspace";
@@ -41,7 +41,6 @@ function ExecutiveDashboardContent() {
   const queryClient = useQueryClient();
   const { allowedSections, loading: sessionLoading } = useStaffSession();
 
-  const [section, setSection] = useState<ExecutiveSection>("inicio");
   const { toasts, notify, dismiss } = useExecutiveToast();
 
   const sectionSet = useMemo(
@@ -53,6 +52,20 @@ function ExecutiveDashboardContent() {
     (next: StaffSection) => sectionSet.has(next),
     [sectionSet],
   );
+
+  const querySection = searchParams.get(STAFF_SECTION_QUERY);
+  const homeSection = useMemo(
+    () => defaultStaffHomeSection(allowedSections),
+    [allowedSections],
+  );
+
+  const section = useMemo<ExecutiveSection>(() => {
+    if (isStaffSection(querySection)) {
+      return canAccessSection(querySection) ? querySection : homeSection;
+    }
+
+    return homeSection;
+  }, [canAccessSection, homeSection, querySection]);
 
   const needsClinics =
     (section === "clinicas" ||
@@ -76,29 +89,29 @@ function ExecutiveDashboardContent() {
   useEffect(() => {
     if (sessionLoading || allowedSections.length === 0) return;
 
-    const homeSection = defaultStaffHomeSection(allowedSections);
-    const querySection = searchParams.get(STAFF_SECTION_QUERY);
-    if (isStaffSection(querySection)) {
-      if (!canAccessSection(querySection)) {
-        setSection(homeSection);
-        router.replace(staffSectionHref(homeSection));
-        return;
-      }
-      setSection(querySection);
+    if (!canAccessSection(section)) {
+      router.replace(staffSectionHref(homeSection), { scroll: false });
       return;
     }
 
-    if (!canAccessSection(section)) {
-      setSection(homeSection);
-      router.replace(staffSectionHref(homeSection));
+    if (isStaffSection(querySection)) {
+      if (!canAccessSection(querySection)) {
+        router.replace(staffSectionHref(homeSection), { scroll: false });
+      }
+      return;
+    }
+
+    if (section !== homeSection) {
+      router.replace(staffSectionHref(homeSection), { scroll: false });
     }
   }, [
-    searchParams,
-    canAccessSection,
-    router,
     sessionLoading,
-    section,
     allowedSections,
+    canAccessSection,
+    homeSection,
+    querySection,
+    router,
+    section,
   ]);
 
   useEffect(() => {
@@ -136,7 +149,6 @@ function ExecutiveDashboardContent() {
 
   function handleSectionChange(next: ExecutiveSection) {
     if (!canAccessSection(next)) return;
-    setSection(next);
     router.replace(staffSectionHref(next), { scroll: false });
   }
 
