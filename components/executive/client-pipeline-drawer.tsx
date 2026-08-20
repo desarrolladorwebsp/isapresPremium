@@ -1129,6 +1129,8 @@ export function ClientPipelineDrawer({
     (canUseZoomExecutiveWorkflow(executiveKind) || isAdmin) && !isTrackingOnly;
   const canManagePremium = (isPremium || isAdmin) && !isTrackingOnly;
   const canManageIsapres = (isIsapres || isAdmin) && !isTrackingOnly;
+  const canManagePlans =
+    canEditClientData || canManagePremium || canManageIsapres || canManageZoom;
   const canViewInternalNotes = canAccessInternalPipelineNotes({
     isAdmin,
     executiveKind,
@@ -4433,6 +4435,7 @@ export function ClientPipelineDrawer({
               canManageZoom={canManageZoom}
               canManagePremium={canManagePremium}
               canManageIsapres={canManageIsapres}
+              canManagePlans={canManagePlans}
               onBack={() => setActiveFlow(null)}
               onSave={() => void handleSave({ forceClose: false })}
               onWhatsApp={() => {
@@ -5076,7 +5079,7 @@ export function ClientPipelineDrawer({
         headerTone="navy"
       >
         <div className="space-y-4">
-          {client && canEditClientData ? (
+          {client && canManagePlans ? (
             <ClientAdvisedPlanSection
               client={client}
               onUpdated={onUpdated}

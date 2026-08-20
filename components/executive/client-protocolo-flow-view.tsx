@@ -321,6 +321,7 @@ export interface ClientProtocoloFlowViewProps {
   canManageZoom: boolean;
   canManagePremium: boolean;
   canManageIsapres: boolean;
+  canManagePlans?: boolean;
   onBack: () => void;
   onSave: () => void;
   onWhatsApp: () => void;
@@ -361,6 +362,7 @@ export function ClientProtocoloFlowView({
   canManageZoom,
   canManagePremium,
   canManageIsapres,
+  canManagePlans,
   onBack,
   onSave,
   onWhatsApp,
@@ -1461,6 +1463,7 @@ export function ClientProtocoloFlowView({
               client={client}
               profileForm={profileForm}
               canEdit={canEdit}
+              canManagePlans={canManagePlans ?? canEdit}
               meetingNote={meetingNote}
               onOpenModal={(modal) => onOpenFichaModal?.(modal)}
             />

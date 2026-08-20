@@ -368,6 +368,7 @@ export interface ClientPremiumExecutiveCapsulesProps {
   client: UserRecord;
   profileForm: ClientProfileFormValue;
   canEdit: boolean;
+  canManagePlans?: boolean;
   meetingNote?: string;
   onOpenModal: (modal: PremiumFichaModal) => void;
 }
@@ -379,6 +380,7 @@ export function ClientPremiumExecutiveCapsules({
   client,
   profileForm,
   canEdit,
+  canManagePlans = canEdit,
   meetingNote = "",
   onOpenModal,
 }: ClientPremiumExecutiveCapsulesProps) {
