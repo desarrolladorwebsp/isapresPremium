@@ -5,6 +5,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  // DIRECT_URL se usa en migraciones vía scripts/with-db-env.mjs (pooler vs host directo).
 }
 
 enum UserRole {
@@ -87,6 +88,7 @@ enum ClientOrigin {
   CAMPANA_VIDA_TRES
   CAMPANA_NUEVA_MASVIDA
   CAMPANA_ESENCIAL
+  CAMPANA_EXPERTO_EN_SALUD
 }
 
 enum ClientContactMethod {

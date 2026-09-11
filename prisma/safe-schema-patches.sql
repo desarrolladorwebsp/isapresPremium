@@ -156,6 +156,13 @@ EXCEPTION
   WHEN undefined_object THEN null;
 END $$;
 
+DO $$ BEGIN
+  ALTER TYPE "ClientOrigin" ADD VALUE IF NOT EXISTS 'CAMPANA_EXPERTO_EN_SALUD';
+EXCEPTION
+  WHEN duplicate_object THEN null;
+  WHEN undefined_object THEN null;
+END $$;
+
 -- Quién registró el cliente (alta manual)
 ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "registered_by_id" TEXT;
 

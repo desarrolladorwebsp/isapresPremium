@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useStaffSession } from "@/hooks/use-auth-session";
+import { useExecutiveAccountsQuery } from "@/hooks/query/use-executive-accounts-query";
 import { useExecutiveClientsQuery } from "@/hooks/query/use-executive-clients-query";
 import { useExecutiveQuotesQuery } from "@/hooks/query/use-executive-quotes-query";
 import {
@@ -19,18 +20,30 @@ import {
   type ExecutiveAgendaStatItem,
 } from "@/lib/client-pipeline/agenda-stats";
 import { santiagoMonthKey } from "@/lib/client-pipeline/agenda-urgency";
+import {
+  ADMIN_EXECUTIVE_FILTER_ALL,
+  buildAdminExecutiveFilterOptions,
+  filterAgendaItemsByExecutive,
+  filterClientsByExecutive,
+  filterQuotesByExecutive,
+  groupAgendaItemsByExecutive,
+} from "@/lib/executive/dashboard-executive-filter";
+import {
+  DASHBOARD_KPI_HELP,
+  groupNewClientItemsByIntake,
+} from "@/lib/executive/dashboard-kpi";
 import { staffClientHref } from "@/lib/staff/staff-sections";
 import { joinClasses } from "@/lib/utils";
 import {
   IconClipboard,
   IconClock,
   IconEye,
+  IconInfo,
   IconUsers,
 } from "@/components/executive/executive-icons";
+import type { StaffAccountRecord } from "@/types/staff-account";
 import type { UserRecord } from "@/types/user";
 
-const ADMIN_FILTER_ALL = "";
-const ADMIN_FILTER_UNASSIGNED = "__unassigned__";
 const MONTH_OPTIONS = buildAgendaMonthOptions(11);
 
 interface DashboardStats {
@@ -43,7 +56,7 @@ interface DashboardStats {
   noAnswer: number;
   inFollowUp: number;
   gestionesHoy: number;
-  gestionesVencidas: number;
+  gestionesAtrasadas: number;
   gestionesFuturas: number;
   clientesNuevos: number;
   agendaItems: Record<AgendaStatBucket, ExecutiveAgendaStatItem[]>;
@@ -96,37 +109,30 @@ function countByStatus(clients: UserRecord[], status: string): number {
   return clients.filter((client) => client.pipelineStatus === status).length;
 }
 
-/** Nombre + apellido (primer y último token) para el filtro admin. */
-function shortExecutiveDisplayName(fullName: string): string {
-  const parts = fullName.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "Sin nombre";
-  if (parts.length === 1) return parts[0];
-  return `${parts[0]} ${parts[parts.length - 1]}`;
-}
-
 const BUCKET_COPY: Record<
   AgendaStatBucket,
   { title: string; description: string; showDate: boolean }
 > = {
   dueToday: {
     title: "Gestiones de hoy",
-    description: "Llamados y confirmaciones pendientes para hoy.",
+    description: "Qué tienes que hacer hoy con cada cliente.",
     showDate: true,
   },
   overdue: {
-    title: "Gestiones vencidas",
-    description: "Pendientes con fecha pasada o sin reagendar.",
+    title: "Gestiones atrasadas",
+    description:
+      "Zoom no confirmado o cliente nuevo de un día anterior sin gestión.",
     showDate: true,
   },
   upcoming: {
     title: "Gestiones futuras",
-    description: "Agendadas para los próximos días.",
+    description: "Qué queda agendado para los próximos días.",
     showDate: true,
   },
   newClients: {
     title: "Clientes nuevos",
-    description: "Asignados sin primer contacto ni agenda.",
-    showDate: false,
+    description: "Sin primer contacto. Agrupados por cómo llegaron a tu cartera.",
+    showDate: true,
   },
 };
 
@@ -140,14 +146,22 @@ export function ExecutiveDashboardHome() {
 
   const clientsQuery = useExecutiveClientsQuery();
   const quotesQuery = useExecutiveQuotesQuery({ enabled: canSeeQuotes });
+  const executivesQuery = useExecutiveAccountsQuery({ enabled: isAdmin });
 
   const clients = clientsQuery.data;
   const quotes = quotesQuery.data;
+  const executiveAccounts = useMemo(
+    () => executivesQuery.data ?? [],
+    [executivesQuery.data],
+  );
+  const sessionUserId = user?.id ?? null;
 
   const [openBucket, setOpenBucket] = useState<AgendaStatBucket | null>(null);
+  const [helpOpen, setHelpOpen] = useState(false);
   /** Solo admin: `""` = todos, `__unassigned__` = sin ejecutivo. */
-  const [adminExecutiveFilter, setAdminExecutiveFilter] =
-    useState(ADMIN_FILTER_ALL);
+  const [adminExecutiveFilter, setAdminExecutiveFilter] = useState(
+    ADMIN_EXECUTIVE_FILTER_ALL,
+  );
   const [selectedMonth, setSelectedMonth] = useState(
     () => santiagoMonthKey(new Date()) ?? MONTH_OPTIONS[0]?.value ?? "",
   );
@@ -155,10 +169,10 @@ export function ExecutiveDashboardHome() {
   const unfilteredAgenda = useMemo(() => {
     if (!clients) return null;
     if (!isAdmin) {
-      if (!user?.id) return null;
+      if (!sessionUserId) return null;
       return countExecutiveAgendaStats({
         clients,
-        executiveId: user.id,
+        executiveId: sessionUserId,
         isAdmin: false,
         monthKey: selectedMonth || null,
       });
@@ -169,54 +183,63 @@ export function ExecutiveDashboardHome() {
       isAdmin: true,
       monthKey: selectedMonth || null,
     });
-  }, [clients, isAdmin, user?.id, selectedMonth]);
+  }, [clients, isAdmin, sessionUserId, selectedMonth]);
 
   const stats = useMemo<DashboardStats | null>(() => {
     if (!clients || !unfilteredAgenda) return null;
-    const quoteRows = quotes ?? [];
-    const activeClients =
-      !isAdmin && user?.id
-        ? clients.filter((client) => client.assignedExecutiveId === user.id)
-        : clients;
+    const quoteRows = isAdmin
+      ? filterQuotesByExecutive(quotes ?? [], adminExecutiveFilter)
+      : (quotes ?? []);
+    const scopedClients =
+      !isAdmin && sessionUserId
+        ? clients.filter((client) => client.assignedExecutiveId === sessionUserId)
+        : isAdmin
+          ? filterClientsByExecutive(clients, adminExecutiveFilter)
+          : clients;
     const derivedCount =
-      !isAdmin && user?.id
+      !isAdmin && sessionUserId
         ? clients.filter(
             (client) =>
-              client.trackingExecutiveId === user.id &&
-              client.assignedExecutiveId !== user.id,
+              client.trackingExecutiveId === sessionUserId &&
+              client.assignedExecutiveId !== sessionUserId,
           ).length
         : 0;
 
-    function filterItems(
-      rows: ExecutiveAgendaStatItem[],
-    ): ExecutiveAgendaStatItem[] {
-      if (!isAdmin || !adminExecutiveFilter) return rows;
-      if (adminExecutiveFilter === ADMIN_FILTER_UNASSIGNED) {
-        return rows.filter((row) => !row.responsibleId);
-      }
-      return rows.filter((row) => row.responsibleId === adminExecutiveFilter);
-    }
-
+    const agendaFilter = isAdmin
+      ? adminExecutiveFilter
+      : ADMIN_EXECUTIVE_FILTER_ALL;
     const agendaItems = {
-      dueToday: filterItems(unfilteredAgenda.items.dueToday),
-      overdue: filterItems(unfilteredAgenda.items.overdue),
-      upcoming: filterItems(unfilteredAgenda.items.upcoming),
-      newClients: filterItems(unfilteredAgenda.items.newClients),
+      dueToday: filterAgendaItemsByExecutive(
+        unfilteredAgenda.items.dueToday,
+        agendaFilter,
+      ),
+      overdue: filterAgendaItemsByExecutive(
+        unfilteredAgenda.items.overdue,
+        agendaFilter,
+      ),
+      upcoming: filterAgendaItemsByExecutive(
+        unfilteredAgenda.items.upcoming,
+        agendaFilter,
+      ),
+      newClients: filterAgendaItemsByExecutive(
+        unfilteredAgenda.items.newClients,
+        agendaFilter,
+      ),
     };
 
     return {
-      clients: activeClients.length,
+      clients: scopedClients.length,
       derived: derivedCount,
       quotes: canSeeQuotes ? quoteRows.length : 0,
       pendingQuotes: canSeeQuotes
         ? quoteRows.filter((quote) => quote.status === "PENDING").length
         : 0,
-      enviadoIsapre: countByStatus(activeClients, "ENVIADO_ISAPRE"),
-      closed: countByStatus(activeClients, "RECEPCIONADO"),
-      noAnswer: countByStatus(activeClients, "NO_CONTESTA"),
-      inFollowUp: countByStatus(activeClients, "EN_SEGUIMIENTO"),
+      enviadoIsapre: countByStatus(scopedClients, "ENVIADO_ISAPRE"),
+      closed: countByStatus(scopedClients, "RECEPCIONADO"),
+      noAnswer: countByStatus(scopedClients, "NO_CONTESTA"),
+      inFollowUp: countByStatus(scopedClients, "EN_SEGUIMIENTO"),
       gestionesHoy: agendaItems.dueToday.length,
-      gestionesVencidas: agendaItems.overdue.length,
+      gestionesAtrasadas: agendaItems.overdue.length,
       gestionesFuturas: agendaItems.upcoming.length,
       clientesNuevos: agendaItems.newClients.length,
       agendaItems,
@@ -226,91 +249,49 @@ export function ExecutiveDashboardHome() {
     quotes,
     canSeeQuotes,
     isAdmin,
-    user?.id,
+    sessionUserId,
     adminExecutiveFilter,
     unfilteredAgenda,
   ]);
 
   const executiveFilterOptions = useMemo(() => {
     if (!isAdmin) return [];
-    if (!unfilteredAgenda) {
-      return [{ value: ADMIN_FILTER_ALL, label: "Todos" }];
+    return buildAdminExecutiveFilterOptions({
+      accounts: executiveAccounts,
+      clients: clients ?? [],
+      selectedId: adminExecutiveFilter,
+    }).map(({ value, label }) => ({ value, label }));
+  }, [isAdmin, executiveAccounts, clients, adminExecutiveFilter]);
+
+  const accountsById = useMemo(() => {
+    const map = new Map<string, StaffAccountRecord>();
+    for (const account of executiveAccounts) {
+      map.set(account.id, account);
     }
+    return map;
+  }, [executiveAccounts]);
 
-    const sourceItems = openBucket
-      ? unfilteredAgenda.items[openBucket]
-      : [
-          ...unfilteredAgenda.items.dueToday,
-          ...unfilteredAgenda.items.overdue,
-          ...unfilteredAgenda.items.upcoming,
-          ...unfilteredAgenda.items.newClients,
-        ];
-
-    const byExecutive = new Map<string, { name: string; count: number }>();
-    let unassignedCount = 0;
-    for (const item of sourceItems) {
-      if (!item.responsibleId) {
-        unassignedCount += 1;
-        continue;
-      }
-      const name = item.responsibleName?.trim() || "Sin nombre";
-      const current = byExecutive.get(item.responsibleId);
-      if (current) {
-        current.count += 1;
-      } else {
-        byExecutive.set(item.responsibleId, { name, count: 1 });
-      }
+  const groupedOpenItems = useMemo(() => {
+    if (!isAdmin || adminExecutiveFilter || !openBucket || !stats) {
+      return [];
     }
+    if (openBucket === "newClients") return [];
+    return groupAgendaItemsByExecutive(
+      stats.agendaItems[openBucket],
+      accountsById,
+    );
+  }, [isAdmin, adminExecutiveFilter, openBucket, stats, accountsById]);
 
-    if (
-      adminExecutiveFilter &&
-      adminExecutiveFilter !== ADMIN_FILTER_UNASSIGNED &&
-      !byExecutive.has(adminExecutiveFilter) &&
-      clients
-    ) {
-      const match = clients.find(
-        (client) =>
-          client.assignedExecutiveId === adminExecutiveFilter ||
-          client.trackingExecutiveId === adminExecutiveFilter,
-      );
-      const name =
-        match?.assignedExecutiveId === adminExecutiveFilter
-          ? match.assignedExecutiveName
-          : match?.trackingExecutiveName;
-      byExecutive.set(adminExecutiveFilter, {
-        name: name?.trim() || "Ejecutivo",
-        count: 0,
-      });
-    }
-
-    const executiveOptions = Array.from(byExecutive.entries())
-      .map(([value, row]) => ({
-        value,
-        label: `${shortExecutiveDisplayName(row.name)} (${row.count})`,
-        sortName: shortExecutiveDisplayName(row.name),
-      }))
-      .sort((a, b) => a.sortName.localeCompare(b.sortName, "es"))
-      .map(({ value, label }) => ({ value, label }));
-
-    return [
-      { value: ADMIN_FILTER_ALL, label: "Todos" },
-      {
-        value: ADMIN_FILTER_UNASSIGNED,
-        label: `Sin asignar (${unassignedCount})`,
-      },
-      ...executiveOptions,
-    ];
-  }, [
-    isAdmin,
-    unfilteredAgenda,
-    openBucket,
-    adminExecutiveFilter,
-    clients,
-  ]);
+  const newClientOriginGroups = useMemo(() => {
+    if (openBucket !== "newClients" || !stats) return [];
+    return groupNewClientItemsByIntake(stats.agendaItems.newClients);
+  }, [openBucket, stats]);
 
   const loadingStats = clientsQuery.isLoading && !clientsQuery.data;
   const isFetching =
-    clientsQuery.isFetching || (canSeeQuotes && quotesQuery.isFetching);
+    clientsQuery.isFetching ||
+    (canSeeQuotes && quotesQuery.isFetching) ||
+    (isAdmin && executivesQuery.isFetching);
 
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
@@ -324,8 +305,8 @@ export function ExecutiveDashboardHome() {
   const heroHint = isLimited
     ? executiveKind === "ISAPRES"
       ? "Revisa tus gestiones del día, clientes nuevos y cierra contratos cuando corresponda."
-      : "Revisa gestiones de hoy, vencidas y confirmaciones Zoom pendientes."
-    : "Prioriza gestiones de hoy y vencidas; usa el menú para clientes, calendario y cotizador.";
+      : "Revisa gestiones de hoy, atrasadas y confirmaciones Zoom pendientes."
+    : "Prioriza gestiones de hoy y atrasadas; usa el menú para clientes, calendario y cotizador.";
 
   const gestionCards: Array<{
     bucket: AgendaStatBucket;
@@ -345,9 +326,9 @@ export function ExecutiveDashboardHome() {
     },
     {
       bucket: "overdue",
-      label: "Vencidas",
-      hint: "Gestiones sin resolver con fecha pasada",
-      value: stats?.gestionesVencidas,
+      label: "Atrasadas",
+      hint: "Zoom no gestionado o nuevo sin contacto",
+      value: stats?.gestionesAtrasadas,
       icon: <IconClipboard className="size-6" />,
       tone: "overdue",
     },
@@ -362,7 +343,7 @@ export function ExecutiveDashboardHome() {
     {
       bucket: "newClients",
       label: "Clientes nuevos",
-      hint: "Asignados sin primer contacto ni agenda",
+      hint: "Sin primer contacto, según origen de ingreso",
       value: stats?.clientesNuevos,
       icon: <IconUsers className="size-6" />,
       tone: "new",
@@ -439,6 +420,13 @@ export function ExecutiveDashboardHome() {
 
   const openItems = openBucket && stats ? stats.agendaItems[openBucket] : [];
   const openCopy = openBucket ? BUCKET_COPY[openBucket] : null;
+  const showNewClientOriginList =
+    openBucket === "newClients" && newClientOriginGroups.length > 0;
+  const showGroupedKpiList =
+    !showNewClientOriginList &&
+    isAdmin &&
+    !adminExecutiveFilter &&
+    groupedOpenItems.length > 0;
 
   function renderMonthFilter(options?: { compact?: boolean; hideLabel?: boolean }) {
     return (
@@ -469,12 +457,7 @@ export function ExecutiveDashboardHome() {
   }) {
     if (!isAdmin) return null;
     return (
-      <label
-        className={joinClasses(
-          "block min-w-0 shrink-0 space-y-1",
-          options?.compact ? "w-[13.5rem] sm:w-60" : "w-[13.5rem] sm:w-60",
-        )}
-      >
+      <label className="block min-w-0 flex-1 space-y-1 sm:w-72 sm:flex-none">
         {options?.hideLabel ? (
           <span className="sr-only">Ejecutivo</span>
         ) : (
@@ -485,6 +468,7 @@ export function ExecutiveDashboardHome() {
           options={executiveFilterOptions}
           onChange={(event) => setAdminExecutiveFilter(event.target.value)}
           className="h-9"
+          aria-label="Filtrar por ejecutivo"
         />
       </label>
     );
@@ -494,12 +478,73 @@ export function ExecutiveDashboardHome() {
     await Promise.all([
       clientsQuery.refetch(),
       canSeeQuotes ? quotesQuery.refetch() : Promise.resolve(),
+      isAdmin ? executivesQuery.refetch() : Promise.resolve(),
     ]);
   }
 
   function openClientFicha(clientId: string) {
     setOpenBucket(null);
     router.push(staffClientHref(clientId));
+  }
+
+  function renderAgendaItemRow(
+    row: ExecutiveAgendaStatItem,
+    index: number,
+    options?: { showResponsible?: boolean },
+  ) {
+    const showResponsible = options?.showResponsible ?? true;
+    return (
+      <li
+        key={row.id}
+        className={joinClasses(
+          "flex items-start gap-3 px-5 py-3.5 transition-colors sm:px-6",
+          index % 2 === 1 ? "bg-bg-layout/55" : "bg-transparent",
+          "hover:bg-primary/8",
+        )}
+      >
+        <div className="min-w-0 flex-1 space-y-1">
+          <p className="truncate text-sm font-semibold text-foreground">
+            {row.clientName}
+          </p>
+          <p className="text-xs leading-relaxed text-foreground/90">
+            {row.action || row.title}
+          </p>
+          <p className="text-xs text-muted">
+            {row.title}
+            {openCopy?.showDate && row.whenLabel ? (
+              <>
+                {" · "}
+                <span className="font-medium tabular-nums text-foreground/90">
+                  {row.whenLabel}
+                </span>
+              </>
+            ) : null}
+          </p>
+          {showResponsible ? (
+            <p className="text-xs text-foreground/90">
+              <span className="text-muted">Responsable: </span>
+              <span className="font-semibold">
+                {row.responsibleName ?? "Sin asignar"}
+              </span>
+              {row.responsibleRole ? (
+                <span className="text-muted"> · {row.responsibleRole}</span>
+              ) : null}
+            </p>
+          ) : null}
+        </div>
+        <Button
+          type="button"
+          size="sm"
+          variant="primary"
+          aria-label={`Ver ficha de ${row.clientName}`}
+          title="Ver ficha"
+          onClick={() => openClientFicha(row.clientId)}
+          className="size-9 shrink-0 px-0"
+        >
+          <IconEye className="size-5 text-white" />
+        </Button>
+      </li>
+    );
   }
 
   return (
@@ -534,16 +579,29 @@ export function ExecutiveDashboardHome() {
 
       <section className="space-y-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h2 className="text-sm font-semibold text-primary-dark">
-              Gestiones pendientes
-            </h2>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-sm font-semibold text-primary-dark">
+                Gestiones pendientes
+              </h2>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 gap-1.5 px-2 text-xs font-semibold text-primary-dark"
+                onClick={() => setHelpOpen(true)}
+                aria-label="Qué miden estos indicadores"
+              >
+                <IconInfo className="size-4" />
+                Qué miden
+              </Button>
+            </div>
             <p className="mt-0.5 text-xs text-muted">
-              Totales del mes seleccionado. Haz clic en una tarjeta para ver la
-              lista de clientes y el responsable.
+              Totales del mes seleccionado. Haz clic en una tarjeta para ver qué
+              gestión corresponde a cada cliente.
             </p>
           </div>
-          <div className="flex flex-nowrap items-end gap-2 sm:justify-end">
+          <div className="flex w-full flex-wrap items-end gap-2 sm:w-auto sm:flex-nowrap sm:justify-end">
             {renderMonthFilter()}
             {renderExecutiveFilter()}
           </div>
@@ -624,7 +682,7 @@ export function ExecutiveDashboardHome() {
         onClose={() => setOpenBucket(null)}
         size="xl"
         headerAside={
-          <div className="flex flex-nowrap items-end justify-end gap-2">
+          <div className="flex max-w-[min(100%,24rem)] flex-wrap items-end justify-end gap-2 sm:max-w-none sm:flex-nowrap">
             {renderMonthFilter({ compact: true, hideLabel: true })}
             {isAdmin
               ? renderExecutiveFilter({ compact: true, hideLabel: true })
@@ -633,63 +691,100 @@ export function ExecutiveDashboardHome() {
         }
       >
         {openItems.length > 0 ? (
-          <ul className="-mx-5 -my-4 min-h-[min(62vh,32rem)] divide-y divide-border/70 sm:-mx-6">
-            {openItems.map((row, index) => (
-              <li
-                key={row.id}
-                className={joinClasses(
-                  "flex items-start gap-3 px-5 py-3.5 transition-colors sm:px-6",
-                  index % 2 === 1 ? "bg-bg-layout/55" : "bg-transparent",
-                  "hover:bg-primary/8",
-                )}
-              >
-                <div className="min-w-0 flex-1 space-y-1">
-                  <p className="truncate text-sm font-semibold text-foreground">
-                    {row.clientName}
-                  </p>
-                  <p className="text-xs text-muted">
-                    {row.title}
-                    {openCopy?.showDate && row.whenLabel ? (
-                      <>
-                        {" · "}
-                        <span className="font-medium tabular-nums text-foreground/90">
-                          {row.whenLabel}
-                        </span>
-                      </>
-                    ) : null}
-                  </p>
-                  <p className="text-xs text-foreground/90">
-                    <span className="text-muted">Responsable: </span>
-                    <span className="font-semibold">
-                      {row.responsibleName ?? "Sin asignar"}
-                    </span>
-                    {row.responsibleRole ? (
-                      <span className="text-muted">
-                        {" "}
-                        · {row.responsibleRole}
-                      </span>
-                    ) : null}
-                  </p>
-                </div>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="primary"
-                  aria-label={`Ver ficha de ${row.clientName}`}
-                  title="Ver ficha"
-                  onClick={() => openClientFicha(row.clientId)}
-                  className="size-9 shrink-0 px-0"
+          showNewClientOriginList ? (
+            <div className="space-y-3 sm:space-y-4">
+              {newClientOriginGroups.map((group) => (
+                <section
+                  key={group.source}
+                  className="overflow-hidden rounded-xl border border-border/80 bg-white"
                 >
-                  <IconEye className="size-5 text-white" />
-                </Button>
-              </li>
-            ))}
-          </ul>
+                  <header className="flex items-center justify-between gap-3 border-b border-border/80 bg-[color-mix(in_srgb,var(--dash-navy,#092558)_7%,white)] px-4 py-2.5 sm:px-5">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-[color:var(--dash-navy,#092558)]">
+                        {group.title}
+                      </p>
+                      <p className="text-[11px] text-muted">{group.hint}</p>
+                    </div>
+                    <span className="inline-flex shrink-0 items-center rounded-full bg-[color:var(--dash-navy,#092558)] px-2 py-0.5 text-xs font-bold tabular-nums text-white">
+                      {group.items.length}
+                    </span>
+                  </header>
+                  <ul className="divide-y divide-border/70">
+                    {group.items.map((row, index) =>
+                      renderAgendaItemRow(row, index),
+                    )}
+                  </ul>
+                </section>
+              ))}
+            </div>
+          ) : showGroupedKpiList ? (
+            <div className="space-y-3 sm:space-y-4">
+              {groupedOpenItems.map((group) => (
+                <section
+                  key={group.key}
+                  className="overflow-hidden rounded-xl border border-border/80 bg-white"
+                >
+                  <header className="flex items-center justify-between gap-3 border-b border-border/80 bg-[color-mix(in_srgb,var(--dash-navy,#092558)_7%,white)] px-4 py-2.5 sm:px-5">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-[color:var(--dash-navy,#092558)]">
+                        {group.name}
+                      </p>
+                      {group.roleLabel ? (
+                        <p className="truncate text-[11px] text-muted">
+                          {group.roleLabel}
+                        </p>
+                      ) : null}
+                    </div>
+                    <span className="inline-flex shrink-0 items-center rounded-full bg-[color:var(--dash-navy,#092558)] px-2 py-0.5 text-xs font-bold tabular-nums text-white">
+                      {group.count}
+                    </span>
+                  </header>
+                  <ul className="divide-y divide-border/70">
+                    {group.items.map((row, index) =>
+                      renderAgendaItemRow(row, index, {
+                        showResponsible: false,
+                      }),
+                    )}
+                  </ul>
+                </section>
+              ))}
+            </div>
+          ) : (
+            <ul className="-mx-5 -my-4 min-h-[min(62vh,32rem)] divide-y divide-border/70 sm:-mx-6">
+              {openItems.map((row, index) =>
+                renderAgendaItemRow(row, index),
+              )}
+            </ul>
+          )
         ) : (
           <p className="rounded-xl border border-dashed border-border px-3 py-6 text-center text-sm text-muted">
             No hay gestiones en esta categoría.
           </p>
         )}
+      </AdminFormModal>
+
+      <AdminFormModal
+        open={helpOpen}
+        title="Qué miden estos indicadores"
+        description="Explicación para el ejecutivo. No cambia cómo gestionas al cliente; solo aclara el número de cada tarjeta."
+        onClose={() => setHelpOpen(false)}
+        size="lg"
+      >
+        <ul className="space-y-3">
+          {DASHBOARD_KPI_HELP.map((item) => (
+            <li
+              key={item.label}
+              className="rounded-xl border border-border/80 bg-white px-4 py-3"
+            >
+              <p className="text-sm font-semibold text-primary-dark">
+                {item.label}
+              </p>
+              <p className="mt-1 text-sm leading-relaxed text-muted">
+                {item.measure}
+              </p>
+            </li>
+          ))}
+        </ul>
       </AdminFormModal>
     </div>
   );

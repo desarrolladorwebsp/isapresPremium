@@ -274,6 +274,8 @@ function resolveRegisteredByLabel(client: UserRecord): string {
       return "Campaña Nueva Masvida";
     case "CAMPANA_ESENCIAL":
       return "Campaña Esencial";
+    case "CAMPANA_EXPERTO_EN_SALUD":
+      return "Campaña Experto en Salud";
     default:
       return "—";
   }

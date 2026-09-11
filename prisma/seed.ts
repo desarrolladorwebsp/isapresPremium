@@ -15,6 +15,15 @@ import { buildCotizadorPremiumPartnerRecord } from "../lib/partner-entity/platfo
 import { partnerThemeToPrismaJson } from "../lib/partner-entity/theme";
 import type { Clinic } from "../types/clinic";
 import type { HealthPlan } from "../types/plan";
+import {
+  applyResolvedDatabaseEnv,
+  assertSafeForDestructiveCommand,
+  loadLocalEnvFiles,
+} from "../lib/db/resolve-database-env.mjs";
+
+loadLocalEnvFiles();
+assertSafeForDestructiveCommand();
+applyResolvedDatabaseEnv({ purpose: "migrate" });
 
 const prisma = new PrismaClient();
 

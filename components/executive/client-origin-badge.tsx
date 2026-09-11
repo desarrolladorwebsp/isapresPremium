@@ -32,6 +32,8 @@ const ORIGIN_BADGE_CLASS: Partial<Record<ClientOrigin, string>> = {
     "!border !border-orange-300/60 !bg-orange-100 !text-orange-950",
   CAMPANA_ESENCIAL:
     "!border !border-fuchsia-300/60 !bg-fuchsia-100 !text-fuchsia-950",
+  CAMPANA_EXPERTO_EN_SALUD:
+    "!border !border-teal-300/60 !bg-teal-100 !text-teal-950",
 };
 
 export interface ClientOriginBadgeProps {

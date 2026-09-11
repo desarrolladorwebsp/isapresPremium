@@ -20,7 +20,8 @@ export type ClientOrigin =
   | "CAMPANA_CRUZ_BLANCA"
   | "CAMPANA_VIDA_TRES"
   | "CAMPANA_NUEVA_MASVIDA"
-  | "CAMPANA_ESENCIAL";
+  | "CAMPANA_ESENCIAL"
+  | "CAMPANA_EXPERTO_EN_SALUD";
 
 export const CLIENT_ORIGIN_OPTIONS: Array<{
   value: ClientOrigin;
@@ -36,6 +37,7 @@ export const CLIENT_ORIGIN_OPTIONS: Array<{
   { value: "CAMPANA_VIDA_TRES", label: "Campaña Vida Tres" },
   { value: "CAMPANA_NUEVA_MASVIDA", label: "Campaña Nueva Masvida" },
   { value: "CAMPANA_ESENCIAL", label: "Campaña Esencial" },
+  { value: "CAMPANA_EXPERTO_EN_SALUD", label: "Campaña Experto en Salud" },
   { value: "COTIZADOR", label: "Lead cotizador" },
   { value: "FORMULARIO_WEB", label: "Formulario web" },
 ];
@@ -55,6 +57,7 @@ export const MANUAL_CLIENT_ORIGIN_OPTIONS: Array<{
   { value: "CAMPANA_VIDA_TRES", label: "Campaña Vida Tres" },
   { value: "CAMPANA_NUEVA_MASVIDA", label: "Campaña Nueva Masvida" },
   { value: "CAMPANA_ESENCIAL", label: "Campaña Esencial" },
+  { value: "CAMPANA_EXPERTO_EN_SALUD", label: "Campaña Experto en Salud" },
 ];
 
 export function isClientOrigin(value: string): value is ClientOrigin {

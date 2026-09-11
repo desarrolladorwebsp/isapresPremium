@@ -6,6 +6,7 @@
 set -e
 ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 LOCAL_NODE="${HOME}/.local/share/isapres-premium/node22/bin/node"
+LOCAL_NODE_WIN="${HOME}/.local/share/isapres-premium/node22/node.exe"
 
 major_of() {
   "$1" -p "Number(process.versions.node.split('.')[0])" 2>/dev/null || echo 0
@@ -21,6 +22,10 @@ if usable node; then
   NODE="$(command -v node)"
 elif [ -x "$LOCAL_NODE" ]; then
   NODE="$LOCAL_NODE"
+elif [ -x "$LOCAL_NODE_WIN" ]; then
+  NODE="$LOCAL_NODE_WIN"
+elif [ -x "${LOCAL_NODE}.exe" ]; then
+  NODE="${LOCAL_NODE}.exe"
 elif [ -x "$ROOT/.tools/node22/bin/node" ]; then
   NODE="$ROOT/.tools/node22/bin/node"
 elif [ -x /usr/local/opt/node@22/bin/node ]; then

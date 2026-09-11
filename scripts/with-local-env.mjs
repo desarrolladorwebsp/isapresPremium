@@ -1,6 +1,10 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { spawnSync } from "node:child_process";
+import {
+  applyResolvedDatabaseEnv,
+  describeResolvedDatabase,
+} from "../lib/db/resolve-database-env.mjs";
 
 const envPath = resolve(process.cwd(), ".env.local");
 
@@ -23,6 +27,16 @@ for (const line of readFileSync(envPath, "utf8").split("\n")) {
   if (!(key in process.env)) {
     process.env[key] = value;
   }
+}
+
+try {
+  const resolved = applyResolvedDatabaseEnv({ purpose: "runtime" });
+  if (resolved.applied) {
+    console.log(describeResolvedDatabase(resolved));
+  }
+} catch (error) {
+  console.error(error instanceof Error ? error.message : error);
+  process.exit(1);
 }
 
 const [command, ...args] = process.argv.slice(2);

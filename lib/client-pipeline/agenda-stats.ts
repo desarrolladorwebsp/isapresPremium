@@ -1,5 +1,6 @@
 import {
   agendaUrgencyFromIso,
+  santiagoDateKey,
   santiagoMonthKey,
 } from "@/lib/client-pipeline/agenda-urgency";
 import type { UserRecord } from "@/types/user";
@@ -10,6 +11,8 @@ export type AgendaStatBucket =
   | "upcoming"
   | "newClients";
 
+export type NewClientIntakeSource = "web" | "self_registered" | "assigned";
+
 export interface ExecutiveAgendaStatItem {
   id: string;
   clientId: string;
@@ -17,11 +20,14 @@ export interface ExecutiveAgendaStatItem {
   responsibleId: string | null;
   responsibleName: string | null;
   responsibleRole: string | null;
-  kind: "meeting" | "confirmation" | "no_contesta" | "new_client";
+  kind: "meeting" | "confirmation" | "new_client";
   title: string;
+  /** Acción concreta que el ejecutivo debe hacer. */
+  action: string;
   whenIso: string | null;
   whenLabel: string | null;
   bucket: AgendaStatBucket;
+  intakeSource?: NewClientIntakeSource;
 }
 
 export interface ExecutiveAgendaStats {
@@ -70,6 +76,16 @@ function formatAgendaWhen(iso: string | null | undefined): string | null {
   }).format(date);
 }
 
+function formatAgendaDay(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return null;
+  return new Intl.DateTimeFormat("es-CL", {
+    timeZone: "America/Santiago",
+    dateStyle: "medium",
+  }).format(date);
+}
+
 function assignedResponsible(client: UserRecord): {
   id: string | null;
   name: string | null;
@@ -93,6 +109,66 @@ function confirmationResponsible(client: UserRecord): {
     };
   }
   return assignedResponsible(client);
+}
+
+export function isZoomScheduledMeeting(client: UserRecord): boolean {
+  if (client.preferredContactMethod === "WHATSAPP") return false;
+  if (client.preferredContactMethod === "ZOOM") return true;
+  if (client.calendlyTeam) return true;
+  if (client.zoomJoinUrl?.trim()) return true;
+  return client.assignedExecutiveKind === "ZOOM";
+}
+
+export function resolveNewClientIntakeSource(
+  client: UserRecord,
+): NewClientIntakeSource {
+  const origin = client.clientOrigin ?? "MANUAL";
+  if (origin === "COTIZADOR" || origin === "FORMULARIO_WEB") {
+    return "web";
+  }
+  const assignedId = client.assignedExecutiveId?.trim() || null;
+  const registeredById = client.registeredById?.trim() || null;
+  if (assignedId && registeredById && assignedId === registeredById) {
+    return "self_registered";
+  }
+  return "assigned";
+}
+
+function meetingTitle(client: UserRecord): string {
+  if (isZoomScheduledMeeting(client)) return "Reunión Zoom";
+  if (client.preferredContactMethod === "WHATSAPP") return "Contacto WhatsApp";
+  return "Llamado / reunión";
+}
+
+function meetingAction(
+  client: UserRecord,
+  urgency: "due_today" | "overdue" | "upcoming",
+): string {
+  if (isZoomScheduledMeeting(client)) {
+    if (urgency === "overdue") {
+      return "Confirmar si se llevó a cabo la reunión Zoom. Márcala como realizada o reagéndala.";
+    }
+    if (urgency === "due_today") {
+      return "Realizar la reunión Zoom de hoy o confirmar si se hizo.";
+    }
+    return "Reunión Zoom agendada para los próximos días.";
+  }
+  if (urgency === "due_today") {
+    return "Realizar el llamado o contacto de hoy.";
+  }
+  return "Llamado o contacto agendado para los próximos días.";
+}
+
+function confirmationAction(
+  urgency: "due_today" | "overdue" | "upcoming",
+): string {
+  if (urgency === "overdue") {
+    return "Confirmar si el cliente asistirá a la reunión Zoom. Esta confirmación sigue pendiente.";
+  }
+  if (urgency === "due_today") {
+    return "Llamar ahora para confirmar la reunión Zoom de hoy.";
+  }
+  return "Llamar para confirmar la reunión Zoom en la fecha indicada.";
 }
 
 function emptyItems(): Record<AgendaStatBucket, ExecutiveAgendaStatItem[]> {
@@ -126,6 +202,20 @@ function belongsToMonth(
   return santiagoMonthKey(iso ?? "") === monthKey;
 }
 
+function isBeforeToday(iso: string | null | undefined): boolean {
+  const day = santiagoDateKey(iso ?? "");
+  const today = santiagoDateKey(new Date());
+  if (!day || !today) return false;
+  return day < today;
+}
+
+function isNewWithoutGestion(client: UserRecord): boolean {
+  const status = client.pipelineStatus ?? "NUEVO";
+  return (
+    status === "NUEVO" && !client.nextCallAt && !client.confirmationCallAt
+  );
+}
+
 /** Opciones de mes (`YYYY-MM`) hacia atrás desde el mes actual en Chile. */
 export function buildAgendaMonthOptions(monthsBack = 11): Array<{
   value: string;
@@ -156,13 +246,11 @@ export function buildAgendaMonthOptions(monthsBack = 11): Array<{
 }
 
 /**
- * Lista y cuenta gestiones pendientes del ejecutivo (o de toda la cartera si admin).
- * - `nextCallAt` → ejecutivo asignado
- * - `confirmationCallAt` → seguimiento Zoom (o asignado si no hay tracking)
- * - `NUEVO` sin agenda → cliente nuevo por gestionar
- * - `NO_CONTESTA` sin agenda → se suma como vencida
- * - `monthKey` (`YYYY-MM`, Chile) acota fechas de agenda; clientes nuevos por `createdAt`;
- *   pendientes sin fecha (p. ej. no contesta) solo en el mes actual.
+ * Gestiones pendientes del ejecutivo (o de toda la cartera si admin).
+ * - Confirmación Zoom → `confirmationCallAt`
+ * - Reunión / llamado → `nextCallAt` (Hoy/Futuras: todos los canales; Atrasadas: solo Zoom)
+ * - Cliente nuevo sin gestión → `NUEVO` sin agenda (Atrasadas si ingresó antes de hoy)
+ * - `monthKey` (`YYYY-MM`, Chile) acota por fecha de la gestión o `createdAt` en nuevos
  */
 export function countExecutiveAgendaStats(input: {
   clients: UserRecord[];
@@ -173,15 +261,11 @@ export function countExecutiveAgendaStats(input: {
 }): ExecutiveAgendaStats {
   const { clients, executiveId, isAdmin, monthKey } = input;
   const items = emptyItems();
-  const currentMonthKey = santiagoMonthKey(new Date());
-  const includeUndatedOpen =
-    !monthKey || (currentMonthKey != null && monthKey === currentMonthKey);
 
   for (const client of clients) {
     if (!isActivePipeline(client)) continue;
 
     const assigned = isAssignedTo(client, executiveId, isAdmin);
-    const status = client.pipelineStatus ?? "NUEVO";
     const clientName = client.fullName?.trim() || "Cliente sin nombre";
 
     if (client.confirmationCallAt && ownsConfirmation(client, executiveId, isAdmin)) {
@@ -200,6 +284,7 @@ export function countExecutiveAgendaStats(input: {
               responsibleRole: responsible.role,
               kind: "confirmation",
               title: "Confirmación Zoom",
+              action: confirmationAction(urgency),
               whenIso: client.confirmationCallAt,
               whenLabel: formatAgendaWhen(client.confirmationCallAt),
             },
@@ -212,7 +297,12 @@ export function countExecutiveAgendaStats(input: {
     if (client.nextCallAt && assigned) {
       if (belongsToMonth(client.nextCallAt, monthKey)) {
         const urgency = agendaUrgencyFromIso(client.nextCallAt);
-        if (urgency === "due_today" || urgency === "overdue" || urgency === "upcoming") {
+        const isZoom = isZoomScheduledMeeting(client);
+        const include =
+          urgency === "due_today" ||
+          urgency === "upcoming" ||
+          (urgency === "overdue" && isZoom);
+        if (include) {
           const responsible = assignedResponsible(client);
           pushByUrgency(
             items,
@@ -224,7 +314,8 @@ export function countExecutiveAgendaStats(input: {
               responsibleName: responsible.name,
               responsibleRole: responsible.role,
               kind: "meeting",
-              title: "Llamado / reunión",
+              title: meetingTitle(client),
+              action: meetingAction(client, urgency),
               whenIso: client.nextCallAt,
               whenLabel: formatAgendaWhen(client.nextCallAt),
             },
@@ -234,9 +325,11 @@ export function countExecutiveAgendaStats(input: {
       }
     }
 
-    if (assigned && status === "NUEVO" && !client.nextCallAt && !client.confirmationCallAt) {
+    if (assigned && isNewWithoutGestion(client)) {
       if (belongsToMonth(client.createdAt, monthKey)) {
         const responsible = assignedResponsible(client);
+        const intakeSource = resolveNewClientIntakeSource(client);
+        const enteredLabel = formatAgendaDay(client.createdAt);
         items.newClients.push({
           id: `${client.id}:new`,
           clientId: client.id,
@@ -246,34 +339,33 @@ export function countExecutiveAgendaStats(input: {
           responsibleRole: responsible.role,
           kind: "new_client",
           title: "Cliente nuevo",
-          whenIso: null,
-          whenLabel: null,
+          action:
+            "Hacer el primer contacto. Si no responde, marca No contesta.",
+          whenIso: client.createdAt,
+          whenLabel: enteredLabel ? `Ingresó el ${enteredLabel}` : null,
           bucket: "newClients",
+          intakeSource,
         });
-      }
-    }
 
-    if (
-      assigned &&
-      status === "NO_CONTESTA" &&
-      !client.nextCallAt &&
-      !client.confirmationCallAt &&
-      includeUndatedOpen
-    ) {
-      const responsible = assignedResponsible(client);
-      items.overdue.push({
-        id: `${client.id}:no-contesta`,
-        clientId: client.id,
-        clientName,
-        responsibleId: responsible.id,
-        responsibleName: responsible.name,
-        responsibleRole: responsible.role,
-        kind: "no_contesta",
-        title: "Reintentar contacto",
-        whenIso: null,
-        whenLabel: null,
-        bucket: "overdue",
-      });
+        if (isBeforeToday(client.createdAt)) {
+          items.overdue.push({
+            id: `${client.id}:new-overdue`,
+            clientId: client.id,
+            clientName,
+            responsibleId: responsible.id,
+            responsibleName: responsible.name,
+            responsibleRole: responsible.role,
+            kind: "new_client",
+            title: "Cliente nuevo sin gestión",
+            action:
+              "Hacer el primer contacto: es un cliente nuevo de un día anterior sin ninguna gestión.",
+            whenIso: client.createdAt,
+            whenLabel: enteredLabel ? `Ingresó el ${enteredLabel}` : null,
+            bucket: "overdue",
+            intakeSource,
+          });
+        }
+      }
     }
   }
 

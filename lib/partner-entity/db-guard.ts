@@ -8,6 +8,7 @@ let partnerEntityDbCooldownUntil = 0;
 const DB_COOLDOWN_MS = 60_000;
 
 export function isPartnerEntityDbUnavailable(): boolean {
+  if (!process.env.DATABASE_URL?.trim()) return true;
   if (partnerEntityDbUnavailable) return true;
   if (partnerEntityDbCooldownUntil > Date.now()) return true;
   return false;

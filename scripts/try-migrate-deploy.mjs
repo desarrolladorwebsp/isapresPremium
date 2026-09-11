@@ -1,11 +1,44 @@
 import { execSync } from "node:child_process";
+import {
+  applyResolvedDatabaseEnv,
+  describeResolvedDatabase,
+  isSameDatabase,
+  loadLocalEnvFiles,
+} from "../lib/db/resolve-database-env.mjs";
 
-if (!process.env.DATABASE_URL?.trim()) {
+loadLocalEnvFiles();
+
+let resolved;
+try {
+  resolved = applyResolvedDatabaseEnv({ purpose: "migrate" });
+} catch (error) {
+  console.warn(
+    "[build] Destino de BD rechazado; se omite prisma migrate deploy.",
+  );
+  if (error instanceof Error) {
+    console.warn(error.message);
+  }
+  process.exit(0);
+}
+
+if (!resolved.applied || !process.env.DATABASE_URL?.trim()) {
   console.warn(
     "[build] DATABASE_URL no configurada; se omite prisma migrate deploy.",
   );
   process.exit(0);
 }
+
+if (
+  resolved.useProd === false &&
+  isSameDatabase(process.env.DATABASE_URL, process.env.DATABASE_URL_PROD)
+) {
+  console.warn(
+    "[build] Destino DEV coincide con PROD; se omite migrate deploy por seguridad.",
+  );
+  process.exit(0);
+}
+
+console.log(`[build] ${describeResolvedDatabase(resolved)}`);
 
 function applySafeSchemaPatches() {
   console.warn(

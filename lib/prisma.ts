@@ -1,4 +1,7 @@
 import { Prisma, PrismaClient } from "@prisma/client";
+import { applyResolvedDatabaseEnv } from "@/lib/db/resolve-database-env.mjs";
+
+applyResolvedDatabaseEnv({ purpose: "runtime" });
 
 const PRISMA_CACHE_KEY = "__cotizador_prisma_client__" as const;
 const PRISMA_FINGERPRINT_KEY = "__cotizador_prisma_fingerprint__" as const;

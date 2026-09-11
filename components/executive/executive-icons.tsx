@@ -101,6 +101,15 @@ export function IconClock({ className = "size-5" }: { className?: string }) {
   );
 }
 
+export function IconInfo({ className = "size-4" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 16v-4M12 8h.01" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function IconBell({ className = "size-4" }: { className?: string }) {
   return (
     <svg
