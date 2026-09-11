@@ -29,7 +29,7 @@ function isAllFilter(filterId: string | null | undefined): boolean {
   return !filterId;
 }
 
-function isUnassignedFilter(filterId: string): boolean {
+function isUnassignedFilter(filterId: string | null | undefined): boolean {
   return filterId === ADMIN_EXECUTIVE_FILTER_UNASSIGNED;
 }
 

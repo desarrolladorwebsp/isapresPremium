@@ -3,8 +3,8 @@ import {
   applyResolvedDatabaseEnv,
   describeResolvedDatabase,
   isSameDatabase,
-  loadLocalEnvFiles,
 } from "../lib/db/resolve-database-env.mjs";
+import { loadLocalEnvFiles } from "./load-local-env.mjs";
 
 loadLocalEnvFiles();
 

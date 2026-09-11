@@ -4,8 +4,8 @@ import {
   assertSafeForDestructiveCommand,
   assertSafeForProductionMigration,
   describeResolvedDatabase,
-  loadLocalEnvFiles,
 } from "../lib/db/resolve-database-env.mjs";
+import { loadLocalEnvFiles } from "./load-local-env.mjs";
 
 function parseArgs(argv) {
   let mode = "runtime";

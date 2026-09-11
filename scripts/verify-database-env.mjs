@@ -4,9 +4,9 @@ import {
   assertSafeForDestructiveCommand,
   hostnameOfDatabaseUrl,
   isSameDatabase,
-  loadLocalEnvFiles,
   resolveDatabaseTargets,
 } from "../lib/db/resolve-database-env.mjs";
+import { loadLocalEnvFiles } from "./load-local-env.mjs";
 
 loadLocalEnvFiles();
 

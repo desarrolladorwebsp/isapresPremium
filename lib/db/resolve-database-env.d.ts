@@ -1,4 +1,3 @@
-export function loadLocalEnvFiles(): void;
 export function isExplicitProductionEnvironment(): boolean;
 export function hostnameOfDatabaseUrl(url: string | undefined | null): string;
 export function isSameDatabase(

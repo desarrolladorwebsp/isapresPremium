@@ -18,8 +18,8 @@ import type { HealthPlan } from "../types/plan";
 import {
   applyResolvedDatabaseEnv,
   assertSafeForDestructiveCommand,
-  loadLocalEnvFiles,
 } from "../lib/db/resolve-database-env.mjs";
+import { loadLocalEnvFiles } from "../scripts/load-local-env.mjs";
 
 loadLocalEnvFiles();
 assertSafeForDestructiveCommand();
