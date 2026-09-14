@@ -13,6 +13,7 @@ import {
   MARITAL_STATUS_OPTIONS,
   motivoCotizacionIncludes,
   motivoCotizacionIncludesOtros,
+  PRINCIPAL_TITULAR_ID,
   resolveClientMoneyCurrency,
   splitFullName,
   toggleMotivoCotizacionId,
@@ -565,6 +566,11 @@ export function ClientProfileForm({
       ...value,
       additionalTitulares: value.additionalTitulares.filter(
         (titular) => titular.id !== titularId,
+      ),
+      dependents: value.dependents.map((dependent) =>
+        dependent.titularId === titularId
+          ? { ...dependent, titularId: PRINCIPAL_TITULAR_ID }
+          : dependent,
       ),
     });
   }

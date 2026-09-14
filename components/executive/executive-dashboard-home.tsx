@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { useStaffSession } from "@/hooks/use-auth-session";
 import { useExecutiveAccountsQuery } from "@/hooks/query/use-executive-accounts-query";
 import { useExecutiveClientsQuery } from "@/hooks/query/use-executive-clients-query";
-import { useExecutiveQuotesQuery } from "@/hooks/query/use-executive-quotes-query";
 import {
   AdminFormModal,
   AdminRefreshButton,
@@ -25,7 +24,6 @@ import {
   buildAdminExecutiveFilterOptions,
   filterAgendaItemsByExecutive,
   filterClientsByExecutive,
-  filterQuotesByExecutive,
   groupAgendaItemsByExecutive,
 } from "@/lib/executive/dashboard-executive-filter";
 import {
@@ -49,8 +47,6 @@ const MONTH_OPTIONS = buildAgendaMonthOptions(11);
 interface DashboardStats {
   clients: number;
   derived: number;
-  quotes: number;
-  pendingQuotes: number;
   enviadoIsapre: number;
   closed: number;
   noAnswer: number;
@@ -138,18 +134,15 @@ const BUCKET_COPY: Record<
 
 export function ExecutiveDashboardHome() {
   const router = useRouter();
-  const { user, executiveKind, isAdmin, allowedSections } = useStaffSession();
+  const { user, executiveKind, isAdmin } = useStaffSession();
   const isLimited =
     !isAdmin &&
     (executiveKind === "ISAPRES" || executiveKind === "ZOOM");
-  const canSeeQuotes = isAdmin || allowedSections.includes("cotizaciones");
 
   const clientsQuery = useExecutiveClientsQuery();
-  const quotesQuery = useExecutiveQuotesQuery({ enabled: canSeeQuotes });
   const executivesQuery = useExecutiveAccountsQuery({ enabled: isAdmin });
 
   const clients = clientsQuery.data;
-  const quotes = quotesQuery.data;
   const executiveAccounts = useMemo(
     () => executivesQuery.data ?? [],
     [executivesQuery.data],
@@ -187,9 +180,6 @@ export function ExecutiveDashboardHome() {
 
   const stats = useMemo<DashboardStats | null>(() => {
     if (!clients || !unfilteredAgenda) return null;
-    const quoteRows = isAdmin
-      ? filterQuotesByExecutive(quotes ?? [], adminExecutiveFilter)
-      : (quotes ?? []);
     const scopedClients =
       !isAdmin && sessionUserId
         ? clients.filter((client) => client.assignedExecutiveId === sessionUserId)
@@ -230,10 +220,6 @@ export function ExecutiveDashboardHome() {
     return {
       clients: scopedClients.length,
       derived: derivedCount,
-      quotes: canSeeQuotes ? quoteRows.length : 0,
-      pendingQuotes: canSeeQuotes
-        ? quoteRows.filter((quote) => quote.status === "PENDING").length
-        : 0,
       enviadoIsapre: countByStatus(scopedClients, "ENVIADO_ISAPRE"),
       closed: countByStatus(scopedClients, "RECEPCIONADO"),
       noAnswer: countByStatus(scopedClients, "NO_CONTESTA"),
@@ -246,8 +232,6 @@ export function ExecutiveDashboardHome() {
     };
   }, [
     clients,
-    quotes,
-    canSeeQuotes,
     isAdmin,
     sessionUserId,
     adminExecutiveFilter,
@@ -290,7 +274,6 @@ export function ExecutiveDashboardHome() {
   const loadingStats = clientsQuery.isLoading && !clientsQuery.data;
   const isFetching =
     clientsQuery.isFetching ||
-    (canSeeQuotes && quotesQuery.isFetching) ||
     (isAdmin && executivesQuery.isFetching);
 
   const greeting = useMemo(() => {
@@ -404,18 +387,6 @@ export function ExecutiveDashboardHome() {
           value: stats?.clients,
           icon: <IconUsers className="size-6" />,
         },
-        {
-          label: "Cotizaciones",
-          hint: "Solicitudes asociadas a tu gestión",
-          value: stats?.quotes,
-          icon: <IconClipboard className="size-6" />,
-        },
-        {
-          label: "Prospectos pendientes",
-          hint: "Cotizaciones por gestionar",
-          value: stats?.pendingQuotes,
-          icon: <IconClock className="size-6" />,
-        },
       ];
 
   const openItems = openBucket && stats ? stats.agendaItems[openBucket] : [];
@@ -477,7 +448,6 @@ export function ExecutiveDashboardHome() {
   async function handleRefresh() {
     await Promise.all([
       clientsQuery.refetch(),
-      canSeeQuotes ? quotesQuery.refetch() : Promise.resolve(),
       isAdmin ? executivesQuery.refetch() : Promise.resolve(),
     ]);
   }

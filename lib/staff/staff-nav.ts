@@ -22,6 +22,7 @@ export const STAFF_NAV_TEAM: StaffSection[] = [
   "usuarios",
   "prospectos",
   "cotizaciones",
+  "reportes",
 ];
 
 export type StaffNavGroupId = "catalogo" | "equipo";

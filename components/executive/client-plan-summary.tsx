@@ -7,18 +7,27 @@ import {
 } from "@/lib/client-plan/format";
 import type { ClientPlanSnapshot } from "@/types/client-plan";
 
+function proposalCountLabel(count: number): string | null {
+  if (count <= 0) return null;
+  return count === 1 ? "1 propuesta" : `${count} propuestas`;
+}
+
 export interface ClientPlanSummaryProps {
   requestedPlan?: ClientPlanSnapshot | null;
   advisedPlan?: ClientPlanSnapshot | null;
+  assignedPlans?: ClientPlanSnapshot[] | null;
   compact?: boolean;
 }
 
 export function ClientPlanSummary({
   requestedPlan,
   advisedPlan,
+  assignedPlans,
   compact = false,
 }: ClientPlanSummaryProps) {
   const activePlan = advisedPlan ?? requestedPlan;
+  const proposalCount = assignedPlans?.filter((plan) => plan.planCode).length ?? 0;
+  const proposalsLabel = proposalCountLabel(proposalCount);
   const hasDifferentAdvisedPlan = Boolean(
     advisedPlan?.planCode &&
       requestedPlan?.planCode &&
@@ -26,6 +35,22 @@ export function ClientPlanSummary({
   );
 
   if (!activePlan?.planCode) {
+    if (proposalsLabel) {
+      return (
+        <div
+          className={
+            compact
+              ? "flex min-h-[3rem] max-w-[18rem] flex-col justify-center gap-1"
+              : "space-y-1"
+          }
+        >
+          <p className="text-sm text-muted">Sin plan elegido</p>
+          <p className="text-[11px] font-semibold leading-tight text-primary">
+            {proposalsLabel}
+          </p>
+        </div>
+      );
+    }
     return <span className="text-sm text-muted">Sin plan registrado</span>;
   }
 
@@ -61,6 +86,11 @@ export function ClientPlanSummary({
         ) : (
           <p className="text-[11px] leading-tight text-muted">Plan solicitado</p>
         )}
+        {proposalsLabel ? (
+          <p className="text-[11px] font-semibold leading-tight text-primary">
+            {proposalsLabel}
+          </p>
+        ) : null}
       </div>
     );
   }
@@ -87,6 +117,9 @@ export function ClientPlanSummary({
       ) : (
         <p className="text-xs text-muted">Plan solicitado</p>
       )}
+      {proposalsLabel ? (
+        <p className="text-xs font-semibold text-primary">{proposalsLabel}</p>
+      ) : null}
     </div>
   );
 }

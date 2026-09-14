@@ -1,11 +1,18 @@
 import {
   CLIENT_MOTIVO_COTIZACION_OPTIONS,
+  PRINCIPAL_TITULAR_ID,
   motivoCotizacionIncludes,
   motivoCotizacionIncludesOtros,
   parseMotivoCotizacionIds,
 } from "@/lib/client-profile/constants";
 import { resolveCurrentCoverageLabel } from "@/lib/client-profile/current-coverage";
 import { formatPersonDisplayName } from "@/lib/format-person-name";
+import type {
+  ClientAdditionalTitularProfile,
+  ClientDependentProfile,
+  ClientExecutiveProfile,
+  ClientMoneyCurrency,
+} from "@/types/client-profile";
 import type { UserRecord } from "@/types/user";
 
 export interface ProtocoloZoomQuoteRow {
@@ -14,9 +21,8 @@ export interface ProtocoloZoomQuoteRow {
   valorUf: string;
 }
 
-export interface ProtocoloZoomData {
-  fechaMes: string;
-  ejecutiva: string;
+export interface ProtocoloZoomTitularDatos {
+  sectionTitle: string;
   nombre: string;
   celular: string;
   correo: string;
@@ -37,6 +43,13 @@ export interface ProtocoloZoomData {
   motivoMalaExperiencia: boolean;
   motivoCoberturas: boolean;
   otrosMotivos: string;
+}
+
+export interface ProtocoloZoomData {
+  fechaMes: string;
+  ejecutiva: string;
+  nombre: string;
+  titulares: ProtocoloZoomTitularDatos[];
   zoomIp1: string;
   zoomIp2: string;
   zoomIpAuxiliar: string;
@@ -106,44 +119,207 @@ function check(label: string, on: boolean): string {
   return `<span class="check">${on ? "☑" : "☐"} ${escapeHtml(label)}</span>`;
 }
 
-export function buildProtocoloZoomData(client: UserRecord): ProtocoloZoomData {
-  const profile = client.clientProfile;
-  const nameFromProfile = [profile?.firstNames, profile?.lastNames]
+function joinPersonName(
+  firstNames: string | null | undefined,
+  lastNames: string | null | undefined,
+): string {
+  return [firstNames, lastNames]
     .map((part) => part?.trim())
     .filter(Boolean)
     .join(" ");
-  const dependents = profile?.dependents ?? [];
-  const cargasEdades =
-    dependents.length === 0
-      ? ""
-      : dependents
-          .map((dependent, index) => {
-            const age = dependent.age?.trim() || "—";
-            const rut = dependent.rut?.trim();
-            return rut
-              ? `Carga ${index + 1}: ${age} años (${rut})`
-              : `Carga ${index + 1}: ${age} años`;
-          })
-          .join(" · ");
+}
 
-  const preexistencias = [
-    profile?.preexistenciasMedicas?.trim(),
-    ...dependents.map((dependent) => dependent.preexistenciasMedicas?.trim()),
-    ...(profile?.additionalTitulares ?? []).map((titular) =>
-      titular.preexistenciasMedicas?.trim(),
-    ),
-  ]
+function formatCostoUf(
+  amount: string | null | undefined,
+  currency: ClientMoneyCurrency | null | undefined,
+): string {
+  if (currency === "UF") return amount?.trim() ?? "";
+  return formatMoneyLine(amount, currency);
+}
+
+function formatCargasEdades(dependents: ClientDependentProfile[]): string {
+  if (dependents.length === 0) return "";
+  return dependents
+    .map((dependent, index) => {
+      const age = dependent.age?.trim() || "—";
+      const rut = dependent.rut?.trim();
+      return rut
+        ? `Carga ${index + 1}: ${age} años (${rut})`
+        : `Carga ${index + 1}: ${age} años`;
+    })
+    .join(" · ");
+}
+
+function joinPreexistencias(
+  ...values: Array<string | null | undefined>
+): string {
+  return values
+    .map((value) => value?.trim())
     .filter(Boolean)
     .join(" · ");
+}
 
-  const motivoIds = parseMotivoCotizacionIds(profile?.motivoCotizacion);
-  const costoUf =
-    profile?.currentPlanPriceCurrency === "UF"
-      ? profile.currentPlanPrice?.trim() ?? ""
-      : formatMoneyLine(
-          profile?.currentPlanPrice,
-          profile?.currentPlanPriceCurrency,
-        );
+function buildMotivoFields(
+  motivoCotizacion: string | null | undefined,
+  motivoOther: string | null | undefined,
+) {
+  const motivoIds = parseMotivoCotizacionIds(motivoCotizacion);
+  return {
+    motivoBajarCostos: motivoCotizacionIncludes(
+      motivoCotizacion,
+      "bajar-costo",
+    ),
+    motivoMalaExperiencia: motivoCotizacionIncludes(
+      motivoCotizacion,
+      "mala-experiencia",
+    ),
+    motivoCoberturas: motivoCotizacionIncludes(motivoCotizacion, "cobertura"),
+    otrosMotivos: [
+      ...motivoIds
+        .filter(
+          (id) =>
+            id !== "bajar-costo" &&
+            id !== "mala-experiencia" &&
+            id !== "cobertura" &&
+            id !== "otros",
+        )
+        .map(resolveMotivoLabel),
+      motivoCotizacionIncludesOtros(motivoCotizacion)
+        ? motivoOther?.trim() || ""
+        : "",
+    ]
+      .filter(Boolean)
+      .join(" · "),
+  };
+}
+
+function resolveCargaTitularId(
+  dependent: ClientDependentProfile,
+  additionalIds: Set<string>,
+): string {
+  const raw = dependent.titularId?.trim() ?? "";
+  if (raw && additionalIds.has(raw)) return raw;
+  return PRINCIPAL_TITULAR_ID;
+}
+
+function cargasByTitular(
+  dependents: ClientDependentProfile[],
+  additionalTitulares: ClientAdditionalTitularProfile[],
+): Map<string, ClientDependentProfile[]> {
+  const additionalIds = new Set(
+    additionalTitulares.map((titular) => titular.id.trim()).filter(Boolean),
+  );
+  const grouped = new Map<string, ClientDependentProfile[]>();
+  grouped.set(PRINCIPAL_TITULAR_ID, []);
+  for (const titular of additionalTitulares) {
+    const id = titular.id.trim();
+    if (id) grouped.set(id, []);
+  }
+  for (const dependent of dependents) {
+    const key = resolveCargaTitularId(dependent, additionalIds);
+    const bucket = grouped.get(key) ?? grouped.get(PRINCIPAL_TITULAR_ID);
+    bucket?.push(dependent);
+  }
+  return grouped;
+}
+
+function buildAdditionalTitularBlock(
+  titular: ClientAdditionalTitularProfile,
+  index: number,
+  cargas: ClientDependentProfile[],
+): ProtocoloZoomTitularDatos {
+  const nombre = joinPersonName(titular.firstNames, titular.lastNames);
+  return {
+    sectionTitle: `DATOS TITULAR ${index + 2}`,
+    nombre,
+    celular: titular.phone?.trim() || "",
+    correo: "",
+    edad: titular.age?.trim() || "",
+    rut: titular.rut?.trim() || "",
+    rutEmpleador: "",
+    cargasEdades: formatCargasEdades(cargas),
+    clinicaPref: "",
+    preexistencia: joinPreexistencias(
+      titular.preexistenciasMedicas,
+      ...cargas.map((carga) => carga.preexistenciasMedicas),
+    ),
+    rentaImponible: titular.rentaImponible?.trim() || "",
+    isapreActual: resolveCurrentCoverageLabel(titular.currentIsapre, ""),
+    costoUf: formatCostoUf(
+      titular.currentPlanPrice,
+      titular.currentPlanPriceCurrency,
+    ),
+    anualidadSi: false,
+    anualidadNo: false,
+    seguroComplSi: false,
+    seguroComplNo: false,
+    ...buildMotivoFields(
+      titular.motivoCotizacion,
+      titular.motivoCotizacionOther,
+    ),
+  };
+}
+
+function buildPrincipalTitularBlock(
+  client: UserRecord,
+  profile: ClientExecutiveProfile | undefined,
+  cargas: ClientDependentProfile[],
+): ProtocoloZoomTitularDatos {
+  const nombre =
+    joinPersonName(profile?.firstNames, profile?.lastNames) || client.fullName;
+  const seguros = profile?.segurosComplementarios?.trim() ?? "";
+  const hasSeguro = Boolean(seguros) && !/^no$/i.test(seguros);
+  return {
+    sectionTitle: "DATOS CLIENTE",
+    nombre,
+    celular: client.phone?.trim() || "",
+    correo: client.email?.trim() || "",
+    edad: profile?.age?.trim() || "",
+    rut: client.rut?.trim() || "",
+    rutEmpleador: profile?.employerRut?.trim() || "",
+    cargasEdades: formatCargasEdades(cargas),
+    clinicaPref: profile?.preferredClinics?.trim() || "",
+    preexistencia: joinPreexistencias(
+      profile?.preexistenciasMedicas,
+      ...cargas.map((carga) => carga.preexistenciasMedicas),
+    ),
+    rentaImponible: profile?.rentaImponible?.trim() || "",
+    isapreActual: resolveCurrentCoverageLabel(profile?.currentIsapre, ""),
+    costoUf: formatCostoUf(
+      profile?.currentPlanPrice,
+      profile?.currentPlanPriceCurrency,
+    ),
+    anualidadSi: profile?.anualidad === true,
+    anualidadNo: profile?.anualidad === false,
+    seguroComplSi: hasSeguro,
+    seguroComplNo: !hasSeguro && seguros.toLowerCase() === "no",
+    ...buildMotivoFields(
+      profile?.motivoCotizacion,
+      profile?.motivoCotizacionOther,
+    ),
+  };
+}
+
+export function buildProtocoloZoomData(client: UserRecord): ProtocoloZoomData {
+  const profile = client.clientProfile;
+  const additionalTitulares = profile?.additionalTitulares ?? [];
+  const dependents = profile?.dependents ?? [];
+  const cargasGrouped = cargasByTitular(dependents, additionalTitulares);
+
+  const titulares: ProtocoloZoomTitularDatos[] = [
+    buildPrincipalTitularBlock(
+      client,
+      profile,
+      cargasGrouped.get(PRINCIPAL_TITULAR_ID) ?? [],
+    ),
+    ...additionalTitulares.map((titular, index) =>
+      buildAdditionalTitularBlock(
+        titular,
+        index,
+        cargasGrouped.get(titular.id.trim()) ?? [],
+      ),
+    ),
+  ];
 
   const quotes: ProtocoloZoomQuoteRow[] = [];
   const seenPlanCodes = new Set<string>();
@@ -190,59 +366,11 @@ export function buildProtocoloZoomData(client: UserRecord): ProtocoloZoomData {
       .filter(Boolean)
       .slice(-3) ?? [];
 
-  const seguros = profile?.segurosComplementarios?.trim() ?? "";
-  const hasSeguro = Boolean(seguros) && !/^no$/i.test(seguros);
-
   return {
     fechaMes: formatShortDate(client.createdAt),
-    ejecutiva: formatPersonDisplayName(
-      client.assignedExecutiveName,
-      "",
-    ),
-    nombre: nameFromProfile || client.fullName,
-    celular: client.phone?.trim() || "",
-    correo: client.email?.trim() || "",
-    edad: profile?.age?.trim() || "",
-    rut: client.rut?.trim() || "",
-    rutEmpleador: profile?.employerRut?.trim() || "",
-    cargasEdades,
-    clinicaPref: profile?.preferredClinics?.trim() || "",
-    preexistencia: preexistencias,
-    rentaImponible: profile?.rentaImponible?.trim() || "",
-    isapreActual: resolveCurrentCoverageLabel(profile?.currentIsapre, ""),
-    costoUf,
-    anualidadSi: profile?.anualidad === true,
-    anualidadNo: profile?.anualidad === false,
-    seguroComplSi: hasSeguro,
-    seguroComplNo: !hasSeguro && seguros.toLowerCase() === "no",
-    motivoBajarCostos: motivoCotizacionIncludes(
-      profile?.motivoCotizacion,
-      "bajar-costo",
-    ),
-    motivoMalaExperiencia: motivoCotizacionIncludes(
-      profile?.motivoCotizacion,
-      "mala-experiencia",
-    ),
-    motivoCoberturas: motivoCotizacionIncludes(
-      profile?.motivoCotizacion,
-      "cobertura",
-    ),
-    otrosMotivos: [
-      ...motivoIds
-        .filter(
-          (id) =>
-            id !== "bajar-costo" &&
-            id !== "mala-experiencia" &&
-            id !== "cobertura" &&
-            id !== "otros",
-        )
-        .map(resolveMotivoLabel),
-      motivoCotizacionIncludesOtros(profile?.motivoCotizacion)
-        ? profile?.motivoCotizacionOther?.trim() || ""
-        : "",
-    ]
-      .filter(Boolean)
-      .join(" · "),
+    ejecutiva: formatPersonDisplayName(client.assignedExecutiveName, ""),
+    nombre: titulares[0]?.nombre || client.fullName,
+    titulares,
     zoomIp1: "",
     zoomIp2: "",
     zoomIpAuxiliar: "",
@@ -358,7 +486,58 @@ const PRINT_CSS = `
     font-weight: 700;
     text-transform: uppercase;
   }
+  .titular-block + .titular-block {
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid #ccc;
+  }
 `;
+
+function renderTitularBlock(titular: ProtocoloZoomTitularDatos): string {
+  return `<div class="titular-block">
+    <div class="section-title">${escapeHtml(titular.sectionTitle)}</div>
+    ${line("NOMBRE", titular.nombre)}
+    ${line("CELULAR", titular.celular)}
+    ${line("CORREO", titular.correo)}
+    ${line("EDAD", titular.edad)}
+    ${line("RUT", titular.rut)}
+    ${line("RUT EMPLEADOR", titular.rutEmpleador)}
+    ${line("CARGAS / EDADES", titular.cargasEdades)}
+    ${line("CLÍNICA PREF", titular.clinicaPref)}
+    ${line("PREEXISTENCIA", titular.preexistencia)}
+    ${line("RENTA IMPONIBLE", titular.rentaImponible)}
+    ${line("ISAPRE ACTUAL / FONASA", titular.isapreActual)}
+    ${line("COSTO UF", titular.costoUf)}
+    <div class="row">
+      <span class="bullet">•</span>
+      <span class="label">ANUALIDAD</span>
+      <span class="dots">:</span>
+      <div class="inline-opts">
+        ${check("SI", titular.anualidadSi)}
+        ${check("NO", titular.anualidadNo)}
+      </div>
+    </div>
+    <div class="row">
+      <span class="bullet">•</span>
+      <span class="label">SEGURO COMPL</span>
+      <span class="dots">:</span>
+      <div class="inline-opts">
+        ${check("SI", titular.seguroComplSi)}
+        ${check("NO", titular.seguroComplNo)}
+      </div>
+    </div>
+    <div class="row">
+      <span class="bullet">•</span>
+      <span class="label">MOTIVO A COTIZAR?</span>
+    </div>
+    <div class="inline-opts">
+      ${check("BAJAR COSTOS", titular.motivoBajarCostos)}
+      ${check("MALA EXPERIENCIA", titular.motivoMalaExperiencia)}
+      ${check("COBERTURAS", titular.motivoCoberturas)}
+    </div>
+    ${line("OTROS MOTIVOS", titular.otrosMotivos)}
+  </div>`;
+}
 
 export function buildProtocoloZoomHtml(data: ProtocoloZoomData): string {
   const quoteRows = data.cotizaciones
@@ -378,6 +557,8 @@ export function buildProtocoloZoomHtml(data: ProtocoloZoomData): string {
     .map((note) => `<div class="note-line">${escapeHtml(note)}</div>`)
     .join("");
 
+  const titularBlocks = data.titulares.map((titular) => renderTitularBlock(titular)).join("");
+
   return `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -393,47 +574,7 @@ export function buildProtocoloZoomHtml(data: ProtocoloZoomData): string {
       <div class="field">EJECUTIVA:<span class="line">${escapeHtml(data.ejecutiva)}</span></div>
     </div>
 
-    <div class="section-title">DATOS CLIENTE</div>
-    ${line("NOMBRE", data.nombre)}
-    ${line("CELULAR", data.celular)}
-    ${line("CORREO", data.correo)}
-    ${line("EDAD", data.edad)}
-    ${line("RUT", data.rut)}
-    ${line("RUT EMPLEADOR", data.rutEmpleador)}
-    ${line("CARGAS / EDADES", data.cargasEdades)}
-    ${line("CLÍNICA PREF", data.clinicaPref)}
-    ${line("PREEXISTENCIA", data.preexistencia)}
-    ${line("RENTA IMPONIBLE", data.rentaImponible)}
-    ${line("ISAPRE ACTUAL / FONASA", data.isapreActual)}
-    ${line("COSTO UF", data.costoUf)}
-    <div class="row">
-      <span class="bullet">•</span>
-      <span class="label">ANUALIDAD</span>
-      <span class="dots">:</span>
-      <div class="inline-opts">
-        ${check("SI", data.anualidadSi)}
-        ${check("NO", data.anualidadNo)}
-      </div>
-    </div>
-    <div class="row">
-      <span class="bullet">•</span>
-      <span class="label">SEGURO COMPL</span>
-      <span class="dots">:</span>
-      <div class="inline-opts">
-        ${check("SI", data.seguroComplSi)}
-        ${check("NO", data.seguroComplNo)}
-      </div>
-    </div>
-    <div class="row">
-      <span class="bullet">•</span>
-      <span class="label">MOTIVO A COTIZAR?</span>
-    </div>
-    <div class="inline-opts">
-      ${check("BAJAR COSTOS", data.motivoBajarCostos)}
-      ${check("MALA EXPERIENCIA", data.motivoMalaExperiencia)}
-      ${check("COBERTURAS", data.motivoCoberturas)}
-    </div>
-    ${line("OTROS MOTIVOS", data.otrosMotivos)}
+    ${titularBlocks}
 
     <div class="meta">
       ZOOM: IP1<span class="line">${escapeHtml(data.zoomIp1)}</span>

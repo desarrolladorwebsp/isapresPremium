@@ -10,6 +10,7 @@ import { ClinicsPanel } from "@/components/admin/clinics-panel";
 import { CompanyAgreementsPanel } from "@/components/admin/company-agreements-panel";
 import { GesPanel } from "@/components/admin/ges-panel";
 import { PlansAndPdfsAdminView } from "@/components/admin/plans-and-pdfs-admin-view";
+import { AdminReportsView } from "@/components/admin/admin-reports-view";
 import { UsersPanel } from "@/components/admin/users-panel";
 import { ExecutiveAdminProspectsView } from "@/components/executive/admin/executive-admin-prospects-view";
 import { ExecutiveClientsPanel } from "@/components/executive/executive-clients-panel";
@@ -227,6 +228,10 @@ function ExecutiveDashboardContent() {
 
         {section === "convenios" && canAccessSection("convenios") ? (
           <CompanyAgreementsPanel onNotify={notify} />
+        ) : null}
+
+        {section === "reportes" && canAccessSection("reportes") ? (
+          <AdminReportsView />
         ) : null}
 
         {section === "perfil" && canAccessSection("perfil") ? (

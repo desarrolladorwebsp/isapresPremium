@@ -1461,6 +1461,7 @@ export function ExecutiveClientsPanel({
                       <ClientPlanSummary
                         requestedPlan={client.requestedPlan}
                         advisedPlan={client.advisedPlan}
+                        assignedPlans={client.assignedPlans}
                         compact
                       />
                     </div>

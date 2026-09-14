@@ -40,11 +40,13 @@ import {
 import { staffCotizadorClientHref } from "@/lib/staff/staff-sections";
 import {
   buildEmptyAdditionalTitular,
+  buildEmptyClientProfile,
   buildEmptyDependent,
   calculateAgeFromBirthDate,
   CLIENT_MOTIVO_COTIZACION_OPTIONS,
   motivoCotizacionIncludes,
   motivoCotizacionIncludesOtros,
+  PRINCIPAL_TITULAR_ID,
   toggleMotivoCotizacionId,
 } from "@/lib/client-profile/constants";
 import {
@@ -67,7 +69,7 @@ import type {
 } from "@/types/client-profile";
 import type { UserRecord } from "@/types/user";
 
-const PRINCIPAL_MEMBER_ID = "titular-principal";
+const PRINCIPAL_MEMBER_ID = PRINCIPAL_TITULAR_ID;
 
 function formatShortDate(value: string | null | undefined): string {
   if (!value) return "—";
@@ -508,7 +510,31 @@ export function ClientProtocoloFlowView({
 
   function handleAddCarga() {
     if (!canEdit) return;
-    const next = buildEmptyDependent();
+    const titularIdForCarga = (() => {
+      if (selectedMemberId === PRINCIPAL_MEMBER_ID) return PRINCIPAL_TITULAR_ID;
+      if (
+        profileForm.additionalTitulares.some(
+          (titular) => titular.id === selectedMemberId,
+        )
+      ) {
+        return selectedMemberId;
+      }
+      const selectedCarga = profileForm.dependents.find(
+        (dependent) => dependent.id === selectedMemberId,
+      );
+      const fromCarga = selectedCarga?.titularId?.trim();
+      if (
+        fromCarga &&
+        (fromCarga === PRINCIPAL_TITULAR_ID ||
+          profileForm.additionalTitulares.some(
+            (titular) => titular.id === fromCarga,
+          ))
+      ) {
+        return fromCarga;
+      }
+      return PRINCIPAL_TITULAR_ID;
+    })();
+    const next = buildEmptyDependent(titularIdForCarga);
     onProfileChange((current) => ({
       ...current,
       dependents: [...current.dependents, next],
@@ -540,6 +566,11 @@ export function ClientProtocoloFlowView({
           ...current,
           additionalTitulares: current.additionalTitulares.filter(
             (titular) => titular.id !== memberId,
+          ),
+          dependents: current.dependents.map((dependent) =>
+            dependent.titularId === memberId
+              ? { ...dependent, titularId: PRINCIPAL_TITULAR_ID }
+              : dependent,
           ),
         };
       }
@@ -1005,7 +1036,44 @@ export function ClientProtocoloFlowView({
       </AdminFormModal>
 
       <ClientFichaPdfModal
-        client={client}
+        client={{
+          ...client,
+          phone: profileForm.phone || client.phone,
+          email: profileForm.email || client.email,
+          rut: profileForm.rut || client.rut,
+          clientProfile: {
+            ...(client.clientProfile ?? buildEmptyClientProfile()),
+            firstNames: profileForm.firstNames,
+            lastNames: profileForm.lastNames,
+            birthDate: profileForm.birthDate,
+            age: profileForm.age,
+            currentIsapre: profileForm.currentIsapre,
+            currentPlanPrice: profileForm.currentPlanPrice,
+            currentPlanPriceCurrency: profileForm.currentPlanPriceCurrency,
+            voluntaryAdditional: profileForm.voluntaryAdditional,
+            voluntaryAdditionalCurrency:
+              profileForm.voluntaryAdditionalCurrency,
+            heightCm: profileForm.heightCm,
+            weightKg: profileForm.weightKg,
+            maritalStatus: profileForm.maritalStatus,
+            employerRut: profileForm.employerRut,
+            contributorType: profileForm.contributorType,
+            rentaImponible: profileForm.rentaImponible,
+            motivoCotizacion: profileForm.motivoCotizacion,
+            motivoCotizacionOther: profileForm.motivoCotizacionOther,
+            address: profileForm.address,
+            commune: profileForm.commune,
+            coverageArea: profileForm.coverageArea,
+            coverageRegionId: profileForm.coverageRegionId,
+            preferredClinics: profileForm.preferredClinics,
+            anualidad: profileForm.anualidad,
+            anualidadComment: profileForm.anualidadComment,
+            segurosComplementarios: profileForm.segurosComplementarios,
+            preexistenciasMedicas: profileForm.preexistenciasMedicas,
+            dependents: profileForm.dependents,
+            additionalTitulares: profileForm.additionalTitulares,
+          },
+        }}
         open={fichaPdfOpen}
         onClose={() => setFichaPdfOpen(false)}
         onNotify={onNotify}

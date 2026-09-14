@@ -10,6 +10,11 @@ export interface ClientDependentProfile {
   weightKg: string;
   /** Preexistencias médicas (texto libre). */
   preexistenciasMedicas: string;
+  /**
+   * Titular al que pertenece la carga.
+   * Vacío / ausente / `titular-principal` = titular de la cuenta.
+   */
+  titularId?: string;
 }
 
 /** Moneda del monto ingresado en perfil (UF o pesos chilenos). */

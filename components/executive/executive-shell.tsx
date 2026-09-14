@@ -60,6 +60,11 @@ const SECTION_LABELS: Record<
     shortLabel: "Convenios",
     adminOnly: true,
   },
+  reportes: {
+    label: "Reportes",
+    shortLabel: "Reportes",
+    adminOnly: true,
+  },
   perfil: { label: "Perfil", shortLabel: "Perfil" },
 };
 
@@ -152,6 +157,11 @@ const SECTION_ICONS: Record<StaffSection, ReactNode> = {
       <path d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2" strokeLinecap="round" />
       <rect x="4" y="7" width="16" height="14" rx="2" />
       <path d="M9 12h6M9 16h4" strokeLinecap="round" />
+    </NavIcon>
+  ),
+  reportes: (
+    <NavIcon>
+      <path d="M4 19V9M10 19V5M16 19v-7M22 19H2" strokeLinecap="round" />
     </NavIcon>
   ),
   perfil: (

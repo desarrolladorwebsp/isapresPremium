@@ -59,6 +59,7 @@ La membresía es para usuarios externos: no reciben asignación de clientes ni a
 - **Recibir clientes asignados** como destino operativo (misma elegibilidad que Ejecutivo Isapres Premium y Zoom en redirects y round-robin).
 - **Asignar una cotización** (`Quote`) a un ejecutivo o administrador.
 - **Invitar usuarios** admin, ejecutivo o membresía desde Usuarios.
+- Ver **Reportes** en el menú Equipo (pipeline, cumplimiento de gestiones y primer contacto).
 
 ### Flujo de alta de usuarios (solo admin)
 

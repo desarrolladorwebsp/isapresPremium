@@ -165,7 +165,12 @@ function createLocalId(prefix: string): string {
     : `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-export function buildEmptyDependent(): ClientDependentProfile {
+/** Id sintético del titular de la cuenta (no es un additionalTitular). */
+export const PRINCIPAL_TITULAR_ID = "titular-principal";
+
+export function buildEmptyDependent(
+  titularId: string = PRINCIPAL_TITULAR_ID,
+): ClientDependentProfile {
   return {
     id: createLocalId("dep"),
     fullName: "",
@@ -175,6 +180,7 @@ export function buildEmptyDependent(): ClientDependentProfile {
     heightCm: "",
     weightKg: "",
     preexistenciasMedicas: "",
+    titularId,
   };
 }
 
@@ -438,6 +444,7 @@ export function resolveClientProfile(
             age?: string;
             fullName?: string;
             preexistenciasMedicas?: string;
+            titularId?: string;
           };
           return {
             ...dependent,
@@ -449,6 +456,10 @@ export function resolveClientProfile(
             preexistenciasMedicas:
               typeof rawDependent.preexistenciasMedicas === "string"
                 ? rawDependent.preexistenciasMedicas
+                : "",
+            titularId:
+              typeof rawDependent.titularId === "string"
+                ? rawDependent.titularId
                 : "",
           };
         })
@@ -591,6 +602,7 @@ export function normalizeClientProfileInput(
       heightCm: dependent.heightCm.trim(),
       weightKg: dependent.weightKg.trim(),
       preexistenciasMedicas: (dependent.preexistenciasMedicas ?? "").trim(),
+      titularId: (dependent.titularId ?? "").trim(),
     };
   });
 

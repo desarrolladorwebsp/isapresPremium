@@ -11,6 +11,7 @@ export type StaffSection =
   | "ges"
   | "reportes-pdf"
   | "convenios"
+  | "reportes"
   | "perfil";
 
 export const STAFF_SECTION_QUERY = "section";
@@ -67,6 +68,7 @@ export const STAFF_ADMIN_SECTIONS: StaffSection[] = [
   "ges",
   "reportes-pdf",
   "convenios",
+  "reportes",
 ];
 
 /** Ejecutivo Isapres Premium. */

@@ -280,6 +280,7 @@ export function ClientPortfolioCard({
               <ClientPlanSummary
                 requestedPlan={client.requestedPlan}
                 advisedPlan={client.advisedPlan}
+                assignedPlans={client.assignedPlans}
                 compact
               />
             </div>

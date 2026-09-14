@@ -63,6 +63,8 @@ export function parseClientProfilePayload(payload: unknown): ClientProfileInput 
               typeof dependent.preexistenciasMedicas === "string"
                 ? dependent.preexistenciasMedicas
                 : "",
+            titularId:
+              typeof dependent.titularId === "string" ? dependent.titularId : "",
           };
         })
     : [];
