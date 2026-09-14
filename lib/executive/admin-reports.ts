@@ -5,9 +5,9 @@ import {
 import { isZoomScheduledMeeting } from "@/lib/client-pipeline/agenda-stats";
 import {
   CLIENT_PIPELINE_STATUS_OPTIONS,
-  type ClientPipelineStatus,
 } from "@/lib/client-pipeline/constants";
 import { ADMIN_EXECUTIVE_FILTER_UNASSIGNED } from "@/lib/executive/dashboard-executive-filter";
+import type { ClientPipelineStatus } from "@/types/client-pipeline";
 import type { UserRecord } from "@/types/user";
 
 export type AdminReportPeriod =
