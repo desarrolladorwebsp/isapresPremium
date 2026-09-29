@@ -104,7 +104,7 @@ Cápsula «Cotización» en la ficha. No reemplaza a `Quote`.
 |---------|--------|
 | Crear documento con 1 a 3 planes ya agregados a la propuesta | `POST …/quotations`, `lib/api/client-quotation-store.ts` |
 | Estados borrador, enviada, recepcionada, aceptada, rechazada, anulada | `ClientQuotationStatus`; rechazo y anulación piden motivo |
-| PDF formal | `GET …/quotations/[quotationId]/pdf`, `lib/client-quotation/pdf.ts` |
+| PDF formal | `GET …/quotations/[quotationId]/pdf`, `lib/client-quotation/pdf.ts`. Al final incluye una nota discreta: los planes pueden cambiar y el equipo mantiene el catálogo al día |
 | Envío por email (Resend) o WhatsApp (`wa.me` + descarga del PDF) | `POST …/quotations/[quotationId]/send`, `lib/email/send-client-quotation.ts` |
 | Historial auditable | `ClientQuotationActivity` |
 | KPI de enviadas, recepcionadas, aceptadas y rechazadas | Inicio y Reportes. Enviadas por `sentAt` (siguen contando si cambian de estado). Las otras tres cuentan el estado actual y la fecha de ese cambio. Borrador y anulada no entran. Una cotización cuenta una vez si incluye al menos una isapre del filtro. No mide `Quote` |

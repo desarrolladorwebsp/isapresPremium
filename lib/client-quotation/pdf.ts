@@ -257,6 +257,14 @@ export async function buildClientQuotationPdf(source: QuotationPdfSource): Promi
       detailPage.drawText("PDF oficial no disponible en el catálogo.", { x: 42, y: 150, size: 9, font: bold, color: muted });
     }
     detailPage.drawText("El PDF oficial contiene el detalle contractual completo de beneficios, topes, prestadores y condiciones del plan.", { x: 42, y: 78, size: 8.5, font: regular, color: muted });
+    if (index === plans.length - 1) {
+      drawWrapped(
+        detailPage,
+        regular,
+        "Nota. Los planes de salud pueden actualizar precios, coberturas o vigencia. Nuestro equipo trabaja para mantener esta información al día y, si un plan deja de estar disponible, tu ejecutivo te lo confirmará antes de continuar.",
+        { x: 42, y: 62, size: 7.5, maxWidth: 500, color: muted, lineHeight: 9 },
+      );
+    }
     detailPage.drawText(`${source.number} · Isapres Premium`, { x: 42, y: 30, size: 8.5, font: bold, color: navy });
     detailPage.drawText(`Página ${index + 2}`, { x: 500, y: 30, size: 8, font: regular, color: muted });
   }
