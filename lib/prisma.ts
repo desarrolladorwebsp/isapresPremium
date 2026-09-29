@@ -12,6 +12,8 @@ const REQUIRED_DELEGATES = [
   "staffInvite",
   "quoteActivity",
   "clientActivity",
+  "clientQuotation",
+  "clientQuotationActivity",
   "planReview",
   "companyAgreement",
   "calendlyBooking",

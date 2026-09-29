@@ -14,6 +14,9 @@ const ACTIVITY_LABELS: Record<ClientActivityType, string> = {
   ADVISED_PLAN_CLEARED: "Plan elegido removido",
   PLAN_ASSIGNED: "Plan agregado",
   PLAN_UNASSIGNED: "Plan eliminado",
+  QUOTATION_CREATED: "Cotización creada",
+  QUOTATION_SENT: "Cotización compartida",
+  QUOTATION_STATUS_CHANGED: "Estado de cotización",
 };
 
 const ACTIVITY_TONES: Record<ClientActivityType, string> = {
@@ -21,6 +24,9 @@ const ACTIVITY_TONES: Record<ClientActivityType, string> = {
   ADVISED_PLAN_CLEARED: "bg-amber-500/10 text-amber-800",
   PLAN_ASSIGNED: "bg-emerald-500/10 text-emerald-800",
   PLAN_UNASSIGNED: "bg-rose-500/10 text-rose-800",
+  QUOTATION_CREATED: "bg-sky-500/10 text-sky-800",
+  QUOTATION_SENT: "bg-cyan-500/10 text-cyan-800",
+  QUOTATION_STATUS_CHANGED: "bg-violet-500/10 text-violet-800",
 };
 
 export interface ClientPlanHistoryTimelineProps {

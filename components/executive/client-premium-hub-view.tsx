@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { ClientFichaCapsule } from "@/components/executive/client-ficha-capsule";
+import { ClientQuotationManager } from "@/components/executive/client-quotation-manager";
 import type { ClientProfileFormValue } from "@/components/executive/client-profile-form";
 import { isValidRut } from "@/lib/auth/rut";
 import { resolveClientChecklist } from "@/lib/client-pipeline/constants";
@@ -665,6 +666,7 @@ export function ClientPremiumExecutiveCapsules({
         ctaLabel={canEdit ? "Gestionar archivos" : "Ver archivos"}
         onClick={() => onOpenModal("docs")}
       />
+      <ClientQuotationManager client={client} canEdit={canManagePlans} />
     </div>
   );
 }

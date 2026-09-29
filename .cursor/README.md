@@ -23,18 +23,13 @@ Fuente de verdad de **dónde** vive cada tipo de instrucción. No dupliques el m
 
 ## Skills del proyecto
 
-Carpeta: `.cursor/skills/`.
+Carpeta: `.cursor/skills/<nombre>/SKILL.md`.
 
-Por ahora no hay skills de proyecto (la regla + `AGENTS.md` + `docs/` cubren el dominio). Cuando agregues una:
+| Skill | Cuándo |
+|-------|--------|
+| `feature-registry` | Antes de implementar o extender producto (cotizador, CRM, cotizaciones, planes, leads, staff, emails, API pública). Consulta `FEATURES.md` y `PLANS.md` y actualízalos al cerrar el cambio. |
 
-```
-.cursor/skills/
-  mi-workflow/
-    SKILL.md          # obligatorio
-    reference.md      # opcional
-```
-
-Requisitos: `name` + `description` (qué + cuándo), cuerpo corto, detalles en `docs/` o `reference.md`.
+Al agregar otra skill: `name` + `description` (qué y cuándo), cuerpo corto, detalle largo en `docs/` o `reference.md`. El inventario de funciones no va en el skill: vive en `FEATURES.md`.
 
 ## Anti-patrones
 

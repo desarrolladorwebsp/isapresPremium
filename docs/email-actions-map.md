@@ -1,3 +1,5 @@
+> **Rutas vigentes:** los módulos de correo están en `lib/email/` (no en `src/lib/email/`). Inventario de envíos: [`FEATURES.md`](../FEATURES.md).
+
 # Mapa de correos electrónicos — Cotizador Premium
 
 Proveedor: **[Resend](https://resend.com)** (`resend` npm package).

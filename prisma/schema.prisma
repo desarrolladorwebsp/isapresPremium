@@ -29,11 +29,32 @@ enum QuoteActivityType {
   DISTRIBUTED
 }
 
+enum ClientQuotationStatus {
+  DRAFT
+  SENT
+  RECEIVED
+  ACCEPTED
+  REJECTED
+  VOIDED
+}
+
+enum ClientQuotationActivityType {
+  CREATED
+  PDF_DOWNLOADED
+  EMAIL_SENT
+  EMAIL_FAILED
+  WHATSAPP_OPENED
+  STATUS_CHANGED
+}
+
 enum ClientActivityType {
   PLAN_CHANGED
   ADVISED_PLAN_CLEARED
   PLAN_ASSIGNED
   PLAN_UNASSIGNED
+  QUOTATION_CREATED
+  QUOTATION_SENT
+  QUOTATION_STATUS_CHANGED
 }
 
 enum StaffRole {
@@ -207,6 +228,76 @@ model ClientAssignedPlan {
   @@map("client_assigned_plans")
 }
 
+/// Cotización comercial formal emitida por un ejecutivo a un cliente.
+/// Es independiente de Quote, que representa el lead del cotizador público.
+model ClientQuotation {
+  id                String                    @id @default(cuid())
+  number            String                    @unique
+  clientId          String                    @map("client_id")
+  executiveId       String                    @map("executive_id")
+  status            ClientQuotationStatus     @default(DRAFT)
+  version           Int                       @default(1)
+  clientSnapshot    Json                      @map("client_snapshot")
+  executiveSnapshot Json                      @map("executive_snapshot")
+  validUntil        DateTime?                 @map("valid_until")
+  issuedAt          DateTime?                 @map("issued_at")
+  sentAt            DateTime?                 @map("sent_at")
+  receivedAt        DateTime?                 @map("received_at")
+  acceptedAt        DateTime?                 @map("accepted_at")
+  rejectedAt        DateTime?                 @map("rejected_at")
+  voidedAt          DateTime?                 @map("voided_at")
+  outcomeReason     String?                   @map("outcome_reason")
+  createdAt         DateTime                  @default(now()) @map("created_at")
+  updatedAt         DateTime                  @updatedAt @map("updated_at")
+  client            User                      @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  executive         StaffAccount              @relation(fields: [executiveId], references: [id], onDelete: Restrict)
+  items             ClientQuotationItem[]
+  activities        ClientQuotationActivity[]
+
+  @@index([clientId, createdAt])
+  @@index([executiveId, createdAt])
+  @@index([executiveId, status, createdAt])
+  @@index([status, createdAt])
+  @@map("client_quotations")
+}
+
+/// Snapshot inmutable de cada plan incluido en la cotización (máximo 3 validado por servidor).
+model ClientQuotationItem {
+  id           String          @id @default(cuid())
+  quotationId  String          @map("quotation_id")
+  planCode     String          @map("plan_code")
+  position     Int
+  planSnapshot Json            @map("plan_snapshot")
+  createdAt    DateTime        @default(now()) @map("created_at")
+  quotation    ClientQuotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+
+  @@unique([quotationId, planCode])
+  @@unique([quotationId, position])
+  @@index([planCode])
+  @@map("client_quotation_items")
+}
+
+/// Eventos de cotización: fuente auditable para historial, seguimiento y KPI.
+model ClientQuotationActivity {
+  id            String                      @id @default(cuid())
+  quotationId   String                      @map("quotation_id")
+  activityType  ClientQuotationActivityType @map("activity_type")
+  actorId       String?                     @map("actor_id")
+  actorName     String?                     @map("actor_name")
+  channel       String?
+  previousValue String?                     @map("previous_value")
+  newValue      String?                     @map("new_value")
+  description   String?
+  metadata      Json?
+  createdAt     DateTime                    @default(now()) @map("created_at")
+  quotation     ClientQuotation             @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+
+  @@index([quotationId, createdAt])
+  @@index([actorId, activityType, createdAt])
+  @@index([activityType, createdAt])
+  @@map("client_quotation_activities")
+}
+
 model CoverageEntry {
   id         String @id @default(cuid())
   clinicId   String @map("clinic_id")
@@ -271,6 +362,7 @@ model User {
   trackingExecutive      StaffAccount?        @relation("TrackingClients", fields: [trackingExecutiveId], references: [id], onDelete: SetNull)
   advisedPlan            Plan?                @relation("AdvisedPlans", fields: [advisedPlanCode], references: [uniqueCode], onDelete: SetNull)
   assignedPlans          ClientAssignedPlan[]
+  commercialQuotations   ClientQuotation[]
 
   @@index([role])
   @@index([assignedExecutiveId])
@@ -378,6 +470,7 @@ model StaffAccount {
   registeredClients       User[]               @relation("RegisteredClients")
   trackingClients         User[]               @relation("TrackingClients")
   uploadedClientDocuments ClientDocument[]     @relation("UploadedClientDocuments")
+  commercialQuotations    ClientQuotation[]
   passwordResetTokens     PasswordResetToken[]
 
   @@index([role])

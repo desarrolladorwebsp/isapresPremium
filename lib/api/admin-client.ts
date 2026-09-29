@@ -21,6 +21,7 @@ import type {
   UpdateStaffAccountInput,
 } from "@/types/staff-account";
 import type { UserRecord } from "@/types/user";
+import type { SentQuotationKpiRow } from "@/lib/executive/sent-quotation-kpi";
 import type { CalendarCallEvent } from "@/types/calendar";
 
 async function parseJsonResponse<T>(response: Response): Promise<T> {
@@ -91,6 +92,11 @@ export async function fetchQuotes(): Promise<QuoteRecord[]> {
 export async function fetchExecutiveClients(): Promise<UserRecord[]> {
   const response = await fetch("/api/executive/clients");
   return parseJsonResponse<UserRecord[]>(response);
+}
+
+export async function fetchSentQuotations(): Promise<SentQuotationKpiRow[]> {
+  const response = await fetch("/api/executive/sent-quotations");
+  return parseJsonResponse<SentQuotationKpiRow[]>(response);
 }
 
 export async function fetchCalendarCallEvents(input: {

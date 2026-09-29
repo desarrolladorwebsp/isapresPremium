@@ -19,8 +19,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { useStaffSession } from "@/hooks/use-auth-session";
+import { IsapreMultiFilter } from "@/components/executive/isapre-multi-filter";
 import { useExecutiveAccountsQuery } from "@/hooks/query/use-executive-accounts-query";
 import { useExecutiveClientsQuery } from "@/hooks/query/use-executive-clients-query";
+import { useSentQuotationsQuery } from "@/hooks/query/use-sent-quotations-query";
 import {
   CLIENT_PIPELINE_STATUS_LABELS,
   CLIENT_PIPELINE_STATUS_OPTIONS,
@@ -32,6 +34,10 @@ import {
   isValidReportPeriod,
   type AdminReportPeriod,
 } from "@/lib/executive/admin-reports";
+import {
+  buildSentQuotationReport,
+  sentQuotationIsapreOptions,
+} from "@/lib/executive/sent-quotation-kpi";
 import {
   ADMIN_EXECUTIVE_FILTER_UNASSIGNED,
   buildAdminExecutiveFilterOptions,
@@ -189,6 +195,7 @@ export function AdminReportsView() {
   const { isAdmin } = useStaffSession();
   const clientsQuery = useExecutiveClientsQuery({ enabled: isAdmin });
   const executivesQuery = useExecutiveAccountsQuery({ enabled: isAdmin });
+  const quotationsQuery = useSentQuotationsQuery({ enabled: isAdmin });
 
   const todayKey = santiagoDateKey(new Date()) ?? "";
   const [dateMode, setDateMode] = useState<"month" | "range">("month");
@@ -202,6 +209,7 @@ export function AdminReportsView() {
   );
   const [executivePickerOpen, setExecutivePickerOpen] = useState(false);
   const [executiveQuery, setExecutiveQuery] = useState("");
+  const [selectedIsapreIds, setSelectedIsapreIds] = useState<string[]>([]);
 
   const executiveOptions = useMemo(() => {
     const options = buildAdminExecutiveFilterOptions({
@@ -255,6 +263,36 @@ export function AdminReportsView() {
     executiveNames,
   ]);
 
+  const quotationReport = useMemo(() => {
+    const nextPeriod = periodFromState({
+      mode: dateMode,
+      monthKey: selectedMonth,
+      fromDay,
+      toDay,
+    });
+    if (!isValidReportPeriod(nextPeriod)) return null;
+    return buildSentQuotationReport({
+      quotations: quotationsQuery.data ?? [],
+      period: nextPeriod,
+      selectedExecutiveIds,
+      selectedIsapreIds,
+      executiveNames,
+    });
+  }, [
+    quotationsQuery.data,
+    dateMode,
+    selectedMonth,
+    fromDay,
+    toDay,
+    selectedExecutiveIds,
+    selectedIsapreIds,
+    executiveNames,
+  ]);
+  const isapreOptions = useMemo(
+    () => sentQuotationIsapreOptions(quotationsQuery.data ?? []),
+    [quotationsQuery.data],
+  );
+
   const periodOk = isValidReportPeriod(
     periodFromState({
       mode: dateMode,
@@ -264,6 +302,8 @@ export function AdminReportsView() {
     }),
   );
   const loading = clientsQuery.isLoading && !clientsQuery.data;
+  const loadingQuotations =
+    quotationsQuery.isLoading && !quotationsQuery.data;
   const allSelected = selectedExecutiveIds.length === 0;
   const selectedLabel = allSelected
     ? "Todos los ejecutivos"
@@ -310,10 +350,15 @@ export function AdminReportsView() {
         actions={
           <AdminRefreshButton
             compactMobile
-            loading={clientsQuery.isFetching || executivesQuery.isFetching}
+            loading={
+              clientsQuery.isFetching ||
+              executivesQuery.isFetching ||
+              quotationsQuery.isFetching
+            }
             onClick={() => {
               void clientsQuery.refetch();
               void executivesQuery.refetch();
+              void quotationsQuery.refetch();
             }}
           />
         }
@@ -704,6 +749,94 @@ export function AdminReportsView() {
                   </AdminTableCell>
                   <AdminTableCell align="right">
                     {reports.totals.newWithoutGestion}
+                  </AdminTableCell>
+                </AdminTableRow>
+              ) : null}
+            </AdminTableBody>
+          </AdminTable>
+        </AdminTableCard>
+      </ReportSection>
+
+      <ReportSection
+        title="Cotizaciones"
+        description="Enviadas según la fecha de envío. Recepcionadas, aceptadas y rechazadas según el día en que quedaron en ese estado. El filtro de isapre aplica a las cuatro columnas: el documento cuenta una vez si incluye al menos una isapre elegida."
+      >
+        <div className="max-w-sm">
+          <IsapreMultiFilter
+            options={isapreOptions}
+            selectedIds={selectedIsapreIds}
+            onChange={setSelectedIsapreIds}
+          />
+        </div>
+        {quotationsQuery.isError ? (
+          <p className="text-xs text-danger">
+            No se pudieron cargar las cotizaciones enviadas.
+          </p>
+        ) : null}
+        <AdminTableCard
+          loading={loadingQuotations}
+          empty={
+            !loadingQuotations &&
+            periodOk &&
+            (quotationReport?.rows.length ?? 0) === 0
+          }
+          emptyTitle="Sin cotizaciones en este período"
+          emptyDescription="Prueba otro período, ejecutivo o isapre."
+          loadingMessage="Cargando cotizaciones…"
+          footer={
+            quotationReport
+              ? `${quotationReport.total} enviadas, ${quotationReport.receivedTotal} recepcionadas, ${quotationReport.acceptedTotal} aceptadas y ${quotationReport.rejectedTotal} rechazadas.`
+              : undefined
+          }
+        >
+          <AdminTable minWidth="40rem">
+            <AdminTableHead>
+              <AdminTableRow>
+                <AdminTableHeaderCell>Ejecutivo</AdminTableHeaderCell>
+                <AdminTableHeaderCell align="right">
+                  Enviadas
+                </AdminTableHeaderCell>
+                <AdminTableHeaderCell align="right">
+                  Recepcionadas
+                </AdminTableHeaderCell>
+                <AdminTableHeaderCell align="right">
+                  Aceptadas
+                </AdminTableHeaderCell>
+                <AdminTableHeaderCell align="right">
+                  Rechazadas
+                </AdminTableHeaderCell>
+              </AdminTableRow>
+            </AdminTableHead>
+            <AdminTableBody>
+              {(quotationReport?.rows ?? []).map((row) => (
+                <AdminTableRow key={row.executiveId}>
+                  <AdminTableCell>{row.executiveName}</AdminTableCell>
+                  <AdminTableCell align="right">{row.sentCount}</AdminTableCell>
+                  <AdminTableCell align="right">
+                    {row.receivedCount}
+                  </AdminTableCell>
+                  <AdminTableCell align="right">
+                    {row.acceptedCount}
+                  </AdminTableCell>
+                  <AdminTableCell align="right">
+                    {row.rejectedCount}
+                  </AdminTableCell>
+                </AdminTableRow>
+              ))}
+              {quotationReport && quotationReport.rows.length > 0 ? (
+                <AdminTableRow className="bg-bg-layout/60 font-semibold">
+                  <AdminTableCell>Total</AdminTableCell>
+                  <AdminTableCell align="right">
+                    {quotationReport.total}
+                  </AdminTableCell>
+                  <AdminTableCell align="right">
+                    {quotationReport.receivedTotal}
+                  </AdminTableCell>
+                  <AdminTableCell align="right">
+                    {quotationReport.acceptedTotal}
+                  </AdminTableCell>
+                  <AdminTableCell align="right">
+                    {quotationReport.rejectedTotal}
                   </AdminTableCell>
                 </AdminTableRow>
               ) : null}

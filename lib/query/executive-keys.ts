@@ -21,4 +21,6 @@ export const executiveKeys = {
 
   executiveAccounts: () =>
     [...executiveKeys.all, "executive-accounts"] as const,
+
+  sentQuotations: () => [...executiveKeys.all, "sent-quotations"] as const,
 } as const;

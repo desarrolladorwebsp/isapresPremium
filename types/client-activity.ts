@@ -2,7 +2,10 @@ export type ClientActivityType =
   | "PLAN_CHANGED"
   | "ADVISED_PLAN_CLEARED"
   | "PLAN_ASSIGNED"
-  | "PLAN_UNASSIGNED";
+  | "PLAN_UNASSIGNED"
+  | "QUOTATION_CREATED"
+  | "QUOTATION_SENT"
+  | "QUOTATION_STATUS_CHANGED";
 
 export type ClientActivityActorRealm = "admin" | "executive" | "system";
 

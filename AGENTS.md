@@ -6,59 +6,46 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 # Isapres Premium — guía para agentes
 
-Este repo es el **motor del cotizador** + marketing de isaprespremium.cl.
+Motor del cotizador y sitio marketing de **isaprespremium.cl** (Next.js 16, App Router). El código vive en la raíz: `app/`, `components/`, `lib/`, `domain/`, `prisma/`. No hay carpeta `src/`.
 
-## Docs de producto / API (léelos antes de integrar)
+Antes de agregar comportamiento de producto, lee `FEATURES.md` (ya implementado) y `PLANS.md` (trabajo abierto). Skill: `.cursor/skills/feature-registry/SKILL.md`.
 
-- `docs/PUBLIC-API-LEADS-CLIENTS.md` — cómo registrar leads como clientes (`POST /api/public/v1/clients`, formulario `/api/leads`)
-- `docs/WIDGET-INTEGRATION.md` — widget embed
-- `docs/ROLES-AND-PERMISSIONS.md` — permisos staff
-- `README.md` — overview y deploy
+## Dónde vive cada instrucción
 
-Regla Cursor relacionada: `.cursor/rules/public-api-leads-clients.mdc`.
+| Qué | Dónde |
+|-----|--------|
+| Inventario de lo ya construido | `FEATURES.md` |
+| Trabajo abierto / no reabrir | `PLANS.md` |
+| Overview y deploy | `README.md` |
+| Leads → clientes | `docs/PUBLIC-API-LEADS-CLIENTS.md` + regla `.cursor/rules/public-api-leads-clients.mdc` |
+| Widget | `docs/WIDGET-INTEGRATION.md` |
+| Roles staff | `docs/ROLES-AND-PERMISSIONS.md` |
+| Convención rules vs skills | `.cursor/README.md` |
 
-Convención de agentes: ver `.cursor/README.md` (rules vs skills; no usar `skills-cursor` ni `.agents/skills`).
+No uses `~/.cursor/skills-cursor/` ni `.agents/skills/`.
+
+`docs/ARCHITECTURE-COTIZADOR-PREMIUM.md`, `docs/WIDGET-INTEGRATION.md` y `docs/email-actions-map.md` conservan el host y las rutas de la migración (`cotizadorpremium.cl`, `src/`). El host del motor es `isaprespremium.cl`. Contrasta esas guías con `FEATURES.md` antes de seguir un checklist de fases.
+
+## Dos “cotizaciones” distintas
+
+- `Quote` — lead del cotizador público (`/api/quotes`, sección Equipo → Cotizaciones).
+- `ClientQuotation` — documento comercial de la ficha (1–3 planes ya asignados, PDF, email, WhatsApp). API: `/api/executive/clients/[id]/quotations`.
+
+No unifiques esos modelos.
+
+## Motor de precios
+
+No reescribas el cálculo Isapre. Punto de entrada: `domain/index.ts`. Implementación: `lib/plan-final-price.ts`, `lib/risk-factor-table-604.ts`, `lib/isapre-pricing-rules.ts`. El admin edita catálogo (precio base UF, coberturas, GES), no la fórmula.
 
 ## Codebase Memory MCP
 
-**MANDATORY: use Codebase Memory MCP graph tools FIRST — before reading files or making code changes.**
+Si el namespace MCP de Codebase Memory está conectado, úsalo antes de leer archivos o editar código.
 
-This rule applies to every request involving this codebase.
+1. Descubre el namespace con las herramientas dinámicas de Cursor (no asumas el prefijo `mcp_codebase-memo_`).
+2. `list_projects`, luego `get_architecture` con el `display_name` o `name` devuelto.
+3. `search_graph` / `trace_call_path` para símbolos; `get_code_snippet` para una función.
+4. Lee el archivo solo cuando necesites el texto exacto para editar.
 
-Always call `list_projects` first when you do not already know the project name, then use the `display_name` or exact `name` returned by that tool.
+Herramientas del grafo: `index_repository`, `list_projects`, `delete_project`, `index_status`, `search_graph`, `trace_call_path`, `detect_changes`, `query_graph`, `get_graph_schema`, `get_code_snippet`, `get_architecture`, `search_code`, `manage_adr`, `ingest_traces`.
 
-```json
-// Step 0 — discover project names
-mcp_codebase-memo_list_projects()
-
-// Step 1 — use the project identifier returned above
-mcp_codebase-memo_get_architecture({ "project": "<display_name>" })
-```
-
-### Workflow
-
-1. Call `list_projects` to discover the correct project name.
-2. Call `get_architecture(project)` to understand the codebase structure.
-3. Use `search_graph` to find relevant symbols, `trace_call_path` for call chains.
-4. Use `get_code_snippet` to read specific function implementations.
-5. Only use `read_file` when you need exact raw content to edit a specific line.
-
-### Available Tools (14 MCP tools)
-
-**Indexing:**
-- `index_repository(repo_path)` — Index a repository into the knowledge graph
-- `list_projects` — List all indexed projects with node/edge counts
-- `delete_project(project)` — Remove a project and all its graph data
-- `index_status(project)` — Check indexing status
-
-**Querying:**
-- `search_graph(name_pattern, name_scope, label, file_pattern, exclude_file_pattern)` — Structured search by label, name/qualified_name, include/exclude file globs
-- `trace_call_path(function_name, direction, depth)` — BFS call chain traversal
-- `detect_changes(project)` — Map git diff to affected symbols + risk
-- `query_graph(query)` — Execute Cypher-like graph queries (read-only)
-- `get_graph_schema(project)` — Node/edge counts, relationship patterns
-- `get_code_snippet(qualified_name)` — Read source code for a function
-- `get_architecture(project)` — Codebase overview: languages, packages, routes, hotspots
-- `search_code(pattern, project)` — Grep-like text search within indexed files
-- `manage_adr(action)` — CRUD for Architecture Decision Records
-- `ingest_traces(traces)` — Ingest runtime traces to validate HTTP edges
+Si ese namespace no está disponible, sigue con `FEATURES.md` y el código. No bloquees la tarea esperando el grafo.

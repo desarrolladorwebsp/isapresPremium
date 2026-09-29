@@ -1,3 +1,5 @@
+> **Contexto histórico (2026-09-29).** El motor está en `isaprespremium.cl`. El código vive en `app/`, `lib/` y `domain/` (no hay `src/`). Las fases de este archivo no son un backlog: lo implementado está en [`FEATURES.md`](../FEATURES.md) y lo abierto en [`PLANS.md`](../PLANS.md).
+
 # Arquitectura Cotizador Premium
 
 Migración de **cotizador-virtual** → **cotizador-premium** (`cotizadorpremium.cl`) hacia un modelo **multitenant** por agente/socio, preservando intacta la lógica de precios Isapre.

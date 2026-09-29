@@ -40,6 +40,9 @@ La landing de captación permanece en **cotizadorpremium.cl** (`cotizadorPremium
 
 | Doc | Contenido |
 |-----|-----------|
+| [FEATURES.md](./FEATURES.md) | Funciones ya implementadas (no duplicar) |
+| [PLANS.md](./PLANS.md) | Trabajo abierto y fases que no hay que reabrir |
+| [AGENTS.md](./AGENTS.md) | Guía corta para agentes |
 | [docs/PUBLIC-API-LEADS-CLIENTS.md](./docs/PUBLIC-API-LEADS-CLIENTS.md) | **Registrar leads como clientes** — endpoint público, auth, ejemplos, seguridad |
 | [docs/WIDGET-INTEGRATION.md](./docs/WIDGET-INTEGRATION.md) | Widget embed |
 | [docs/ROLES-AND-PERMISSIONS.md](./docs/ROLES-AND-PERMISSIONS.md) | Roles staff |
