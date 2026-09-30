@@ -111,7 +111,7 @@ Cápsula «Cotización» en la ficha. No reemplaza a `Quote`.
 | Acceso según la misma cartera que la ficha | `lib/api/client-quotation-access.ts` |
 | UI | `components/executive/client-quotation-manager.tsx` |
 
-Migración: `prisma/migrations/20260928170000_client_commercial_quotations`.
+Migración: `prisma/migrations/20260928170000_client_commercial_quotations`. Si producción conserva el esquema anterior vacío (`user_id`, `client_quotation_plans`), `prisma/safe-schema-patches.sql` lo reemplaza en el deploy.
 
 ## Leads y API pública
 
