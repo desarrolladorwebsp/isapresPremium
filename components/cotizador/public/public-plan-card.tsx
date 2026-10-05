@@ -245,7 +245,7 @@ export function PublicPlanCard({
       {/* Cabecera — hero del plan */}
       <div className={joinClasses(planCard.header, "plan-card-header")}>
         <div className="flex min-w-0 flex-1 items-start gap-2.5 sm:gap-3">
-          <IsapreLogo isapre={plan.isapre} size="sm" />
+          <IsapreLogo isapre={plan.isapre} size="lg" />
 
           <div className="min-w-0 flex-1">
             <h3 className="truncate text-xs font-bold uppercase leading-snug tracking-wide text-primary-dark sm:text-sm">

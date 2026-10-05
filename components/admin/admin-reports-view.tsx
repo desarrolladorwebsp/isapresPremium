@@ -759,7 +759,7 @@ export function AdminReportsView() {
 
       <ReportSection
         title="Cotizaciones"
-        description="Enviadas según la fecha de envío. Recepcionadas, aceptadas y rechazadas según el día en que quedaron en ese estado. El filtro de isapre aplica a las cuatro columnas: el documento cuenta una vez si incluye al menos una isapre elegida."
+        description="Enviadas según la fecha de envío. Aceptadas: el cliente aceptó. Recepcionadas: la Isapre aceptó y el proceso terminó. Rechazadas: el cliente rechazó. El filtro de isapre aplica a las cuatro columnas."
       >
         <div className="max-w-sm">
           <IsapreMultiFilter
@@ -785,7 +785,7 @@ export function AdminReportsView() {
           loadingMessage="Cargando cotizaciones…"
           footer={
             quotationReport
-              ? `${quotationReport.total} enviadas, ${quotationReport.receivedTotal} recepcionadas, ${quotationReport.acceptedTotal} aceptadas y ${quotationReport.rejectedTotal} rechazadas.`
+              ? `${quotationReport.total} enviadas, ${quotationReport.acceptedTotal} aceptadas, ${quotationReport.receivedTotal} recepcionadas y ${quotationReport.rejectedTotal} rechazadas.`
               : undefined
           }
         >
@@ -797,10 +797,10 @@ export function AdminReportsView() {
                   Enviadas
                 </AdminTableHeaderCell>
                 <AdminTableHeaderCell align="right">
-                  Recepcionadas
+                  Aceptadas
                 </AdminTableHeaderCell>
                 <AdminTableHeaderCell align="right">
-                  Aceptadas
+                  Recepcionadas
                 </AdminTableHeaderCell>
                 <AdminTableHeaderCell align="right">
                   Rechazadas
@@ -813,10 +813,10 @@ export function AdminReportsView() {
                   <AdminTableCell>{row.executiveName}</AdminTableCell>
                   <AdminTableCell align="right">{row.sentCount}</AdminTableCell>
                   <AdminTableCell align="right">
-                    {row.receivedCount}
+                    {row.acceptedCount}
                   </AdminTableCell>
                   <AdminTableCell align="right">
-                    {row.acceptedCount}
+                    {row.receivedCount}
                   </AdminTableCell>
                   <AdminTableCell align="right">
                     {row.rejectedCount}
@@ -830,10 +830,10 @@ export function AdminReportsView() {
                     {quotationReport.total}
                   </AdminTableCell>
                   <AdminTableCell align="right">
-                    {quotationReport.receivedTotal}
+                    {quotationReport.acceptedTotal}
                   </AdminTableCell>
                   <AdminTableCell align="right">
-                    {quotationReport.acceptedTotal}
+                    {quotationReport.receivedTotal}
                   </AdminTableCell>
                   <AdminTableCell align="right">
                     {quotationReport.rejectedTotal}

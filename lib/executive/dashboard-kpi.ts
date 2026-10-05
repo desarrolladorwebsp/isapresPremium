@@ -31,12 +31,12 @@ export const DASHBOARD_KPI_HELP = [
   {
     label: "Recepcionadas",
     measure:
-      "Documentos que siguen en estado recepcionada. La fecha es el día en que el cliente confirmó la recepción. Si después se aceptan o rechazan, salen de esta tarjeta.",
+      "Documentos en estado recepcionada: la Isapre aceptó y el proceso con el cliente terminó. La fecha es el día en que se marcó ese cierre.",
   },
   {
     label: "Aceptadas",
     measure:
-      "Documentos en estado aceptada. La fecha es el día en que el cliente aceptó. Usan el mismo mes, ejecutivo e isapre que el resto de cotizaciones.",
+      "Documentos en estado aceptada: el cliente aceptó la propuesta y el caso sigue con el ejecutivo de Isapres. La fecha es el día en que se marcó esa aceptación.",
   },
   {
     label: "Rechazadas",

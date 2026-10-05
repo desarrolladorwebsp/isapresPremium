@@ -70,18 +70,17 @@ const QUOTATION_LIST_COPY: Record<
     empty: "No hay cotizaciones enviadas con estos filtros.",
     dateLabel: "Enviada",
   },
-  RECEIVED: {
-    title: "Cotizaciones recepcionadas",
-    description:
-      "Documentos que el cliente confirmó haber recibido y que siguen en ese estado.",
-    empty: "No hay cotizaciones recepcionadas con estos filtros.",
-    dateLabel: "Recepcionada",
-  },
   ACCEPTED: {
     title: "Cotizaciones aceptadas",
-    description: "Documentos que el cliente aceptó en el período.",
+    description: "Documentos que el cliente aceptó. El caso sigue con el ejecutivo de Isapres.",
     empty: "No hay cotizaciones aceptadas con estos filtros.",
     dateLabel: "Aceptada",
+  },
+  RECEIVED: {
+    title: "Cotizaciones recepcionadas",
+    description: "La Isapre aceptó y el proceso con el cliente terminó.",
+    empty: "No hay cotizaciones recepcionadas con estos filtros.",
+    dateLabel: "Recepcionada",
   },
   REJECTED: {
     title: "Cotizaciones rechazadas",
@@ -818,22 +817,22 @@ export function ExecutiveDashboardHome() {
                 icon: <IconClipboard className="size-6" />,
               },
               {
-                id: "RECEIVED" as const,
-                label: "Recepcionadas",
-                value: receivedQuotations.length,
-                hint: "El cliente confirmó la recepción",
-                ring: "ring-amber-300/70",
-                valueClass: "text-amber-800",
-                icon: <IconClipboard className="size-6" />,
-              },
-              {
                 id: "ACCEPTED" as const,
                 label: "Aceptadas",
                 value: acceptedQuotations.length,
-                hint: "El cliente aceptó la propuesta",
+                hint: "El cliente aceptó y sigue con Isapres",
                 ring: "ring-emerald-300/70",
                 valueClass: "text-emerald-800",
                 icon: <IconClipboardCheck className="size-6" />,
+              },
+              {
+                id: "RECEIVED" as const,
+                label: "Recepcionadas",
+                value: receivedQuotations.length,
+                hint: "La Isapre aceptó y el proceso terminó",
+                ring: "ring-amber-300/70",
+                valueClass: "text-amber-800",
+                icon: <IconClipboard className="size-6" />,
               },
               {
                 id: "REJECTED" as const,

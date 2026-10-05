@@ -280,9 +280,9 @@ export async function createClientQuotation(input: {
 
 const ALLOWED_TRANSITIONS: Record<ClientQuotationStatus, ClientQuotationStatus[]> = {
   DRAFT: ["SENT", "VOIDED"],
-  SENT: ["RECEIVED", "ACCEPTED", "REJECTED", "VOIDED"],
-  RECEIVED: ["ACCEPTED", "REJECTED", "VOIDED"],
-  ACCEPTED: [],
+  SENT: ["ACCEPTED", "REJECTED", "VOIDED"],
+  ACCEPTED: ["RECEIVED", "VOIDED"],
+  RECEIVED: ["VOIDED"],
   REJECTED: ["VOIDED"],
   VOIDED: [],
 };

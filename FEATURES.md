@@ -103,7 +103,7 @@ Cápsula «Cotización» en la ficha. No reemplaza a `Quote`.
 | Función | Dónde |
 |---------|--------|
 | Crear documento con 1 a 3 planes ya agregados a la propuesta | `POST …/quotations`, `lib/api/client-quotation-store.ts` |
-| Estados borrador, enviada, recepcionada, aceptada, rechazada, anulada | `ClientQuotationStatus`; rechazo y anulación piden motivo |
+| Estados borrador, enviada, aceptada, recepcionada, rechazada, anulada | `ClientQuotationStatus`. Aceptada: el cliente aceptó. Recepcionada: la Isapre aceptó y el proceso terminó. Rechazo y anulación piden motivo |
 | PDF formal | `GET …/quotations/[quotationId]/pdf`, `lib/client-quotation/pdf.ts`. Al final incluye una nota discreta: los planes pueden cambiar y el equipo mantiene el catálogo al día |
 | Envío por email (Resend) o WhatsApp (`wa.me` + descarga del PDF) | `POST …/quotations/[quotationId]/send`, `lib/email/send-client-quotation.ts` |
 | Historial auditable | `ClientQuotationActivity` |
