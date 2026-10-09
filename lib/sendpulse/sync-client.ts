@@ -20,6 +20,7 @@ export type SyncSendpulseClientInput = {
   webhookName: string | null;
   webhookPhone: string | null;
   triggerKey: string | null;
+  apiKey: string | null;
   /** En un duplicado reciente no se agrega otra línea al historial. */
   writeHistory: boolean;
 };
@@ -83,7 +84,7 @@ export async function syncSendpulseClient(
   };
 
   try {
-    const remote = await fetchSendpulseSnapshot(input.contactId);
+    const remote = await fetchSendpulseSnapshot(input.contactId, input.apiKey);
     const fullName = resolveName(input.webhookName, remote.contact?.name);
     const phone = resolvePhone(remote.contact?.phone, input.webhookPhone);
     const chat = remote.chat?.trim() || null;
@@ -125,7 +126,7 @@ export async function syncSendpulseClient(
           sendpulseChat: true,
         },
       });
-      return finish(input.contactId, {
+      return finish(input.contactId, input.apiKey, {
         ok: true,
         created: true,
         clientId: created.id,
@@ -197,7 +198,7 @@ export async function syncSendpulseClient(
       },
     });
 
-    return finish(input.contactId, {
+    return finish(input.contactId, input.apiKey, {
       ok: true,
       created: false,
       clientId: updated.id,
@@ -219,8 +220,9 @@ export async function syncSendpulseClient(
 
 async function finish(
   contactId: string,
+  apiKey: string | null,
   result: SyncSendpulseClientResult,
 ): Promise<SyncSendpulseClientResult> {
-  const tag = await tagSendpulseContactInCrm(contactId);
+  const tag = await tagSendpulseContactInCrm(contactId, apiKey);
   return { ...result, tag };
 }

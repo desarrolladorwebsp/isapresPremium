@@ -13,6 +13,7 @@ import {
   sendpulseTokensMatch,
   sendpulseWebhookSchema,
 } from "@/lib/sendpulse/contract";
+import { openSendpulseApiKey } from "@/lib/sendpulse/api-key";
 import { recordSendpulseEvent } from "@/lib/sendpulse/events";
 import { syncSendpulseClient } from "@/lib/sendpulse/sync-client";
 
@@ -179,6 +180,8 @@ async function executeSendpulseWebhook(
   }
 
   const botPhone = line.botPhone;
+  const apiKey = openSendpulseApiKey(line.apiKeyEnc);
+  const keyBroken = Boolean(line.apiKeyEnc) && !apiKey;
 
   const since = new Date(Date.now() - SENDPULSE_DEDUPE_WINDOW_MS);
   const recent = await prisma.sendpulseWebhookEvent.findFirst({
@@ -201,10 +204,13 @@ async function executeSendpulseWebhook(
       webhookPhone: contactPhone,
       triggerKey,
       writeHistory: !recent,
+      apiKey,
     });
     tagNote =
       synced.tag === "missing-key"
-        ? "Falta SENDPULSE_API_KEY: no se etiquetó ni se leyó el chat."
+        ? keyBroken
+          ? "No se pudo leer la clave de SendPulse de esta línea."
+          : "Esta línea no tiene clave de SendPulse: no se etiquetó ni se leyó el chat."
         : synced.tag === "failed"
           ? "No se pudo etiquetar el contacto en SendPulse."
           : null;

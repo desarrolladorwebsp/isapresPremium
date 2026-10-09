@@ -23,6 +23,7 @@ export async function POST(request: Request) {
     const payload = (await parseJsonBody(request)) as {
       label?: string;
       botPhone?: string;
+      apiKey?: string;
     };
     const created = await createSendpulseLine(payload);
     return NextResponse.json(created, { status: 201 });

@@ -662,6 +662,9 @@ model SendpulseBotLine {
   botPhone    String    @unique @map("bot_phone")
   tokenHash   String    @unique @map("token_hash")
   tokenPrefix String    @map("token_prefix")
+  /// Clave de la cuenta SendPulse de este bot. Cifrada. No es el token del webhook.
+  apiKeyEnc    String?   @map("api_key_enc") @db.Text
+  apiKeyPrefix String?   @map("api_key_prefix")
   active      Boolean   @default(true)
   lastUsedAt  DateTime? @map("last_used_at")
   revokedAt   DateTime? @map("revoked_at")

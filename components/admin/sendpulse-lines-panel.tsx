@@ -23,6 +23,7 @@ import {
   fetchSendpulseLines,
   revokeSendpulseLineAdmin,
   rotateSendpulseLineAdmin,
+  updateSendpulseLineApiKeyAdmin,
 } from "@/lib/api/admin-client";
 import { SENDPULSE_TRIGGERS } from "@/lib/sendpulse/triggers";
 import { staffClientHref } from "@/lib/staff/staff-sections";
@@ -71,6 +72,8 @@ export function SendpulseLinesPanel({ onNotify }: SendpulseLinesPanelProps) {
   const [saving, setSaving] = useState(false);
   const [label, setLabel] = useState("");
   const [botPhone, setBotPhone] = useState("");
+  const [apiKey, setApiKey] = useState("");
+  const [lineApiKeys, setLineApiKeys] = useState<Record<string, string>>({});
   const [revealed, setRevealed] = useState<RevealedToken | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -104,6 +107,7 @@ export function SendpulseLinesPanel({ onNotify }: SendpulseLinesPanelProps) {
       const created = await createSendpulseLineAdmin({
         label,
         botPhone,
+        apiKey,
       });
       setRevealed({
         token: created.token,
@@ -112,6 +116,7 @@ export function SendpulseLinesPanel({ onNotify }: SendpulseLinesPanelProps) {
       });
       setLabel("");
       setBotPhone("");
+      setApiKey("");
       onNotify("Token creado. Cópialo ahora: no se vuelve a mostrar.", "success");
       await load();
     } catch (error) {
@@ -171,6 +176,25 @@ export function SendpulseLinesPanel({ onNotify }: SendpulseLinesPanelProps) {
     }
   }
 
+  async function handleSaveApiKey(line: SendpulseLineRecord) {
+    const nextKey = lineApiKeys[line.id]?.trim() ?? "";
+    if (!nextKey) return;
+    setBusyId(line.id);
+    try {
+      await updateSendpulseLineApiKeyAdmin(line.id, nextKey);
+      setLineApiKeys((current) => ({ ...current, [line.id]: "" }));
+      onNotify("Clave de SendPulse guardada.", "success");
+      await load();
+    } catch (error) {
+      onNotify(
+        error instanceof Error ? error.message : "No se pudo guardar la clave.",
+        "error",
+      );
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   async function copyText(value: string) {
     try {
       await navigator.clipboard.writeText(value);
@@ -184,13 +208,13 @@ export function SendpulseLinesPanel({ onNotify }: SendpulseLinesPanelProps) {
     <AdminPanel>
       <AdminPanelHeader
         title="SendPulse"
-        description="Un token por número de WhatsApp. El disparador avisa por correo, crea o actualiza la ficha y, si SendPulse responde, guarda el chat y la etiqueta CRM Isapres Premium."
+        description="Un token y una clave API por número de WhatsApp. Cada bot usa la clave de su cuenta SendPulse. El disparador avisa por correo, crea o actualiza la ficha y, si esa cuenta responde, guarda el chat y la etiqueta CRM Isapres Premium."
         actions={<AdminRefreshButton onClick={() => void load()} loading={loading} />}
       />
 
       <form
         onSubmit={(event) => void handleCreate(event)}
-        className="grid gap-3 rounded-xl border border-border bg-white p-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end"
+        className="grid gap-3 rounded-xl border border-border bg-white p-4 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1.2fr_auto] lg:items-end"
       >
         <label className="grid gap-1 text-sm">
           <span className="font-medium text-foreground">Nombre de la línea</span>
@@ -209,6 +233,17 @@ export function SendpulseLinesPanel({ onNotify }: SendpulseLinesPanelProps) {
             onChange={(event) => setBotPhone(event.target.value)}
             placeholder="+56999999999"
             inputMode="tel"
+            required
+          />
+        </label>
+        <label className="grid gap-1 text-sm">
+          <span className="font-medium text-foreground">Clave API de SendPulse</span>
+          <Input
+            type="password"
+            value={apiKey}
+            onChange={(event) => setApiKey(event.target.value)}
+            placeholder="Clave de esta cuenta"
+            autoComplete="new-password"
             required
           />
         </label>
@@ -272,6 +307,7 @@ export function SendpulseLinesPanel({ onNotify }: SendpulseLinesPanelProps) {
               <AdminTableHeaderCell>Línea</AdminTableHeaderCell>
               <AdminTableHeaderCell>Bot</AdminTableHeaderCell>
               <AdminTableHeaderCell>Token</AdminTableHeaderCell>
+              <AdminTableHeaderCell>Clave API</AdminTableHeaderCell>
               <AdminTableHeaderCell>Estado</AdminTableHeaderCell>
               <AdminTableHeaderCell>Último uso</AdminTableHeaderCell>
               <AdminTableHeaderCell>Acciones</AdminTableHeaderCell>
@@ -291,6 +327,36 @@ export function SendpulseLinesPanel({ onNotify }: SendpulseLinesPanelProps) {
                   <AdminTableCell>{line.botPhone}</AdminTableCell>
                   <AdminTableCell>
                     <code>{line.tokenPrefix}…</code>
+                  </AdminTableCell>
+                  <AdminTableCell>
+                    <div className="grid min-w-44 gap-1">
+                      <span className="text-xs text-foreground/70">
+                        {line.apiKeyPrefix ? `${line.apiKeyPrefix}…` : "Sin clave"}
+                      </span>
+                      <Input
+                        type="password"
+                        value={lineApiKeys[line.id] ?? ""}
+                        onChange={(event) =>
+                          setLineApiKeys((current) => ({
+                            ...current,
+                            [line.id]: event.target.value,
+                          }))
+                        }
+                        placeholder="Reemplazar clave"
+                        autoComplete="new-password"
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        disabled={
+                          busyId === line.id || !(lineApiKeys[line.id]?.trim())
+                        }
+                        onClick={() => void handleSaveApiKey(line)}
+                      >
+                        Guardar clave
+                      </Button>
+                    </div>
                   </AdminTableCell>
                   <AdminTableCell>
                     <AdminBadge tone={line.active ? "success" : "danger"}>

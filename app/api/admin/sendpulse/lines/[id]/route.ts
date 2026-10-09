@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
-import { apiErrorResponse } from "@/lib/api/api-error";
+import { apiErrorResponse, parseJsonBody } from "@/lib/api/api-error";
 import { requireAdminSession } from "@/lib/auth/require-auth";
 import {
   revokeSendpulseLine,
   rotateSendpulseLineToken,
+  updateSendpulseLineApiKey,
 } from "@/lib/sendpulse/admin";
 
 export const runtime = "nodejs";
@@ -25,6 +26,12 @@ export async function POST(request: Request, context: RouteContext) {
 
     if (action === "revoke") {
       const line = await revokeSendpulseLine(id);
+      return NextResponse.json({ line });
+    }
+
+    if (action === "api-key") {
+      const payload = (await parseJsonBody(request)) as { apiKey?: string };
+      const line = await updateSendpulseLineApiKey(id, payload.apiKey);
       return NextResponse.json({ line });
     }
 

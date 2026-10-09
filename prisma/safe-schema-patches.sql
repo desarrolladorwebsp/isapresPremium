@@ -439,3 +439,6 @@ ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "sendpulse_bot_phone" TEXT;
 ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "sendpulse_chat" TEXT;
 
 CREATE UNIQUE INDEX IF NOT EXISTS "users_sendpulse_contact_id_key" ON "users"("sendpulse_contact_id");
+
+ALTER TABLE "sendpulse_bot_lines" ADD COLUMN IF NOT EXISTS "api_key_enc" TEXT;
+ALTER TABLE "sendpulse_bot_lines" ADD COLUMN IF NOT EXISTS "api_key_prefix" TEXT;

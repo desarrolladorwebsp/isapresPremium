@@ -813,6 +813,7 @@ export async function fetchSendpulseLines(): Promise<SendpulseLineRecord[]> {
 export async function createSendpulseLineAdmin(input: {
   label: string;
   botPhone: string;
+  apiKey: string;
 }): Promise<SendpulseTokenReveal> {
   const response = await fetch("/api/admin/sendpulse/lines", {
     method: "POST",
@@ -820,6 +821,22 @@ export async function createSendpulseLineAdmin(input: {
     body: JSON.stringify(input),
   });
   return parseJsonResponse<SendpulseTokenReveal>(response);
+}
+
+export async function updateSendpulseLineApiKeyAdmin(
+  id: string,
+  apiKey: string,
+): Promise<SendpulseLineRecord> {
+  const response = await fetch(
+    `/api/admin/sendpulse/lines/${encodeURIComponent(id)}?action=api-key`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ apiKey }),
+    },
+  );
+  const data = await parseJsonResponse<{ line: SendpulseLineRecord }>(response);
+  return data.line;
 }
 
 export async function rotateSendpulseLineAdmin(

@@ -22,8 +22,8 @@ type MessageRow = {
   data?: unknown;
 };
 
-function apiKey(): string | null {
-  const key = process.env.SENDPULSE_API_KEY?.trim() ?? "";
+function usableKey(apiKey: string | null | undefined): string | null {
+  const key = apiKey?.trim() ?? "";
   return key || null;
 }
 
@@ -36,14 +36,13 @@ function isSendpulseUrl(value: string): boolean {
   }
 }
 
-async function sendpulseGet(url: string): Promise<unknown | null> {
-  const key = apiKey();
-  if (!key || !isSendpulseUrl(url)) return null;
+async function sendpulseGet(url: string, apiKey: string): Promise<unknown | null> {
+  if (!isSendpulseUrl(url)) return null;
 
   try {
     const response = await fetch(url, {
       headers: {
-        Authorization: `Bearer ${key}`,
+        Authorization: `Bearer ${apiKey}`,
         Accept: "application/json",
       },
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
@@ -164,7 +163,7 @@ function formatMessages(rows: MessageRow[], total: number | null): string | null
   return text;
 }
 
-async function fetchMessages(contactId: string): Promise<string | null> {
+async function fetchMessages(contactId: string, apiKey: string): Promise<string | null> {
   const firstUrl = `${SENDPULSE_API}/whatsapp/chats/messages?contact_id=${encodeURIComponent(contactId)}&size=${PAGE_SIZE}&order=desc`;
   const collected: MessageRow[] = [];
   let nextUrl: string | null = firstUrl;
@@ -172,7 +171,7 @@ async function fetchMessages(contactId: string): Promise<string | null> {
   let pages = 0;
 
   while (nextUrl && pages < MAX_PAGES) {
-    const payload = await sendpulseGet(nextUrl);
+    const payload = await sendpulseGet(nextUrl, apiKey);
     const root = asRecord(payload);
     const data = root?.data;
     if (!Array.isArray(data) || data.length === 0) break;
@@ -198,16 +197,19 @@ async function fetchMessages(contactId: string): Promise<string | null> {
 /** Lee contacto y chat. Si SendPulse falla o no hay clave, devuelve vacío y no lanza. */
 export async function fetchSendpulseSnapshot(
   contactId: string,
+  apiKey: string | null | undefined,
 ): Promise<SendpulseRemoteSnapshot> {
-  if (!apiKey()) {
+  const key = usableKey(apiKey);
+  if (!key) {
     return { contact: null, chat: null };
   }
 
   const [contactPayload, chat] = await Promise.all([
     sendpulseGet(
       `${SENDPULSE_API}/whatsapp/contacts/get?id=${encodeURIComponent(contactId)}`,
+      key,
     ),
-    fetchMessages(contactId),
+    fetchMessages(contactId, key),
   ]);
 
   return {
@@ -221,8 +223,9 @@ export type SendpulseTagResult = "tagged" | "missing-key" | "failed";
 /** Marca el contacto en SendPulse. No reemplaza las etiquetas que ya tenga. */
 export async function tagSendpulseContactInCrm(
   contactId: string,
+  apiKey: string | null | undefined,
 ): Promise<SendpulseTagResult> {
-  const key = apiKey();
+  const key = usableKey(apiKey);
   const id = contactId.trim();
   if (!key) return "missing-key";
   if (!id) return "failed";

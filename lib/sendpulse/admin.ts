@@ -7,6 +7,10 @@ import {
   normalizeSendpulseBotPhone,
   sendpulseTokenPrefix,
 } from "@/lib/sendpulse/contract";
+import {
+  sealSendpulseApiKey,
+  sendpulseApiKeyPrefix,
+} from "@/lib/sendpulse/api-key";
 import { sendpulseTriggerLabel } from "@/lib/sendpulse/triggers";
 import type {
   SendpulseEventRecord,
@@ -29,6 +33,7 @@ function toLineRecord(line: SendpulseBotLine): SendpulseLineRecord {
     label: line.label,
     botPhone: line.botPhone,
     tokenPrefix: line.tokenPrefix,
+    apiKeyPrefix: line.apiKeyPrefix,
     active: line.active,
     lastUsedAt: line.lastUsedAt?.toISOString() ?? null,
     createdAt: line.createdAt.toISOString(),
@@ -56,6 +61,33 @@ function parseLineInput(input: { label?: string; botPhone?: string }): {
   return { label, botPhone };
 }
 
+function parseApiKey(value: string | undefined): string {
+  const apiKey = value?.trim() ?? "";
+  if (!apiKey) {
+    throw new ApiError(
+      "Indica la clave API de la cuenta SendPulse de este bot.",
+      400,
+      "INVALID_INPUT",
+    );
+  }
+  if (apiKey.length < 20 || apiKey.length > 300 || /\s/.test(apiKey)) {
+    throw new ApiError("La clave API de SendPulse no es válida.", 400, "INVALID_INPUT");
+  }
+  return apiKey;
+}
+
+function sealedApiKey(apiKey: string): { apiKeyEnc: string; apiKeyPrefix: string } {
+  const apiKeyEnc = sealSendpulseApiKey(apiKey);
+  if (!apiKeyEnc) {
+    throw new ApiError(
+      "No se pudo guardar la clave de SendPulse.",
+      503,
+      "UNAVAILABLE",
+    );
+  }
+  return { apiKeyEnc, apiKeyPrefix: sendpulseApiKeyPrefix(apiKey) };
+}
+
 export async function listSendpulseLines(): Promise<SendpulseLineRecord[]> {
   const lines = await prisma.sendpulseBotLine.findMany({
     orderBy: { createdAt: "desc" },
@@ -66,8 +98,10 @@ export async function listSendpulseLines(): Promise<SendpulseLineRecord[]> {
 export async function createSendpulseLine(input: {
   label?: string;
   botPhone?: string;
+  apiKey?: string;
 }): Promise<{ line: SendpulseLineRecord; token: string }> {
   const { label, botPhone } = parseLineInput(input);
+  const sealed = sealedApiKey(parseApiKey(input.apiKey));
   const token = generateSendpulseToken();
 
   try {
@@ -77,6 +111,8 @@ export async function createSendpulseLine(input: {
         botPhone,
         tokenHash: hashSendpulseToken(token),
         tokenPrefix: sendpulseTokenPrefix(token),
+        apiKeyEnc: sealed.apiKeyEnc,
+        apiKeyPrefix: sealed.apiKeyPrefix,
       },
     });
     return { line: toLineRecord(line), token };
@@ -117,6 +153,23 @@ export async function rotateSendpulseLineToken(
   });
 
   return { line: toLineRecord(line), token };
+}
+
+export async function updateSendpulseLineApiKey(
+  id: string,
+  apiKey: string | undefined,
+): Promise<SendpulseLineRecord> {
+  const existing = await prisma.sendpulseBotLine.findUnique({ where: { id } });
+  if (!existing) {
+    throw new ApiError("Línea no encontrada.", 404, "NOT_FOUND");
+  }
+
+  const sealed = sealedApiKey(parseApiKey(apiKey));
+  const line = await prisma.sendpulseBotLine.update({
+    where: { id },
+    data: sealed,
+  });
+  return toLineRecord(line);
 }
 
 export async function revokeSendpulseLine(id: string): Promise<SendpulseLineRecord> {

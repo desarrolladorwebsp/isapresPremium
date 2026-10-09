@@ -3,6 +3,7 @@ export type SendpulseLineRecord = {
   label: string;
   botPhone: string;
   tokenPrefix: string;
+  apiKeyPrefix: string | null;
   active: boolean;
   lastUsedAt: string | null;
   createdAt: string;
