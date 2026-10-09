@@ -13,6 +13,8 @@ export type SendpulseRemoteContact = {
 export type SendpulseRemoteSnapshot = {
   contact: SendpulseRemoteContact | null;
   chat: string | null;
+  /** El GET del contacto respondió bien. Un chat vacío no cuenta como fallo. */
+  contactRead: boolean;
 };
 
 type MessageRow = {
@@ -36,8 +38,11 @@ function isSendpulseUrl(value: string): boolean {
   }
 }
 
-async function sendpulseGet(url: string, apiKey: string): Promise<unknown | null> {
-  if (!isSendpulseUrl(url)) return null;
+async function sendpulseGet(
+  url: string,
+  apiKey: string,
+): Promise<{ ok: boolean; body: unknown | null }> {
+  if (!isSendpulseUrl(url)) return { ok: false, body: null };
 
   try {
     const response = await fetch(url, {
@@ -48,11 +53,11 @@ async function sendpulseGet(url: string, apiKey: string): Promise<unknown | null
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       cache: "no-store",
     });
-    if (!response.ok) return null;
-    return (await response.json()) as unknown;
+    if (!response.ok) return { ok: false, body: null };
+    return { ok: true, body: (await response.json()) as unknown };
   } catch (error) {
     console.error("[sendpulse] lectura remota", error instanceof Error ? error.message : "falló");
-    return null;
+    return { ok: false, body: null };
   }
 }
 
@@ -172,7 +177,7 @@ async function fetchMessages(contactId: string, apiKey: string): Promise<string 
 
   while (nextUrl && pages < MAX_PAGES) {
     const payload = await sendpulseGet(nextUrl, apiKey);
-    const root = asRecord(payload);
+    const root = asRecord(payload.body);
     const data = root?.data;
     if (!Array.isArray(data) || data.length === 0) break;
 
@@ -201,10 +206,10 @@ export async function fetchSendpulseSnapshot(
 ): Promise<SendpulseRemoteSnapshot> {
   const key = usableKey(apiKey);
   if (!key) {
-    return { contact: null, chat: null };
+    return { contact: null, chat: null, contactRead: false };
   }
 
-  const [contactPayload, chat] = await Promise.all([
+  const [contactResponse, chat] = await Promise.all([
     sendpulseGet(
       `${SENDPULSE_API}/whatsapp/contacts/get?id=${encodeURIComponent(contactId)}`,
       key,
@@ -213,8 +218,9 @@ export async function fetchSendpulseSnapshot(
   ]);
 
   return {
-    contact: contactFromPayload(contactPayload),
+    contact: contactFromPayload(contactResponse.body),
     chat,
+    contactRead: contactResponse.ok,
   };
 }
 

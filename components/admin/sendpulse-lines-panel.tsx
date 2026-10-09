@@ -64,6 +64,22 @@ function outcomeTone(
   return "neutral";
 }
 
+function apiLabel(outcome: SendpulseEventRecord["apiOutcome"]): string {
+  if (outcome === "OK") return "OK";
+  if (outcome === "FAILED") return "Falló";
+  if (outcome === "MISSING_KEY") return "Sin clave";
+  return "—";
+}
+
+function apiTone(
+  outcome: SendpulseEventRecord["apiOutcome"],
+): "success" | "warning" | "danger" | "neutral" {
+  if (outcome === "OK") return "success";
+  if (outcome === "FAILED") return "danger";
+  if (outcome === "MISSING_KEY") return "warning";
+  return "neutral";
+}
+
 export function SendpulseLinesPanel({ onNotify }: SendpulseLinesPanelProps) {
   const router = useRouter();
   const [lines, setLines] = useState<SendpulseLineRecord[]>([]);
@@ -396,7 +412,7 @@ export function SendpulseLinesPanel({ onNotify }: SendpulseLinesPanelProps) {
       <div className="space-y-3">
         <h2 className="text-base font-semibold text-foreground">Conexiones</h2>
         <p className="text-sm text-foreground/70">
-          Cada aviso, también los rechazados. OK significa que el correo salió. Duplicado significa que el mismo contacto y disparador ya se habían avisado en los últimos 10 minutos.
+          Cada aviso, también los rechazados. OK en Resultado significa que el correo salió. Duplicado significa que el mismo contacto y disparador ya se habían avisado en los últimos 10 minutos. API OK significa que SendPulse respondió: se leyó el contacto y se aplicó la etiqueta.
         </p>
         <AdminTableCard>
           <AdminTable>
@@ -407,6 +423,7 @@ export function SendpulseLinesPanel({ onNotify }: SendpulseLinesPanelProps) {
                 <AdminTableHeaderCell>Disparador</AdminTableHeaderCell>
                 <AdminTableHeaderCell>Contacto</AdminTableHeaderCell>
                 <AdminTableHeaderCell>Resultado</AdminTableHeaderCell>
+                <AdminTableHeaderCell>API</AdminTableHeaderCell>
                 <AdminTableHeaderCell>Detalle</AdminTableHeaderCell>
               </AdminTableRow>
             </AdminTableHead>
@@ -446,6 +463,15 @@ export function SendpulseLinesPanel({ onNotify }: SendpulseLinesPanelProps) {
                       <AdminBadge tone={outcomeTone(event.outcome)}>
                         {event.outcomeLabel}
                       </AdminBadge>
+                    </AdminTableCell>
+                    <AdminTableCell>
+                      {event.apiOutcome ? (
+                        <AdminBadge tone={apiTone(event.apiOutcome)}>
+                          {apiLabel(event.apiOutcome)}
+                        </AdminBadge>
+                      ) : (
+                        "—"
+                      )}
                     </AdminTableCell>
                     <AdminTableCell>{event.errorMessage ?? "—"}</AdminTableCell>
                   </AdminTableRow>

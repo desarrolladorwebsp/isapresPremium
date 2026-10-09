@@ -234,6 +234,12 @@ export async function listSendpulseEvents(
     httpStatus: event.httpStatus,
     errorMessage: event.errorMessage,
     emailSent: event.emailSent,
+    apiOutcome:
+      event.apiOutcome === "OK" ||
+      event.apiOutcome === "FAILED" ||
+      event.apiOutcome === "MISSING_KEY"
+        ? event.apiOutcome
+        : null,
     createdAt: event.createdAt.toISOString(),
     clientId: event.contactId ? (clientByContact.get(event.contactId) ?? null) : null,
   }));

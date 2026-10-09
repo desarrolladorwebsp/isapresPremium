@@ -442,3 +442,5 @@ CREATE UNIQUE INDEX IF NOT EXISTS "users_sendpulse_contact_id_key" ON "users"("s
 
 ALTER TABLE "sendpulse_bot_lines" ADD COLUMN IF NOT EXISTS "api_key_enc" TEXT;
 ALTER TABLE "sendpulse_bot_lines" ADD COLUMN IF NOT EXISTS "api_key_prefix" TEXT;
+
+ALTER TABLE "sendpulse_webhook_events" ADD COLUMN IF NOT EXISTS "api_outcome" TEXT;

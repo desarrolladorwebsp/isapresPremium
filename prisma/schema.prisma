@@ -688,6 +688,8 @@ model SendpulseWebhookEvent {
   httpStatus   Int                      @map("http_status")
   errorMessage String?                  @map("error_message")
   emailSent    Boolean                  @default(false) @map("email_sent")
+  /// OK, FAILED o MISSING_KEY. Nulo si esta llamada no llegó a la API de SendPulse.
+  apiOutcome   String?                  @map("api_outcome")
   createdAt    DateTime                 @default(now()) @map("created_at")
   line         SendpulseBotLine?        @relation(fields: [lineId], references: [id], onDelete: SetNull)
 

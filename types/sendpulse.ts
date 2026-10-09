@@ -24,6 +24,7 @@ export type SendpulseEventRecord = {
   httpStatus: number;
   errorMessage: string | null;
   emailSent: boolean;
+  apiOutcome: "OK" | "FAILED" | "MISSING_KEY" | null;
   createdAt: string;
   /** Ficha del CRM cuando este contacto ya fue registrado. */
   clientId?: string | null;

@@ -12,6 +12,7 @@ export type SendpulseEventDraft = {
   httpStatus: number;
   errorMessage?: string | null;
   emailSent?: boolean;
+  apiOutcome?: "OK" | "FAILED" | "MISSING_KEY" | null;
 };
 
 function clip(value: string | null | undefined, max: number): string | null {
@@ -34,6 +35,7 @@ export async function recordSendpulseEvent(draft: SendpulseEventDraft): Promise<
         httpStatus: draft.httpStatus,
         errorMessage: clip(draft.errorMessage, 500),
         emailSent: draft.emailSent ?? false,
+        apiOutcome: draft.apiOutcome ?? null,
       },
     });
   } catch (error) {

@@ -25,6 +25,8 @@ export type SyncSendpulseClientInput = {
   writeHistory: boolean;
 };
 
+export type SendpulseApiOutcome = "ok" | "failed" | "missing-key";
+
 export type SyncSendpulseClientResult = {
   ok: boolean;
   created: boolean;
@@ -35,6 +37,8 @@ export type SyncSendpulseClientResult = {
   hasName: boolean;
   hasPhone: boolean;
   tag: SendpulseTagResult | null;
+  contactRead: boolean;
+  api: SendpulseApiOutcome | null;
 };
 
 function syntheticEmail(contactId: string): string {
@@ -81,6 +85,8 @@ export async function syncSendpulseClient(
     hasName: false,
     hasPhone: false,
     tag: null,
+    contactRead: false,
+    api: input.apiKey ? "failed" : "missing-key",
   };
 
   try {
@@ -136,6 +142,8 @@ export async function syncSendpulseClient(
         hasName: created.fullName !== PLACEHOLDER_NAME,
         hasPhone: Boolean(created.phone),
         tag: null,
+        contactRead: remote.contactRead,
+        api: null,
       });
     }
 
@@ -157,6 +165,8 @@ export async function syncSendpulseClient(
         hasName: existing.fullName !== PLACEHOLDER_NAME,
         hasPhone: Boolean(existing.phone),
         tag: null,
+        contactRead: remote.contactRead,
+        api: input.apiKey ? "failed" : "missing-key",
       };
     }
 
@@ -206,9 +216,11 @@ export async function syncSendpulseClient(
       chatStored: Boolean(updated.sendpulseChat?.trim()),
       chatChars: updated.sendpulseChat?.length ?? 0,
       hasName: updated.fullName !== PLACEHOLDER_NAME,
-      hasPhone: Boolean(updated.phone),
-      tag: null,
-    });
+        hasPhone: Boolean(updated.phone),
+        tag: null,
+        contactRead: remote.contactRead,
+        api: null,
+      });
   } catch (error) {
     console.error(
       "[sendpulse] sync cliente",
@@ -224,5 +236,15 @@ async function finish(
   result: SyncSendpulseClientResult,
 ): Promise<SyncSendpulseClientResult> {
   const tag = await tagSendpulseContactInCrm(contactId, apiKey);
-  return { ...result, tag };
+  return { ...result, tag, api: resolveApiOutcome(apiKey, result.contactRead, tag) };
+}
+
+function resolveApiOutcome(
+  apiKey: string | null,
+  contactRead: boolean,
+  tag: SendpulseTagResult,
+): SendpulseApiOutcome {
+  if (!apiKey || tag === "missing-key") return "missing-key";
+  if (tag === "tagged" && contactRead) return "ok";
+  return "failed";
 }

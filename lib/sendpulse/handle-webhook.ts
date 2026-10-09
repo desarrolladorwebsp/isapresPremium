@@ -15,7 +15,10 @@ import {
 } from "@/lib/sendpulse/contract";
 import { openSendpulseApiKey } from "@/lib/sendpulse/api-key";
 import { recordSendpulseEvent } from "@/lib/sendpulse/events";
-import { syncSendpulseClient } from "@/lib/sendpulse/sync-client";
+import {
+  syncSendpulseClient,
+  type SyncSendpulseClientResult,
+} from "@/lib/sendpulse/sync-client";
 
 export type SendpulseWebhookResult = {
   ok: boolean;
@@ -195,7 +198,7 @@ async function executeSendpulseWebhook(
     select: { id: true },
   });
 
-  let tagNote: string | null = null;
+  let apiReport = describeSendpulseApi(null, keyBroken, Boolean(apiKey));
   try {
     const synced = await syncSendpulseClient({
       contactId: input.id,
@@ -206,14 +209,7 @@ async function executeSendpulseWebhook(
       writeHistory: !recent,
       apiKey,
     });
-    tagNote =
-      synced.tag === "missing-key"
-        ? keyBroken
-          ? "No se pudo leer la clave de SendPulse de esta línea."
-          : "Esta línea no tiene clave de SendPulse: no se etiquetó ni se leyó el chat."
-        : synced.tag === "failed"
-          ? "No se pudo etiquetar el contacto en SendPulse."
-          : null;
+    apiReport = describeSendpulseApi(synced, keyBroken, Boolean(apiKey));
   } catch (error) {
     console.error(
       "[sendpulse] sync cliente",
@@ -229,7 +225,11 @@ async function executeSendpulseWebhook(
       botPhone,
       outcome: "DUPLICATE",
       httpStatus: 200,
-      errorMessage: "Mismo disparador reciente. No se reenvió el correo.",
+      errorMessage: joinDetail(
+        "Mismo disparador reciente. No se reenvió el correo.",
+        apiReport.note,
+      ),
+      apiOutcome: apiReport.apiOutcome,
     });
     await touchLine(line.id);
     return { ok: true, status: 200 };
@@ -265,7 +265,8 @@ async function executeSendpulseWebhook(
       botPhone,
       outcome: "EMAIL_FAILED",
       httpStatus: 502,
-      errorMessage: email.message,
+      errorMessage: joinDetail(email.message, apiReport.note),
+      apiOutcome: apiReport.apiOutcome,
     });
     return { ok: false, status: 502 };
   }
@@ -278,10 +279,54 @@ async function executeSendpulseWebhook(
     outcome: "OK",
     httpStatus: 200,
     emailSent: true,
-    errorMessage: tagNote,
+    errorMessage: apiReport.note,
+    apiOutcome: apiReport.apiOutcome,
   });
   await touchLine(line.id);
   return { ok: true, status: 200 };
+}
+
+function describeSendpulseApi(
+  synced: SyncSendpulseClientResult | null,
+  keyBroken: boolean,
+  hasKey: boolean,
+): { apiOutcome: "OK" | "FAILED" | "MISSING_KEY"; note: string | null } {
+  if (keyBroken) {
+    return {
+      apiOutcome: "FAILED",
+      note: "No se pudo leer la clave de SendPulse de esta línea.",
+    };
+  }
+  if (!hasKey || synced?.api === "missing-key") {
+    return {
+      apiOutcome: "MISSING_KEY",
+      note: "Esta línea no tiene clave de SendPulse: no se etiquetó ni se leyó el chat.",
+    };
+  }
+  if (synced?.api === "ok") {
+    return { apiOutcome: "OK", note: null };
+  }
+  if (synced?.contactRead && synced.tag === "failed") {
+    return {
+      apiOutcome: "FAILED",
+      note: "No se pudo etiquetar el contacto en SendPulse.",
+    };
+  }
+  if (synced && !synced.contactRead && synced.tag === "tagged") {
+    return {
+      apiOutcome: "FAILED",
+      note: "No se pudo leer el contacto en SendPulse.",
+    };
+  }
+  return {
+    apiOutcome: "FAILED",
+    note: "No se pudo consumir la API de SendPulse.",
+  };
+}
+
+function joinDetail(base: string | null, note: string | null): string | null {
+  if (base && note) return `${base} ${note}`;
+  return note ?? base;
 }
 
 function blankToNull(value: string | null | undefined): string | null {
