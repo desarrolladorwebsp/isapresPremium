@@ -1,4 +1,5 @@
 const SENDPULSE_API = "https://api.sendpulse.com";
+export const SENDPULSE_CRM_TAG = "CRM Isapres Premium";
 const PAGE_SIZE = 100;
 const MAX_PAGES = 3;
 const MAX_CHAT_CHARS = 60_000;
@@ -97,10 +98,27 @@ function speaker(direction: unknown): "Cliente" | "Bot" {
   return "Bot";
 }
 
+function nestedText(value: unknown): string | null {
+  const record = asRecord(value);
+  if (!record) return textValue(value);
+  return (
+    textValue(record.body) ??
+    textValue(record.title) ??
+    textValue(record.text) ??
+    textValue(record.caption)
+  );
+}
+
 function messageBody(row: MessageRow): string | null {
   const data = asRecord(row.data);
   const text = asRecord(data?.text);
-  const body = textValue(text?.body) ?? textValue(data?.text);
+  const interactive = asRecord(data?.interactive);
+  const body =
+    textValue(text?.body) ??
+    textValue(data?.text) ??
+    nestedText(interactive?.button_reply) ??
+    nestedText(interactive?.list_reply) ??
+    nestedText(interactive?.body);
   if (body) return body.slice(0, 500);
 
   const type = typeof row.type === "string" ? row.type : "";
@@ -196,4 +214,44 @@ export async function fetchSendpulseSnapshot(
     contact: contactFromPayload(contactPayload),
     chat,
   };
+}
+
+export type SendpulseTagResult = "tagged" | "missing-key" | "failed";
+
+/** Marca el contacto en SendPulse. No reemplaza las etiquetas que ya tenga. */
+export async function tagSendpulseContactInCrm(
+  contactId: string,
+): Promise<SendpulseTagResult> {
+  const key = apiKey();
+  const id = contactId.trim();
+  if (!key) return "missing-key";
+  if (!id) return "failed";
+
+  try {
+    const response = await fetch(`${SENDPULSE_API}/whatsapp/contacts/setTag`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${key}`,
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        contact_id: id,
+        tags: [SENDPULSE_CRM_TAG],
+      }),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      console.error("[sendpulse] etiqueta", response.status);
+      return "failed";
+    }
+    return "tagged";
+  } catch (error) {
+    console.error(
+      "[sendpulse] etiqueta",
+      error instanceof Error ? error.message : "falló",
+    );
+    return "failed";
+  }
 }

@@ -5,7 +5,11 @@ import { appendPipelineNoteLine } from "@/lib/client-pipeline/note-stamp";
 import { normalizeSendpulseContactPhone } from "@/lib/sendpulse/contract";
 import { buildSendpulseClientPatch } from "@/lib/sendpulse/client-update";
 import { sendpulseOriginLabel } from "@/lib/sendpulse/origin-label";
-import { fetchSendpulseSnapshot } from "@/lib/sendpulse/remote";
+import {
+  fetchSendpulseSnapshot,
+  tagSendpulseContactInCrm,
+  type SendpulseTagResult,
+} from "@/lib/sendpulse/remote";
 import { sendpulseTriggerLabel } from "@/lib/sendpulse/triggers";
 
 const PLACEHOLDER_NAME = "Contacto SendPulse";
@@ -29,6 +33,7 @@ export type SyncSendpulseClientResult = {
   chatChars: number;
   hasName: boolean;
   hasPhone: boolean;
+  tag: SendpulseTagResult | null;
 };
 
 function syntheticEmail(contactId: string): string {
@@ -74,6 +79,7 @@ export async function syncSendpulseClient(
     chatChars: 0,
     hasName: false,
     hasPhone: false,
+    tag: null,
   };
 
   try {
@@ -119,7 +125,7 @@ export async function syncSendpulseClient(
           sendpulseChat: true,
         },
       });
-      return {
+      return finish(input.contactId, {
         ok: true,
         created: true,
         clientId: created.id,
@@ -128,7 +134,8 @@ export async function syncSendpulseClient(
         chatChars: created.sendpulseChat?.length ?? 0,
         hasName: created.fullName !== PLACEHOLDER_NAME,
         hasPhone: Boolean(created.phone),
-      };
+        tag: null,
+      });
     }
 
     if (existing.role !== "CLIENT") {
@@ -148,6 +155,7 @@ export async function syncSendpulseClient(
         chatChars: existing.sendpulseChat?.length ?? 0,
         hasName: existing.fullName !== PLACEHOLDER_NAME,
         hasPhone: Boolean(existing.phone),
+        tag: null,
       };
     }
 
@@ -189,7 +197,7 @@ export async function syncSendpulseClient(
       },
     });
 
-    return {
+    return finish(input.contactId, {
       ok: true,
       created: false,
       clientId: updated.id,
@@ -198,7 +206,8 @@ export async function syncSendpulseClient(
       chatChars: updated.sendpulseChat?.length ?? 0,
       hasName: updated.fullName !== PLACEHOLDER_NAME,
       hasPhone: Boolean(updated.phone),
-    };
+      tag: null,
+    });
   } catch (error) {
     console.error(
       "[sendpulse] sync cliente",
@@ -206,4 +215,12 @@ export async function syncSendpulseClient(
     );
     return empty;
   }
+}
+
+async function finish(
+  contactId: string,
+  result: SyncSendpulseClientResult,
+): Promise<SyncSendpulseClientResult> {
+  const tag = await tagSendpulseContactInCrm(contactId);
+  return { ...result, tag };
 }

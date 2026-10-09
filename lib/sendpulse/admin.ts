@@ -145,6 +145,26 @@ export async function listSendpulseEvents(
     take,
     include: { line: { select: { label: true } } },
   });
+  const contactIds = [
+    ...new Set(
+      events.flatMap((event) => (event.contactId ? [event.contactId] : [])),
+    ),
+  ];
+  const clients =
+    contactIds.length > 0
+      ? await prisma.user.findMany({
+          where: {
+            role: "CLIENT",
+            sendpulseContactId: { in: contactIds },
+          },
+          select: { id: true, sendpulseContactId: true },
+        })
+      : [];
+  const clientByContact = new Map(
+    clients.flatMap((client) =>
+      client.sendpulseContactId ? [[client.sendpulseContactId, client.id] as const] : [],
+    ),
+  );
 
   return events.map((event) => ({
     id: event.id,
@@ -162,5 +182,6 @@ export async function listSendpulseEvents(
     errorMessage: event.errorMessage,
     emailSent: event.emailSent,
     createdAt: event.createdAt.toISOString(),
+    clientId: event.contactId ? (clientByContact.get(event.contactId) ?? null) : null,
   }));
 }

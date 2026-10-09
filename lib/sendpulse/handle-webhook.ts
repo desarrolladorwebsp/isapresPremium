@@ -192,8 +192,9 @@ async function executeSendpulseWebhook(
     select: { id: true },
   });
 
+  let tagNote: string | null = null;
   try {
-    await syncSendpulseClient({
+    const synced = await syncSendpulseClient({
       contactId: input.id,
       botPhone,
       webhookName: contactName,
@@ -201,6 +202,12 @@ async function executeSendpulseWebhook(
       triggerKey,
       writeHistory: !recent,
     });
+    tagNote =
+      synced.tag === "missing-key"
+        ? "Falta SENDPULSE_API_KEY: no se etiquetó ni se leyó el chat."
+        : synced.tag === "failed"
+          ? "No se pudo etiquetar el contacto en SendPulse."
+          : null;
   } catch (error) {
     console.error(
       "[sendpulse] sync cliente",
@@ -265,6 +272,7 @@ async function executeSendpulseWebhook(
     outcome: "OK",
     httpStatus: 200,
     emailSent: true,
+    errorMessage: tagNote,
   });
   await touchLine(line.id);
   return { ok: true, status: 200 };

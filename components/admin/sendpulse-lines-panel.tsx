@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
 import {
   AdminBadge,
   AdminPanel,
@@ -24,6 +25,7 @@ import {
   rotateSendpulseLineAdmin,
 } from "@/lib/api/admin-client";
 import { SENDPULSE_TRIGGERS } from "@/lib/sendpulse/triggers";
+import { staffClientHref } from "@/lib/staff/staff-sections";
 import type {
   SendpulseEventRecord,
   SendpulseLineRecord,
@@ -31,6 +33,10 @@ import type {
 
 export interface SendpulseLinesPanelProps {
   onNotify: (message: string, tone?: "success" | "error") => void;
+}
+
+function openRegisteredClient(router: ReturnType<typeof useRouter>, clientId: string) {
+  router.push(staffClientHref(clientId));
 }
 
 type RevealedToken = {
@@ -58,6 +64,7 @@ function outcomeTone(
 }
 
 export function SendpulseLinesPanel({ onNotify }: SendpulseLinesPanelProps) {
+  const router = useRouter();
   const [lines, setLines] = useState<SendpulseLineRecord[]>([]);
   const [events, setEvents] = useState<SendpulseEventRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -177,7 +184,7 @@ export function SendpulseLinesPanel({ onNotify }: SendpulseLinesPanelProps) {
     <AdminPanel>
       <AdminPanelHeader
         title="SendPulse"
-        description="Un token por número de WhatsApp. El disparador avisa por correo y queda registrado aquí. Todavía no crea el cliente en el CRM."
+        description="Un token por número de WhatsApp. El disparador avisa por correo, crea o actualiza la ficha y, si SendPulse responde, guarda el chat y la etiqueta CRM Isapres Premium."
         actions={<AdminRefreshButton onClick={() => void load()} loading={loading} />}
       />
 
@@ -346,7 +353,15 @@ export function SendpulseLinesPanel({ onNotify }: SendpulseLinesPanelProps) {
                 </AdminTableRow>
               ) : (
                 events.map((event) => (
-                  <AdminTableRow key={event.id}>
+                  <AdminTableRow
+                    key={event.id}
+                    className={event.clientId ? "cursor-pointer hover:bg-surface-hover" : undefined}
+                    onClick={
+                      event.clientId
+                        ? () => openRegisteredClient(router, event.clientId!)
+                        : undefined
+                    }
+                  >
                     <AdminTableCell>{formatWhen(event.createdAt)}</AdminTableCell>
                     <AdminTableCell>
                       {event.lineLabel ?? event.botPhone ?? "—"}

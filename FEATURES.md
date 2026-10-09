@@ -150,7 +150,8 @@ El chatbot avisa un disparador y abre o actualiza la ficha del contacto. El corr
 | Salud del webhook: `true` si puede enviar el correo, `false` si no | `GET /api/webhooks/sendpulse` |
 | El cuerpo solo exige `id`. `nombre`, `telefono`, `bot` y `disparador` son opcionales. Responde `true` solo si el correo salió o era un duplicado reciente | `POST /api/webhooks/sendpulse`, `lib/sendpulse/handle-webhook.ts` |
 | Token por número de WhatsApp, rotación, revocación y registro de cada llamada | Sección `sendpulse` del panel admin, `SendpulseBotLine`, `SendpulseWebhookEvent` |
-| Lee contacto y chat con `SENDPULSE_API_KEY`. El chat se guarda en el seguimiento solo si hay mensajes | `lib/sendpulse/remote.ts`, `lib/sendpulse/sync-client.ts` |
+| Lee contacto y chat con `SENDPULSE_API_KEY`. El chat se guarda en el seguimiento solo si hay mensajes. Al guardar la ficha marca el contacto con la etiqueta `CRM Isapres Premium` | `lib/sendpulse/remote.ts`, `lib/sendpulse/sync-client.ts` |
+| En Conexiones, un clic en el contacto abre su ficha si ya está en el CRM | Sección `sendpulse` del panel admin |
 | Crea la ficha con origen `sendpulse +` y el número del bot. Si la ficha ya tenía otro origen, no lo cambia | `User.sendpulseContactId`, `User.sendpulseChat`, seguimiento del cliente |
 
 En SendPulse se configura con el elemento Solicitud API (POST). El encabezado puede llamarse `Authorization` o `bearer`; el valor es el token de la línea, distinto de `SENDPULSE_API_KEY`. El token de la línea se muestra una sola vez al crearlo.

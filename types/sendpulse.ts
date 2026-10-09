@@ -24,6 +24,8 @@ export type SendpulseEventRecord = {
   errorMessage: string | null;
   emailSent: boolean;
   createdAt: string;
+  /** Ficha del CRM cuando este contacto ya fue registrado. */
+  clientId?: string | null;
 };
 
 export type SendpulseTokenReveal = {
