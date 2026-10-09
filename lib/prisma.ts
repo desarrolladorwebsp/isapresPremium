@@ -18,6 +18,8 @@ const REQUIRED_DELEGATES = [
   "companyAgreement",
   "calendlyBooking",
   "appMeta",
+  "sendpulseBotLine",
+  "sendpulseWebhookEvent",
 ] as const;
 
 const globalForPrisma = globalThis as unknown as {

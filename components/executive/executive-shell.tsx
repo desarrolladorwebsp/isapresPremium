@@ -65,6 +65,11 @@ const SECTION_LABELS: Record<
     shortLabel: "Reportes",
     adminOnly: true,
   },
+  sendpulse: {
+    label: "SendPulse",
+    shortLabel: "SendPulse",
+    adminOnly: true,
+  },
   perfil: { label: "Perfil", shortLabel: "Perfil" },
 };
 
@@ -162,6 +167,12 @@ const SECTION_ICONS: Record<StaffSection, ReactNode> = {
   reportes: (
     <NavIcon>
       <path d="M4 19V9M10 19V5M16 19v-7M22 19H2" strokeLinecap="round" />
+    </NavIcon>
+  ),
+  sendpulse: (
+    <NavIcon>
+      <path d="M8 10h8M8 14h5" strokeLinecap="round" />
+      <path d="M6 5h12a2 2 0 012 2v8a2 2 0 01-2 2H9l-4 3v-3H6a2 2 0 01-2-2V7a2 2 0 012-2z" strokeLinejoin="round" />
     </NavIcon>
   ),
   perfil: (

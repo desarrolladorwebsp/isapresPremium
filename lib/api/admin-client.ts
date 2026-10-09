@@ -22,6 +22,11 @@ import type {
 } from "@/types/staff-account";
 import type { UserRecord } from "@/types/user";
 import type { SentQuotationKpiRow } from "@/lib/executive/sent-quotation-kpi";
+import type {
+  SendpulseEventRecord,
+  SendpulseLineRecord,
+  SendpulseTokenReveal,
+} from "@/types/sendpulse";
 import type { CalendarCallEvent } from "@/types/calendar";
 
 async function parseJsonResponse<T>(response: Response): Promise<T> {
@@ -797,6 +802,53 @@ export async function uploadPlanPdf(
   });
 
   return parseJsonResponse<PlanPdfUploadResult & { publicId: string }>(response);
+}
+
+export async function fetchSendpulseLines(): Promise<SendpulseLineRecord[]> {
+  const response = await fetch("/api/admin/sendpulse/lines");
+  const data = await parseJsonResponse<{ lines: SendpulseLineRecord[] }>(response);
+  return data.lines;
+}
+
+export async function createSendpulseLineAdmin(input: {
+  label: string;
+  botPhone: string;
+}): Promise<SendpulseTokenReveal> {
+  const response = await fetch("/api/admin/sendpulse/lines", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  return parseJsonResponse<SendpulseTokenReveal>(response);
+}
+
+export async function rotateSendpulseLineAdmin(
+  id: string,
+): Promise<SendpulseTokenReveal> {
+  const response = await fetch(
+    `/api/admin/sendpulse/lines/${encodeURIComponent(id)}?action=rotate`,
+    { method: "POST" },
+  );
+  return parseJsonResponse<SendpulseTokenReveal>(response);
+}
+
+export async function revokeSendpulseLineAdmin(
+  id: string,
+): Promise<SendpulseLineRecord> {
+  const response = await fetch(
+    `/api/admin/sendpulse/lines/${encodeURIComponent(id)}?action=revoke`,
+    { method: "POST" },
+  );
+  const data = await parseJsonResponse<{ line: SendpulseLineRecord }>(response);
+  return data.line;
+}
+
+export async function fetchSendpulseEvents(): Promise<SendpulseEventRecord[]> {
+  const response = await fetch("/api/admin/sendpulse/events");
+  const data = await parseJsonResponse<{ events: SendpulseEventRecord[] }>(
+    response,
+  );
+  return data.events;
 }
 
 export function createEmptyPlan(): HealthPlan {

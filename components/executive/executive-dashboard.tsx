@@ -10,6 +10,7 @@ import { ClinicsPanel } from "@/components/admin/clinics-panel";
 import { CompanyAgreementsPanel } from "@/components/admin/company-agreements-panel";
 import { GesPanel } from "@/components/admin/ges-panel";
 import { PlansAndPdfsAdminView } from "@/components/admin/plans-and-pdfs-admin-view";
+import { SendpulseLinesPanel } from "@/components/admin/sendpulse-lines-panel";
 import { AdminReportsView } from "@/components/admin/admin-reports-view";
 import { UsersPanel } from "@/components/admin/users-panel";
 import { ExecutiveAdminProspectsView } from "@/components/executive/admin/executive-admin-prospects-view";
@@ -232,6 +233,10 @@ function ExecutiveDashboardContent() {
 
         {section === "reportes" && canAccessSection("reportes") ? (
           <AdminReportsView />
+        ) : null}
+
+        {section === "sendpulse" && canAccessSection("sendpulse") ? (
+          <SendpulseLinesPanel onNotify={notify} />
         ) : null}
 
         {section === "perfil" && canAccessSection("perfil") ? (
