@@ -1,5 +1,6 @@
 import type { ClientOrigin } from "@/types/user";
 import { CLIENT_ORIGIN_OPTIONS } from "@/types/user";
+import { sendpulseOriginLabel } from "@/lib/sendpulse/origin-label";
 import type { CotizadorSourceInfo } from "@/lib/partner-entity/source-label";
 import { getCotizadorSourceBadgeClass } from "@/lib/partner-entity/source-label";
 import { AdminBadge } from "@/components/admin/admin-data-table";
@@ -41,12 +42,15 @@ export interface ClientOriginBadgeProps {
   cotizadorSource?: CotizadorSourceInfo | null;
   /** Etiqueta específica del formulario (p. ej. "Formulario web - Desde Tu 7%"). */
   webFormSource?: string | null;
+  /** Número del bot cuando el origen es SendPulse. */
+  sendpulseBotPhone?: string | null;
 }
 
 export function ClientOriginBadge({
   origin = "MANUAL",
   cotizadorSource,
   webFormSource,
+  sendpulseBotPhone,
 }: ClientOriginBadgeProps) {
   if (origin === "COTIZADOR") {
     const label = cotizadorSource?.description ?? CLIENT_ORIGIN_LABELS.COTIZADOR;
@@ -89,6 +93,19 @@ export function ClientOriginBadge({
         shape="square"
         className={badgeClass}
         title={`Lead captado en ${label}`}
+      >
+        {label}
+      </AdminBadge>
+    );
+  }
+
+  if (origin === "SENDPULSE") {
+    const label = sendpulseOriginLabel(sendpulseBotPhone);
+    return (
+      <AdminBadge
+        shape="square"
+        className={ORIGIN_BADGE_CLASS.CAMPANA_LEAD_WHATSAPP}
+        title="Lead del chatbot de WhatsApp en SendPulse"
       >
         {label}
       </AdminBadge>

@@ -14,6 +14,7 @@ import {
   sendpulseWebhookSchema,
 } from "@/lib/sendpulse/contract";
 import { recordSendpulseEvent } from "@/lib/sendpulse/events";
+import { syncSendpulseClient } from "@/lib/sendpulse/sync-client";
 
 export type SendpulseWebhookResult = {
   ok: boolean;
@@ -190,6 +191,22 @@ async function executeSendpulseWebhook(
     },
     select: { id: true },
   });
+
+  try {
+    await syncSendpulseClient({
+      contactId: input.id,
+      botPhone,
+      webhookName: contactName,
+      webhookPhone: contactPhone,
+      triggerKey,
+      writeHistory: !recent,
+    });
+  } catch (error) {
+    console.error(
+      "[sendpulse] sync cliente",
+      error instanceof Error ? error.message : "falló",
+    );
+  }
 
   if (recent) {
     await recordSendpulseEvent({

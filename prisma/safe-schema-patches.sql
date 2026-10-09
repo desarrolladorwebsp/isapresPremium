@@ -425,3 +425,17 @@ DO $$ BEGIN
 EXCEPTION
   WHEN duplicate_object THEN null;
 END $$;
+
+-- Ficha CRM desde el chatbot: origen, contacto y transcripción.
+DO $$ BEGIN
+  ALTER TYPE "ClientOrigin" ADD VALUE IF NOT EXISTS 'SENDPULSE';
+EXCEPTION
+  WHEN duplicate_object THEN null;
+  WHEN undefined_object THEN null;
+END $$;
+
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "sendpulse_contact_id" TEXT;
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "sendpulse_bot_phone" TEXT;
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "sendpulse_chat" TEXT;
+
+CREATE UNIQUE INDEX IF NOT EXISTS "users_sendpulse_contact_id_key" ON "users"("sendpulse_contact_id");

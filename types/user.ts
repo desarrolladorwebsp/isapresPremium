@@ -21,7 +21,14 @@ export type ClientOrigin =
   | "CAMPANA_VIDA_TRES"
   | "CAMPANA_NUEVA_MASVIDA"
   | "CAMPANA_ESENCIAL"
-  | "CAMPANA_EXPERTO_EN_SALUD";
+  | "CAMPANA_EXPERTO_EN_SALUD"
+  | "SENDPULSE";
+
+/** Orígenes que el equipo puede elegir a mano. SendPulse lo asigna el webhook. */
+export type ManualClientOrigin = Exclude<
+  ClientOrigin,
+  "COTIZADOR" | "FORMULARIO_WEB" | "SENDPULSE"
+>;
 
 export const CLIENT_ORIGIN_OPTIONS: Array<{
   value: ClientOrigin;
@@ -44,7 +51,7 @@ export const CLIENT_ORIGIN_OPTIONS: Array<{
 
 /** Orígenes seleccionables al registrar un cliente desde el panel. */
 export const MANUAL_CLIENT_ORIGIN_OPTIONS: Array<{
-  value: Exclude<ClientOrigin, "COTIZADOR" | "FORMULARIO_WEB">;
+  value: ManualClientOrigin;
   label: string;
 }> = [
   { value: "MANUAL", label: "Registro propio" },
@@ -66,7 +73,7 @@ export function isClientOrigin(value: string): value is ClientOrigin {
 
 export function isManualSelectableClientOrigin(
   value: string,
-): value is Exclude<ClientOrigin, "COTIZADOR" | "FORMULARIO_WEB"> {
+): value is ManualClientOrigin {
   return MANUAL_CLIENT_ORIGIN_OPTIONS.some((option) => option.value === value);
 }
 
@@ -80,7 +87,7 @@ export interface CreateManualClientInput extends ClientProfileInput {
    */
   assignedExecutiveId?: string | null;
   /** Origen del alta manual. Por defecto MANUAL. */
-  clientOrigin?: Exclude<ClientOrigin, "COTIZADOR" | "FORMULARIO_WEB">;
+  clientOrigin?: ManualClientOrigin;
 }
 
 export interface UserRecord {
@@ -127,6 +134,10 @@ export interface UserRecord {
   /** Planes propuestos/asignados al cliente (puede haber varios). */
   assignedPlans?: ClientPlanSnapshot[];
   clientOrigin?: ClientOrigin;
+  /** Número del bot de SendPulse, cuando la ficha viene del chatbot. */
+  sendpulseBotPhone?: string | null;
+  /** Transcripción del chat. Vacío si SendPulse no devolvió mensajes. */
+  sendpulseChat?: string | null;
   /** Etiqueta del formulario web (p. ej. "Formulario web - Desde Tu 7%"). */
   webFormSource?: string | null;
   cotizadorSource?: CotizadorSourceInfo | null;

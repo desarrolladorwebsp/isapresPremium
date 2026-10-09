@@ -19,6 +19,7 @@ import {
   CLIENT_CONTACT_METHOD_LABELS,
   type ClientPipelineStatus,
 } from "@/types/client-pipeline";
+import { sendpulseOriginLabel } from "@/lib/sendpulse/origin-label";
 import { CLIENT_ORIGIN_OPTIONS, type UserRecord } from "@/types/user";
 
 /** Embudo principal para la franja de etapa (sin ramas laterales). */
@@ -54,6 +55,7 @@ function formatDate(value: string | null | undefined): string {
 function originLabel(client: UserRecord): string {
   const origin = client.clientOrigin;
   if (!origin) return "Sin origen";
+  if (origin === "SENDPULSE") return sendpulseOriginLabel(client.sendpulseBotPhone);
   const base =
     CLIENT_ORIGIN_OPTIONS.find((option) => option.value === origin)?.label ??
     origin;
@@ -489,6 +491,17 @@ export function ClientSeguimientoFlowView({
                 </div>
               ) : null}
             </dl>
+          </Section>
+        ) : null}
+
+        {client.sendpulseChat?.trim() ? (
+          <Section
+            title="Chat de SendPulse"
+            description="Conversación de WhatsApp. Se actualiza cuando el chatbot vuelve a disparar y hay mensajes."
+          >
+            <pre className="max-h-80 overflow-auto whitespace-pre-wrap rounded-xl border border-border bg-bg-layout/40 px-3 py-3 text-sm leading-relaxed text-foreground">
+              {client.sendpulseChat.trim()}
+            </pre>
           </Section>
         ) : null}
 

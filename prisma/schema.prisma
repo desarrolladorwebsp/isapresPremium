@@ -110,6 +110,8 @@ enum ClientOrigin {
   CAMPANA_NUEVA_MASVIDA
   CAMPANA_ESENCIAL
   CAMPANA_EXPERTO_EN_SALUD
+  /// Lead creado por el chatbot de WhatsApp. El rótulo visible incluye el número del bot.
+  SENDPULSE
 }
 
 enum ClientContactMethod {
@@ -349,6 +351,12 @@ model User {
   zoomJoinUrl            String?              @map("zoom_join_url")
   advisedPlanCode        String?              @map("advised_plan_code")
   clientOrigin           ClientOrigin         @default(COTIZADOR) @map("client_origin")
+  /// Id del contacto en SendPulse. Sirve para reencontrar la ficha aunque cambie el teléfono.
+  sendpulseContactId     String?              @unique @map("sendpulse_contact_id")
+  /// Número del bot de la línea que originó o actualizó la ficha.
+  sendpulseBotPhone      String?              @map("sendpulse_bot_phone")
+  /// Transcripción del chat. Solo se escribe cuando SendPulse devuelve mensajes.
+  sendpulseChat          String?              @map("sendpulse_chat") @db.Text
   clientProfile          Json?                @map("client_profile")
   createdAt              DateTime             @default(now()) @map("created_at")
   updatedAt              DateTime             @updatedAt @map("updated_at")

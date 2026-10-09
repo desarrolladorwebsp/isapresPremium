@@ -276,6 +276,8 @@ function resolveRegisteredByLabel(client: UserRecord): string {
       return "Campaña Esencial";
     case "CAMPANA_EXPERTO_EN_SALUD":
       return "Campaña Experto en Salud";
+    case "SENDPULSE":
+      return "SendPulse";
     default:
       return "—";
   }
@@ -1450,6 +1452,7 @@ export function ExecutiveClientsPanel({
                         origin={client.clientOrigin}
                         cotizadorSource={client.cotizadorSource}
                         webFormSource={client.webFormSource}
+                        sendpulseBotPhone={client.sendpulseBotPhone}
                       />
                     </div>
                   </AdminTableCell>

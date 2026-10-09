@@ -41,6 +41,7 @@ import type {
 } from "@/types/client-pipeline";
 import { CLIENT_CONTACT_METHOD_LABELS } from "@/types/client-pipeline";
 import type { UserRecord } from "@/types/user";
+import { sendpulseOriginLabel } from "@/lib/sendpulse/origin-label";
 import { CLIENT_ORIGIN_OPTIONS, isClientOrigin } from "@/types/user";
 import type { ExecutiveKind, Prisma } from "@prisma/client";
 import {
@@ -48,7 +49,8 @@ import {
   canAccessInternalPipelineNotes,
 } from "@/lib/client-pipeline/note-stamp";
 
-function clientOriginLabel(origin: string): string {
+function clientOriginLabel(origin: string, botPhone?: string | null): string {
+  if (origin === "SENDPULSE") return sendpulseOriginLabel(botPhone);
   return (
     CLIENT_ORIGIN_OPTIONS.find((option) => option.value === origin)?.label ??
     origin
@@ -306,6 +308,13 @@ export async function updateClientPipeline(
   }
 
   if (input.clientOrigin !== undefined) {
+    if (input.clientOrigin === "SENDPULSE") {
+      throw new ApiError(
+        "Ese origen lo asigna el chatbot.",
+        400,
+        "INVALID_ORIGIN",
+      );
+    }
     if (!isClientOrigin(input.clientOrigin)) {
       throw new ApiError("Origen de cliente inválido.", 400, "INVALID_ORIGIN");
     }
@@ -316,7 +325,7 @@ export async function updateClientPipeline(
         actor.executiveAccountId,
         actor.isAdmin,
       );
-      const noteBody = `Origen cambiado de "${clientOriginLabel(previousOrigin)}" a "${clientOriginLabel(input.clientOrigin)}".`;
+      const noteBody = `Origen cambiado de "${clientOriginLabel(previousOrigin, existing.sendpulseBotPhone)}" a "${clientOriginLabel(input.clientOrigin)}".`;
       const notesBase =
         input.pipelineNotes !== undefined
           ? input.pipelineNotes

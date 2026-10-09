@@ -375,6 +375,7 @@ export function AssignPlanToClientModal({
                             origin={client.clientOrigin}
                             cotizadorSource={client.cotizadorSource}
                             webFormSource={client.webFormSource}
+                            sendpulseBotPhone={client.sendpulseBotPhone}
                           />
                         </div>
                         <span className="mt-0.5 block text-xs text-muted">

@@ -7,6 +7,7 @@ import { ClientOriginBadge } from "@/components/executive/client-origin-badge";
 import { updateClientPipeline } from "@/lib/api/admin-client";
 import { ui } from "@/lib/ui-tokens";
 import { joinClasses } from "@/lib/utils";
+import { sendpulseOriginLabel } from "@/lib/sendpulse/origin-label";
 import {
   CLIENT_ORIGIN_OPTIONS,
   isClientOrigin,
@@ -22,7 +23,8 @@ export interface ClientOriginEditorProps {
   readOnly?: boolean;
 }
 
-function originLabel(origin: ClientOrigin): string {
+function originLabel(origin: ClientOrigin, botPhone?: string | null): string {
+  if (origin === "SENDPULSE") return sendpulseOriginLabel(botPhone);
   return (
     CLIENT_ORIGIN_OPTIONS.find((option) => option.value === origin)?.label ??
     origin
@@ -77,10 +79,11 @@ export function ClientOriginEditor({
 
   if (readOnly) {
     return (
-      <ClientOriginBadge
+        <ClientOriginBadge
         origin={currentOrigin}
         cotizadorSource={client.cotizadorSource}
         webFormSource={client.webFormSource}
+        sendpulseBotPhone={client.sendpulseBotPhone}
       />
     );
   }
@@ -101,6 +104,11 @@ export function ClientOriginEditor({
             saving ? "opacity-60" : "",
           )}
         >
+          {currentOrigin === "SENDPULSE" ? (
+            <option value="SENDPULSE">
+              {sendpulseOriginLabel(client.sendpulseBotPhone)}
+            </option>
+          ) : null}
           {CLIENT_ORIGIN_OPTIONS.map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}
@@ -112,7 +120,7 @@ export function ClientOriginEditor({
       <AdminFormModal
         open={pendingOrigin != null}
         title="Cambiar origen del cliente"
-        description={`¿Confirmas cambiar el origen de «${originLabel(currentOrigin)}» a «${originLabel(pendingOrigin ?? currentOrigin)}»? Quedará un registro en las notas del cliente.`}
+        description={`¿Confirmas cambiar el origen de «${originLabel(currentOrigin, client.sendpulseBotPhone)}» a «${originLabel(pendingOrigin ?? currentOrigin, client.sendpulseBotPhone)}»? Quedará un registro en las notas del cliente.`}
         onClose={handleCancel}
         size="md"
       >

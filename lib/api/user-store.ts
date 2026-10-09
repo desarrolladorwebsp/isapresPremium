@@ -180,6 +180,8 @@ export function mapDbUser(user: UserWithExecutive): UserRecord {
       fullName: user.fullName,
     }),
     clientOrigin: user.clientOrigin as ClientOrigin,
+    sendpulseBotPhone: user.sendpulseBotPhone,
+    sendpulseChat: user.sendpulseChat,
     webFormSource: extractWebFormSource(user.pipelineNotes),
     createdAt: user.createdAt.toISOString(),
     updatedAt: user.updatedAt.toISOString(),
