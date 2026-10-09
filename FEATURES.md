@@ -151,7 +151,7 @@ El chatbot avisa un disparador de negocio. Esta etapa no crea el cliente ni lee 
 | El cuerpo solo exige `id`. `nombre`, `telefono`, `bot` y `disparador` son opcionales. Responde `true` solo si el correo salió o era un duplicado reciente | `POST /api/webhooks/sendpulse`, `lib/sendpulse/handle-webhook.ts` |
 | Token por número de WhatsApp, rotación, revocación y registro de cada llamada | Sección `sendpulse` del panel admin, `SendpulseBotLine`, `SendpulseWebhookEvent` |
 
-En SendPulse se configura con el elemento Solicitud API (POST, cabecera `Authorization: Bearer`). El token se muestra una sola vez al crearlo.
+En SendPulse se configura con el elemento Solicitud API (POST). El encabezado puede llamarse `Authorization` o `bearer`; el valor es el token. Se muestra una sola vez al crearlo.
 
 ## Operación
 

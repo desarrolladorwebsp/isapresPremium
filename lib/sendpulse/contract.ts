@@ -64,11 +64,19 @@ export function sendpulseTokensMatch(presented: string, storedHash: string): boo
   return timingSafeEqual(left, right);
 }
 
+function tokenFromHeaderValue(value: string | null): string | null {
+  const trimmed = value?.trim() ?? "";
+  if (!trimmed) return null;
+  const match = /^Bearer\s+(\S+)$/i.exec(trimmed);
+  return (match?.[1] ?? trimmed).trim() || null;
+}
+
+/** SendPulse nombra el encabezado `bearer` y pone el token en el valor. */
 export function readSendpulseBearer(request: Request): string | null {
-  const header = request.headers.get("authorization")?.trim() ?? "";
-  const match = /^Bearer\s+(\S+)$/i.exec(header);
-  const token = match?.[1]?.trim() ?? "";
-  return token || null;
+  return (
+    tokenFromHeaderValue(request.headers.get("authorization")) ??
+    tokenFromHeaderValue(request.headers.get("bearer"))
+  );
 }
 
 export function payloadErrorMessage(error: z.ZodError): string {
