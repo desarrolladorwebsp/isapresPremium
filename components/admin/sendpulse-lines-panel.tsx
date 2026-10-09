@@ -247,9 +247,9 @@ export function SendpulseLinesPanel({ onNotify }: SendpulseLinesPanelProps) {
           </div>
           <p>
             En el flujo usa el elemento <strong>Solicitud API</strong>, método POST, a{" "}
-            <code>https://isaprespremium.cl/api/webhooks/sendpulse</code>. El campo{" "}
-            <code>bot</code> va fijo en <code>{revealed.botPhone}</code>.{" "}
-            <code>disparador</code> es una de estas claves:{" "}
+            <code>https://isaprespremium.cl/api/webhooks/sendpulse</code>. Solo{" "}
+            <code>id</code> es obligatorio. El campo <code>bot</code> puede ir fijo en{" "}
+            <code>{revealed.botPhone}</code>. <code>disparador</code> es una de estas claves:{" "}
             {Object.entries(SENDPULSE_TRIGGERS)
               .map(([key, text]) => `${key} (${text})`)
               .join(", ")}

@@ -2,32 +2,35 @@ import { Resend } from "resend";
 import { escapeHtml } from "@/lib/email/escape-html";
 import { getEquipoFromEmail, getResendApiKey } from "@/lib/email/resend-config";
 import { getSendpulseNotifyEmail } from "@/lib/sendpulse/contract";
-import {
-  sendpulseTriggerLabel,
-  type SendpulseTriggerKey,
-} from "@/lib/sendpulse/triggers";
+import { sendpulseTriggerLabel } from "@/lib/sendpulse/triggers";
 
 export type SendpulseTriggerNotifyInput = {
-  triggerKey: SendpulseTriggerKey;
+  triggerKey: string | null;
   botPhone: string;
   lineLabel: string;
   contactId: string;
   contactName: string | null;
-  contactPhone: string;
+  contactPhone: string | null;
 };
 
 export async function sendSendpulseTriggerNotifyEmail(
   input: SendpulseTriggerNotifyInput,
 ): Promise<{ ok: true; id: string } | { ok: false; message: string }> {
-  const triggerLabel =
-    sendpulseTriggerLabel(input.triggerKey) ?? input.triggerKey;
+  const knownLabel = sendpulseTriggerLabel(input.triggerKey);
+  const triggerLabel = knownLabel ?? input.triggerKey ?? "Sin disparador";
+  const triggerValue = input.triggerKey
+    ? knownLabel
+      ? `${knownLabel} (${input.triggerKey})`
+      : input.triggerKey
+    : "—";
+  const phone = input.contactPhone?.trim() || "—";
   const rows = [
-    { label: "Disparador", value: `${triggerLabel} (${input.triggerKey})` },
+    { label: "Disparador", value: triggerValue },
     { label: "Bot", value: input.botPhone },
     { label: "Línea", value: input.lineLabel },
     { label: "Id SendPulse", value: input.contactId },
     { label: "Nombre", value: input.contactName?.trim() || "—" },
-    { label: "Teléfono", value: input.contactPhone },
+    { label: "Teléfono", value: phone },
   ];
 
   const htmlRows = rows
@@ -40,7 +43,7 @@ export async function sendSendpulseTriggerNotifyEmail(
     )
     .join("");
 
-  const subject = `SendPulse — ${triggerLabel} — ${input.contactPhone}`;
+  const subject = `SendPulse — ${triggerLabel} — ${phone === "—" ? input.contactId : phone}`;
   const html = `
     <div style="font-family:Arial,Helvetica,sans-serif;max-width:640px;margin:0 auto;color:#18181b;">
       <h1 style="color:#064e45;font-size:22px;margin:0 0 8px;">Disparador de SendPulse</h1>

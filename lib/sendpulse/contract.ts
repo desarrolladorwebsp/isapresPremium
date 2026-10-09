@@ -1,10 +1,6 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { isValidPhone, phoneDigits } from "@/lib/leads/validation";
-import {
-  SENDPULSE_TRIGGERS,
-  type SendpulseTriggerKey,
-} from "@/lib/sendpulse/triggers";
 
 export { SENDPULSE_TRIGGERS, sendpulseTriggerLabel } from "@/lib/sendpulse/triggers";
 export type { SendpulseTriggerKey } from "@/lib/sendpulse/triggers";
@@ -14,17 +10,15 @@ export const DEFAULT_SENDPULSE_NOTIFY_EMAIL = "ahurtado@smartpro.cl";
 
 export const SENDPULSE_DEDUPE_WINDOW_MS = 10 * 60 * 1000;
 
-const TRIGGER_KEYS = Object.keys(SENDPULSE_TRIGGERS) as [
-  SendpulseTriggerKey,
-  ...SendpulseTriggerKey[],
-];
+const optionalText = (max: number) =>
+  z.union([z.string().trim().max(max), z.literal(""), z.null()]).optional();
 
 export const sendpulseWebhookSchema = z.object({
   id: z.string().trim().min(1).max(128),
-  nombre: z.union([z.string().trim().max(160), z.null()]).optional(),
-  telefono: z.string().trim().min(1).max(40),
-  bot: z.string().trim().min(1).max(40),
-  disparador: z.enum(TRIGGER_KEYS),
+  nombre: optionalText(160),
+  telefono: optionalText(40),
+  bot: optionalText(40),
+  disparador: optionalText(64),
 });
 
 export type SendpulseWebhookInput = z.infer<typeof sendpulseWebhookSchema>;
@@ -35,7 +29,7 @@ export function getSendpulseNotifyEmail(): string {
   );
 }
 
-/** Teléfono del bot: obligatorio con + y código de país. Se guarda como +dígitos. */
+/** Teléfono del bot, si viene en el cuerpo. Se compara como +dígitos. */
 export function normalizeSendpulseBotPhone(value: string): string | null {
   const trimmed = value.trim();
   if (!trimmed.startsWith("+")) return null;
@@ -80,10 +74,14 @@ export function readSendpulseBearer(request: Request): string | null {
 export function payloadErrorMessage(error: z.ZodError): string {
   const field = error.issues[0]?.path[0];
   if (field === "id") return "id es obligatorio.";
-  if (field === "telefono") return "telefono es obligatorio.";
-  if (field === "bot") return "bot es obligatorio.";
-  if (field === "nombre") return "nombre es demasiado largo.";
-  if (field === "disparador") return "disparador no reconocido.";
+  if (
+    field === "nombre" ||
+    field === "telefono" ||
+    field === "bot" ||
+    field === "disparador"
+  ) {
+    return `${String(field)} es demasiado largo.`;
+  }
   return "Datos inválidos.";
 }
 

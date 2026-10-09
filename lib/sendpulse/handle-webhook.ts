@@ -4,6 +4,7 @@ import { checkRateLimit, readClientIp } from "@/lib/security/rate-limit";
 import {
   SENDPULSE_DEDUPE_WINDOW_MS,
   getSendpulseNotifyEmail,
+  hashSendpulseToken,
   normalizeSendpulseBotPhone,
   normalizeSendpulseContactPhone,
   payloadErrorMessage,
@@ -12,7 +13,6 @@ import {
   sendpulseTokensMatch,
   sendpulseWebhookSchema,
 } from "@/lib/sendpulse/contract";
-import type { SendpulseTriggerKey } from "@/lib/sendpulse/triggers";
 import { recordSendpulseEvent } from "@/lib/sendpulse/events";
 
 export type SendpulseWebhookResult = {
@@ -117,43 +117,28 @@ async function executeSendpulseWebhook(
   }
 
   const input = parsed.data;
-  const botPhone = normalizeSendpulseBotPhone(input.bot);
-  const contactPhone = normalizeSendpulseContactPhone(input.telefono);
-  const contactName = input.nombre?.trim() || null;
+  const contactName = blankToNull(input.nombre);
+  const rawPhone = blankToNull(input.telefono);
+  const contactPhone = rawPhone
+    ? (normalizeSendpulseContactPhone(rawPhone) ?? rawPhone)
+    : null;
+  const requestedBot = blankToNull(input.bot);
+  const requestedBotPhone = requestedBot
+    ? normalizeSendpulseBotPhone(requestedBot)
+    : null;
+  const triggerKey = blankToNull(input.disparador);
   const baseLog = {
     contactId: input.id,
     contactName,
-    contactPhone: contactPhone ?? input.telefono,
-    botPhone: botPhone ?? input.bot,
-    triggerKey: input.disparador,
+    contactPhone,
+    botPhone: requestedBotPhone ?? requestedBot,
+    triggerKey,
   };
-
-  if (!botPhone) {
-    await recordSendpulseEvent({
-      ...baseLog,
-      outcome: "INVALID_PAYLOAD",
-      httpStatus: 400,
-      errorMessage: "bot debe ser el teléfono completo del bot, con +. Ejemplo: +56999999999.",
-    });
-    return { ok: false, status: 400 };
-  }
-
-  if (!contactPhone) {
-    await recordSendpulseEvent({
-      ...baseLog,
-      outcome: "INVALID_PAYLOAD",
-      httpStatus: 400,
-      errorMessage: "telefono no es válido.",
-    });
-    return { ok: false, status: 400 };
-  }
 
   const token = readSendpulseBearer(request);
   if (!token) {
     await recordSendpulseEvent({
       ...baseLog,
-      contactPhone,
-      botPhone,
       outcome: "INVALID_TOKEN",
       httpStatus: 401,
       errorMessage: "Falta el token.",
@@ -162,19 +147,17 @@ async function executeSendpulseWebhook(
   }
 
   const line = await prisma.sendpulseBotLine.findUnique({
-    where: { botPhone },
+    where: { tokenHash: hashSendpulseToken(token) },
   });
 
   if (!line || !line.active || !sendpulseTokensMatch(token, line.tokenHash)) {
     await recordSendpulseEvent({
       ...baseLog,
       lineId: line?.id ?? null,
-      contactPhone,
-      botPhone,
       outcome: "INVALID_TOKEN",
       httpStatus: 401,
       errorMessage: !line
-        ? "Bot no registrado o token inválido."
+        ? "Token inválido."
         : !line.active
           ? "La línea está revocada."
           : "Token inválido.",
@@ -182,12 +165,26 @@ async function executeSendpulseWebhook(
     return { ok: false, status: 401 };
   }
 
+  if (requestedBotPhone && requestedBotPhone !== line.botPhone) {
+    await recordSendpulseEvent({
+      ...baseLog,
+      lineId: line.id,
+      botPhone: requestedBotPhone,
+      outcome: "INVALID_TOKEN",
+      httpStatus: 401,
+      errorMessage: "El bot no corresponde al token.",
+    });
+    return { ok: false, status: 401 };
+  }
+
+  const botPhone = line.botPhone;
+
   const since = new Date(Date.now() - SENDPULSE_DEDUPE_WINDOW_MS);
   const recent = await prisma.sendpulseWebhookEvent.findFirst({
     where: {
       lineId: line.id,
       contactId: input.id,
-      triggerKey: input.disparador,
+      triggerKey,
       emailSent: true,
       createdAt: { gte: since },
     },
@@ -222,7 +219,7 @@ async function executeSendpulseWebhook(
   }
 
   const email = await sendSendpulseTriggerNotifyEmail({
-    triggerKey: input.disparador as SendpulseTriggerKey,
+    triggerKey,
     botPhone,
     lineLabel: line.label,
     contactId: input.id,
@@ -254,6 +251,11 @@ async function executeSendpulseWebhook(
   });
   await touchLine(line.id);
   return { ok: true, status: 200 };
+}
+
+function blankToNull(value: string | null | undefined): string | null {
+  const trimmed = value?.trim() ?? "";
+  return trimmed || null;
 }
 
 async function touchLine(lineId: string): Promise<void> {

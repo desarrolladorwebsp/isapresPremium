@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
  *
  * POST /api/webhooks/sendpulse
  * Authorization: Bearer <token de la línea>
- * { id, nombre?, telefono, bot, disparador }
+ * { id, nombre?, telefono?, bot?, disparador? }
  * Responde `true` solo si el aviso quedó registrado y el correo salió
  * (o era un duplicado reciente). En cualquier otro caso responde `false`.
  */
