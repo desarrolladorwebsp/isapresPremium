@@ -34,12 +34,8 @@ export function adminCanReceiveAssignmentsForKind(
   return kind === "ISAPRES_PREMIUM" || kind === "ZOOM";
 }
 
-/**
- * Puede listar / abrir la ficha de todos los clientes del sistema
- * (además de su cartera y derivados). Admin también; no aplica a
- * Ejecutivo Isapres ni Membresía.
- */
-export function canBrowseAllClientsAsExecutive(
+/** Roles ejecutivos operativos habilitados para acciones de asignación de cartera. */
+export function canManageClientPortfolioAsExecutive(
   kind: ExecutiveKind | null | undefined,
 ): boolean {
   return kind === "ISAPRES_PREMIUM" || kind === "ZOOM";

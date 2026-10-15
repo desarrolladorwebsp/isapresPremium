@@ -3,7 +3,7 @@ import { assignUserToExecutive, readUserById } from "@/lib/api/user-store";
 import { apiErrorResponse, parseJsonBody, ApiError } from "@/lib/api/api-error";
 import { requireExecutiveOrAdminSession, assertSessionStaffSection } from "@/lib/auth/require-auth";
 import { AUTH_REALM } from "@/lib/auth/constants";
-import { canBrowseAllClientsAsExecutive } from "@/lib/auth/staff-role";
+import { canManageClientPortfolioAsExecutive } from "@/lib/auth/staff-role";
 import type { ExecutiveSessionUser } from "@/lib/auth/types";
 
 interface RouteContext {
@@ -21,7 +21,7 @@ export async function PATCH(request: Request, context: RouteContext) {
         ? (sessionUser as ExecutiveSessionUser).executiveKind
         : null;
 
-    if (!isAdmin && !canBrowseAllClientsAsExecutive(executiveKind)) {
+    if (!isAdmin && !canManageClientPortfolioAsExecutive(executiveKind)) {
       throw new ApiError(
         "No tienes permiso para reasignar clientes.",
         403,

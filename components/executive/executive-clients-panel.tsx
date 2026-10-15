@@ -43,7 +43,7 @@ import {
   invalidateExecutiveClients,
   upsertExecutiveClientCache,
 } from "@/lib/query/executive-cache";
-import { canBrowseAllClientsAsExecutive } from "@/lib/auth/staff-role";
+import { canManageClientPortfolioAsExecutive } from "@/lib/auth/staff-role";
 import {
   isReturnedClientForExecutive,
   isTrackingOnlyForExecutive,
@@ -339,10 +339,10 @@ export function ExecutiveClientsPanel({
   const queryClient = useQueryClient();
   const { isAdmin, user, executiveKind } = useStaffSession();
   const clientsQuery = useExecutiveClientsQuery();
-  const canBrowseAllClients =
-    isAdmin || canBrowseAllClientsAsExecutive(executiveKind);
+  const canBrowseAllClients = isAdmin;
   // Admin, Ejecutivo Zoom y Ejecutivo Isapres Premium pueden reasignar clientes.
-  const canReassignClients = canBrowseAllClients;
+  const canReassignClients =
+    isAdmin || canManageClientPortfolioAsExecutive(executiveKind);
   const executivesQuery = useExecutiveAccountsQuery({
     enabled: canReassignClients,
   });
@@ -451,9 +451,6 @@ export function ExecutiveClientsPanel({
   const segmentedClients = useMemo(() => {
     const rows = clients ?? [];
     if (isAdmin || !user?.id) return rows;
-    if (segment === "todos" && canBrowseAllClientsAsExecutive(executiveKind)) {
-      return rows;
-    }
     if (segment === "derivados") {
       return rows.filter((client) =>
         isTrackingOnlyForExecutive(client, user.id),
@@ -470,7 +467,7 @@ export function ExecutiveClientsPanel({
         client.assignedExecutiveId === user.id &&
         !isReturnedClientForExecutive(client, user.id),
     );
-  }, [clients, executiveKind, isAdmin, segment, user?.id]);
+  }, [clients, isAdmin, segment, user?.id]);
 
   const derivadosCount = useMemo(() => {
     if (isAdmin || !user?.id) return 0;

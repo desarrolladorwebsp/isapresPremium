@@ -1,5 +1,5 @@
 import type { ExecutiveKind } from "@prisma/client";
-import { canBrowseAllClientsAsExecutive } from "@/lib/auth/staff-role";
+import { canManageClientPortfolioAsExecutive } from "@/lib/auth/staff-role";
 
 /** Minutos antes de la reunión Premium para el llamado de confirmación Zoom. */
 export const CONFIRMATION_CALL_LEAD_MINUTES = 10;
@@ -86,10 +86,9 @@ export function canViewClientAsExecutive(
   },
   executiveAccountId: string,
   isAdmin: boolean,
-  executiveKind?: ExecutiveKind | null,
+  _executiveKind?: ExecutiveKind | null,
 ): boolean {
   if (isAdmin) return true;
-  if (canBrowseAllClientsAsExecutive(executiveKind)) return true;
   return (
     isClientAssignedTo(client, executiveAccountId) ||
     isClientTrackedBy(client, executiveAccountId)
@@ -114,7 +113,7 @@ export function canEditClientDataAsExecutive(
   executiveKind?: ExecutiveKind | null,
 ): boolean {
   if (isAdmin) return true;
-  if (canBrowseAllClientsAsExecutive(executiveKind)) {
+  if (canManageClientPortfolioAsExecutive(executiveKind)) {
     return (
       isClientAssignedTo(client, executiveAccountId) ||
       isClientTrackedBy(client, executiveAccountId)

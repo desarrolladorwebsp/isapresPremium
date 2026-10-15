@@ -8,7 +8,6 @@ import { parseClientProfilePayload } from "@/lib/api/parse-client-profile";
 import { apiErrorResponse, parseJsonBody } from "@/lib/api/api-error";
 import { requireExecutiveOrAdminSession, assertSessionStaffSection } from "@/lib/auth/require-auth";
 import { AUTH_REALM } from "@/lib/auth/constants";
-import { canBrowseAllClientsAsExecutive } from "@/lib/auth/staff-role";
 import type { ExecutiveSessionUser } from "@/lib/auth/types";
 import { canAccessInternalPipelineNotes } from "@/lib/client-pipeline/note-stamp";
 import type { CreateManualClientInput, UserRecord } from "@/types/user";
@@ -78,8 +77,7 @@ export async function GET(request: Request) {
         : null;
 
     const clients =
-      realm === AUTH_REALM.admin ||
-      canBrowseAllClientsAsExecutive(executiveKind)
+      realm === AUTH_REALM.admin
         ? await readClientRecords()
         : await readClientsForExecutive(user.id);
 

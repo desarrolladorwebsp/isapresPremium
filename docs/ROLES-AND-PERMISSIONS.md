@@ -22,7 +22,7 @@ La membresía es para usuarios externos: no reciben asignación de clientes ni a
 
 - Ver **todos los planes** con filtros (mismo catálogo que el cotizador público).
 - **Descargar y ver PDF** de cada plan (`/api/plans/{code}/pdf`).
-- Ver **cotizaciones** / clientes según su `executiveKind` y secciones permitidas.
+- Ver sus clientes asignados y los que mantiene en seguimiento. La vista global **Todos los clientes** y las fichas fuera de su cartera son solo para administradores.
 - **Asignarse** cotizaciones y clientes que cotizaron (excepto membresía).
 
 ### No puede

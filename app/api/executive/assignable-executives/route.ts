@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { apiErrorResponse, ApiError } from "@/lib/api/api-error";
 import { listStaffAccounts } from "@/lib/auth/account-store";
 import { requireExecutiveOrAdminSession } from "@/lib/auth/require-auth";
-import { canBrowseAllClientsAsExecutive } from "@/lib/auth/staff-role";
+import { canManageClientPortfolioAsExecutive } from "@/lib/auth/staff-role";
 import { AUTH_REALM } from "@/lib/auth/constants";
 import type { ExecutiveSessionUser } from "@/lib/auth/types";
 
@@ -20,7 +20,7 @@ export async function GET(request: Request) {
         ? (user as ExecutiveSessionUser).executiveKind
         : null;
 
-    if (!isAdmin && !canBrowseAllClientsAsExecutive(executiveKind)) {
+    if (!isAdmin && !canManageClientPortfolioAsExecutive(executiveKind)) {
       throw new ApiError(
         "No tienes permiso para reasignar clientes.",
         403,
