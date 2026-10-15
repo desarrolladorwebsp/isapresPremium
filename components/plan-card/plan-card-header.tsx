@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useOptionalCompanyAgreementContext } from "@/components/cotizador/company-agreement";
 import { ExecutivePlanAgreementPrices } from "@/components/cotizador/company-agreement/plan-agreement-price";
 import {
+  buildPlanAgreementQuoteFromBasePrice,
   buildPlanAgreementPriceDisplay,
   resolveAgreementDiscountPercentForPlan,
   resolveAgreementPlanMapping,
@@ -40,28 +41,10 @@ export function PlanCardHeader({
 
   const agreementPrices = useMemo(() => {
     if (agreementMapping && priceQuote) {
-      const basePriceUf = agreementMapping.price;
-      const groupTotalFactor = priceQuote.groupTotalFactor;
-      const beneficiaryCount = priceQuote.beneficiaryCount;
-      const gesPremiumUfPerPerson = priceQuote.gesPremiumUfPerPerson;
-      const gesTotalUf = priceQuote.gesTotalUf;
-      const ufToClp = priceQuote.ufToClp;
-
-      const riskComponentUf = groupTotalFactor * basePriceUf;
-      const finalPriceUf = riskComponentUf + gesTotalUf;
-      const finalPriceClp = Math.round(finalPriceUf * ufToClp);
-
-      const convenioQuote: PlanFinalPriceQuote = {
-        basePriceUf,
-        groupTotalFactor,
-        beneficiaryCount,
-        gesPremiumUfPerPerson,
-        gesTotalUf,
-        riskComponentUf,
-        finalPriceUf,
-        finalPriceClp,
-        ufToClp,
-      };
+      const convenioQuote = buildPlanAgreementQuoteFromBasePrice(
+        priceQuote,
+        agreementMapping.price,
+      );
 
       return buildPlanAgreementPriceDisplayWithMapping(priceQuote, convenioQuote);
     }

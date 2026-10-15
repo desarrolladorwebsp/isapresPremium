@@ -54,15 +54,6 @@ function formatDiscountPercentLabel(percent: number): string {
   return `${formatted}%`;
 }
 
-function personUnitPriceUf(
-  person: PersonRiskFactor,
-  basePriceUf: number,
-  gesPremiumUfPerPerson: number,
-): number {
-  const factor = person.factor ?? 0;
-  return factor * basePriceUf + gesPremiumUfPerPerson;
-}
-
 function formatBeneficiaryLine(
   label: string,
   age: number | null,
@@ -78,12 +69,16 @@ function buildBeneficiaryValueLines(
   basePriceUf: number,
   gesPremiumUfPerPerson: number,
   ufToClp: number,
-  /** Factor 0–1 aplicado sobre el valor unitario (descuento % convenio). */
+  /** Factor 0–1 aplicado solo al componente base; GES queda intacto. */
   priceFactor = 1,
 ): string[] {
   const lines: string[] = [];
-  const applyFactor = (uf: number) =>
-    Math.round(uf * priceFactor * 1_000_000) / 1_000_000;
+  const beneficiaryPrice = (person: PersonRiskFactor) =>
+    Math.round(
+      ((person.factor ?? 0) * basePriceUf * priceFactor +
+        gesPremiumUfPerPerson) *
+        1_000_000,
+    ) / 1_000_000;
 
   // Misma fuente que el modal de detalle: todos los cotizantes + todas las cargas.
   const contributors = summary.contributors.filter(
@@ -92,9 +87,7 @@ function buildBeneficiaryValueLines(
   const dependents = summary.dependents.filter((person) => person.age != null);
 
   contributors.forEach((contributor, index) => {
-    const uf = applyFactor(
-      personUnitPriceUf(contributor, basePriceUf, gesPremiumUfPerPerson),
-    );
+    const uf = beneficiaryPrice(contributor);
     lines.push(
       formatBeneficiaryLine(
         contributors.length > 1 ? `Cotizante ${index + 1}` : "Cotizante",
@@ -106,9 +99,7 @@ function buildBeneficiaryValueLines(
   });
 
   dependents.forEach((dependent, index) => {
-    const uf = applyFactor(
-      personUnitPriceUf(dependent, basePriceUf, gesPremiumUfPerPerson),
-    );
+    const uf = beneficiaryPrice(dependent);
     lines.push(
       formatBeneficiaryLine(
         dependents.length > 1 ? `Carga ${index + 1}` : "Carga",

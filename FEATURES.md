@@ -34,7 +34,7 @@ El tenant es de **marca**, no de datos. Isapres, planes, clínicas, coberturas y
 | Ruta legacy `/{partnerSlug}` y `/embed` | `app/[partnerSlug]/`, `app/embed/` |
 | Widget `cotizador-widget.js` (iframe, 4 planes, salida al cotizador completo; host por defecto `https://isaprespremium.cl`) | `public/cotizador-widget.js`, `EMBED_WIDGET_PLANS_LIMIT` en `lib/plan-search-config.ts` |
 | Búsqueda y filtros de planes (precio, isapre, zona, tipo, cobertura H/A, clínicas) | `GET /api/plans/search`, `lib/api/plan-search.ts`, `lib/apply-plan-filters.ts` |
-| Precio final UF/CLP, escenarios, descuento por convenio de empresa | `lib/plan-final-price.ts`, `lib/plan-price-scenarios.ts`, `lib/company-agreements/plan-price-discount.ts` |
+| Precio final UF/CLP, escenarios, descuento por convenio de empresa aplicado a la base del plan (GES permanece intacto) | `lib/plan-final-price.ts`, `lib/plan-price-scenarios.ts`, `lib/company-agreements/plan-price-discount.ts` |
 | UF | `GET /api/uf`, `lib/economic-indicators.ts` |
 | PDF de plan | `GET /api/plans/[uniqueCode]/pdf` |
 | Solicitud de plan / aviso de cotización | `POST /api/quotes`, `POST /api/cotizacion-notify`, página `/cotizador/mi-cotizacion` |

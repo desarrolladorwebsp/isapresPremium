@@ -6,6 +6,11 @@ import { useOptionalCompanyAgreementContext } from "@/components/cotizador/compa
 import { splitCoverageByType } from "@/domain";
 import { buildPlanFinalPriceQuote } from "@/domain";
 import {
+  buildPlanAgreementQuoteFromBasePrice,
+  resolveAgreementDiscountPercentForPlan,
+  resolveAgreementPlanMapping,
+} from "@/lib/company-agreements/plan-price-discount";
+import {
   buildPlanWhatsAppMessage,
   copyTextToClipboard,
 } from "@/lib/executive/build-plan-whatsapp-message";
@@ -85,6 +90,32 @@ export function PlanCard({
       ),
     [plan.base_price_uf, plan.ges_premium_uf, beneficiarySummary, ufToClp],
   );
+
+  const detailPriceQuote = useMemo(() => {
+    if (!validatedAgreement) return priceQuote;
+
+    const mapping = resolveAgreementPlanMapping(
+      plan.unique_code,
+      plan.isapre,
+      validatedAgreement,
+    );
+    if (mapping) {
+      return buildPlanAgreementQuoteFromBasePrice(priceQuote, mapping.price);
+    }
+
+    const discountPercent = resolveAgreementDiscountPercentForPlan(
+      plan.isapre,
+      validatedAgreement,
+    );
+    if (discountPercent == null) return priceQuote;
+
+    const discountedBasePriceUf =
+      priceQuote.basePriceUf * Math.max(0, 1 - discountPercent / 100);
+    return buildPlanAgreementQuoteFromBasePrice(
+      priceQuote,
+      discountedBasePriceUf,
+    );
+  }, [validatedAgreement, priceQuote, plan.unique_code, plan.isapre]);
 
   const isAssignCta = selectVariant === "success";
 
@@ -202,7 +233,7 @@ export function PlanCard({
         open={detailOpen}
         plan={plan}
         beneficiarySummary={beneficiarySummary}
-        priceQuote={priceQuote}
+        priceQuote={detailPriceQuote}
         highlightHospitalClinicIds={highlightHospitalClinicIds}
         highlightAmbulatoryClinicIds={highlightAmbulatoryClinicIds}
         initialTab="coverages"

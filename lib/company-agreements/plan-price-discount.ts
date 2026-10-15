@@ -67,11 +67,25 @@ export function resolveAgreementDiscountPercentForPlan(
   return Math.min(100, percent);
 }
 
-/**
- * Aplica el descuento referencial del convenio sobre el precio final
- * mostrado del plan (UF/CLP). Es referencial: no altera el cálculo base
- * ni el valor persistido sin descuento.
- */
+/** Recalcula la cotización con otra base, conservando factores y GES. */
+export function buildPlanAgreementQuoteFromBasePrice(
+  quote: PlanFinalPriceQuote,
+  basePriceUf: number,
+): PlanFinalPriceQuote {
+  const riskComponentUf = quote.groupTotalFactor * basePriceUf;
+  const finalPriceUf =
+    Math.round((riskComponentUf + quote.gesTotalUf) * 1_000_000) / 1_000_000;
+
+  return {
+    ...quote,
+    basePriceUf,
+    riskComponentUf,
+    finalPriceUf,
+    finalPriceClp: calculateFinalPlanPriceClp(finalPriceUf, quote.ufToClp),
+  };
+}
+
+/** Aplica el descuento referencial solo al componente base; GES se conserva. */
 export function buildPlanAgreementPriceDisplay(
   quote: PlanFinalPriceQuote,
   discountPercent: number | null | undefined,
@@ -95,12 +109,12 @@ export function buildPlanAgreementPriceDisplay(
   }
 
   const factor = Math.max(0, 1 - discountPercent / 100);
-  const displayFinalPriceUf =
-    Math.round(quote.finalPriceUf * factor * 1_000_000) / 1_000_000;
-  const displayFinalPriceClp = calculateFinalPlanPriceClp(
-    displayFinalPriceUf,
-    quote.ufToClp,
+  const discountedQuote = buildPlanAgreementQuoteFromBasePrice(
+    quote,
+    quote.basePriceUf * factor,
   );
+  const displayFinalPriceUf = discountedQuote.finalPriceUf;
+  const displayFinalPriceClp = discountedQuote.finalPriceClp;
 
   return {
     listFinalPriceUf,
