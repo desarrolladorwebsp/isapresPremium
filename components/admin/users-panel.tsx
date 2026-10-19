@@ -22,7 +22,6 @@ import {
 import {
   cancelPendingStaffInvite,
   createStaffAccount,
-  deleteStaffAccount,
   fetchExecutiveAssignmentStats,
   fetchStaffAccounts,
   resendPendingStaffInvite,
@@ -126,7 +125,7 @@ export interface UsersPanelProps {
   onNotify: (message: string, tone?: "success" | "error") => void;
   /** Si true, muestra solo ejecutivos (vista principal de Usuarios). */
   executivesOnly?: boolean;
-  /** Si false, oculta acciones de gestión (invitar, suspender, eliminar). */
+  /** Si false, oculta acciones de gestión (invitar y suspender/reactivar). */
   canManage?: boolean;
 }
 
@@ -302,7 +301,6 @@ function UsersDirectoryTable({
   onChangeRole,
   onToggleAssignments,
   onToggleActive,
-  onDelete,
 }: {
   rows: ExecutiveDirectoryRow[];
   executivesOnly: boolean;
@@ -318,7 +316,6 @@ function UsersDirectoryTable({
   onChangeRole: (account: StaffAccountRecord) => void;
   onToggleAssignments: (account: StaffAccountRecord) => void;
   onToggleActive: (account: StaffAccountRecord) => void;
-  onDelete: (account: StaffAccountRecord) => void;
 }) {
   return (
     <AdminTable minWidth="56rem">
@@ -506,15 +503,6 @@ function UsersDirectoryTable({
                         </ActionIcon>
                       )}
                     </UsersIconButton>
-                    <UsersIconButton
-                      label="Eliminar"
-                      tone="danger"
-                      onClick={() => onDelete(account)}
-                    >
-                      <ActionIcon>
-                        <path d="M4 7h16M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2M10 11v6M14 11v6M6 7l1 12a2 2 0 002 2h6a2 2 0 002-2l1-12" strokeLinecap="round" strokeLinejoin="round" />
-                      </ActionIcon>
-                    </UsersIconButton>
                   </AdminRowActions>
                 ) : (
                   <span className="text-xs text-muted">—</span>
@@ -543,7 +531,6 @@ export function UsersPanel({
   const [sortKey, setSortKey] = useState<UsersSortKey | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [modalOpen, setModalOpen] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<StaffAccountRecord | null>(null);
   const [roleTarget, setRoleTarget] = useState<StaffAccountRecord | null>(null);
   const [roleDraft, setRoleDraft] = useState<ExecutiveKind>("ISAPRES_PREMIUM");
   const [saving, setSaving] = useState(false);
@@ -791,25 +778,6 @@ export function UsersPanel({
     }
   }
 
-  async function handleDelete() {
-    if (!deleteTarget) return;
-
-    setSaving(true);
-    try {
-      const result = await deleteStaffAccount(deleteTarget.realm, deleteTarget.id);
-      onNotify(result.message);
-      setDeleteTarget(null);
-      await loadAccounts();
-    } catch (error) {
-      onNotify(
-        error instanceof Error ? error.message : "No se pudo eliminar el usuario.",
-        "error",
-      );
-    } finally {
-      setSaving(false);
-    }
-  }
-
   async function handleCancelPendingInvite(inviteId: string) {
     try {
       const result = await cancelPendingStaffInvite(inviteId);
@@ -926,7 +894,6 @@ export function UsersPanel({
           onChangeRole={openRoleModal}
           onToggleAssignments={(account) => void handleToggleAssignments(account)}
           onToggleActive={(account) => void handleToggleActive(account)}
-          onDelete={setDeleteTarget}
         />
       </AdminTableCard>
 
@@ -1030,33 +997,6 @@ export function UsersPanel({
         </AdminFormModal>
       ) : null}
 
-      {canManage ? (
-        <AdminFormModal
-          open={Boolean(deleteTarget)}
-          title="Eliminar usuario"
-        description={
-          deleteTarget
-            ? `¿Eliminar permanentemente a ${deleteTarget.fullName} (${getAccountRoleLabel(deleteTarget)})? Esta acción no se puede deshacer.`
-            : ""
-        }
-        onClose={() => setDeleteTarget(null)}
-        size="md"
-      >
-        <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
-          <Button type="button" variant="ghost" onClick={() => setDeleteTarget(null)}>
-            Cancelar
-          </Button>
-          <Button
-            type="button"
-            variant="danger"
-            disabled={saving}
-            onClick={() => void handleDelete()}
-          >
-            {saving ? "Eliminando…" : "Eliminar definitivamente"}
-          </Button>
-        </div>
-      </AdminFormModal>
-      ) : null}
     </AdminPanel>
   );
 }

@@ -66,6 +66,7 @@ Detalle de permisos: `docs/ROLES-AND-PERMISSIONS.md`. Menú: `lib/staff/staff-se
 | Login unificado | `/cotizador/acceso` |
 | Roles `ADMIN` y `EXECUTIVE`; kinds `ISAPRES_PREMIUM`, `ZOOM`, `ISAPRES`, `MEMBRESIA_ISAPRES_PREMIUM` | `StaffAccount` |
 | Invitación por correo (7 días) y activación | `POST /api/admin/accounts`, `/api/auth/staff-invite` |
+| Suspender/reactivar cualquier cuenta staff; bloquea el acceso y conserva sus registros relacionados | `PATCH /api/admin/accounts/[id]`, `lib/auth/account-store.ts`, `components/admin/users-panel.tsx` |
 | Recuperación y cambio de contraseña, onboarding de ejecutivo | `/api/auth/password-reset`, `components/executive/executive-onboarding-form.tsx` |
 | Avatar | `/api/executive/profile/avatar`, `/api/staff/avatars/[id]` |
 | Gate de suscripción **solo** para membresía (estado en BD) | `lib/auth/subscription.ts` |

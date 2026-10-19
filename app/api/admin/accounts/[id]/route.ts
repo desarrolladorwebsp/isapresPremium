@@ -5,7 +5,6 @@ import {
 } from "@/lib/api/api-error";
 import {
   updateStaffAccount,
-  deleteStaffAccount,
   readAdminById,
 } from "@/lib/auth/account-store";
 import { requireAdminSession } from "@/lib/auth/require-auth";
@@ -96,21 +95,16 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 }
 
-export async function DELETE(request: Request, context: RouteContext) {
+export async function DELETE(request: Request) {
   try {
     await requireAdminSession(request);
-    const { id } = await context.params;
-    const realm = parseRealm(new URL(request.url).searchParams.get("realm"));
-
-    if (!realm) {
-      return NextResponse.json(
-        { error: "Parámetro realm inválido (admin o executive)." },
-        { status: 400 },
-      );
-    }
-
-    await deleteStaffAccount(realm, id);
-    return NextResponse.json({ ok: true, message: "Usuario eliminado." });
+    return NextResponse.json(
+      {
+        error:
+          "La eliminación definitiva de cuentas está deshabilitada para conservar su historial. Usa «Suspender usuario» para bloquear el acceso; podrás reactivarlo después.",
+      },
+      { status: 409 },
+    );
   } catch (error) {
     console.error("DELETE /api/admin/accounts/[id]", error);
     const { body, status } = apiErrorResponse(error);

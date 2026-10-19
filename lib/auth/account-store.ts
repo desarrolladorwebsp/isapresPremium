@@ -368,14 +368,6 @@ export async function updateStaffAccount(
   return mapStaffRecord(account);
 }
 
-export async function deleteStaffAccount(
-  realm: StaffRealm,
-  id: string,
-): Promise<void> {
-  await assertStaffRealm(id, realm);
-  await prisma.staffAccount.delete({ where: { id } });
-}
-
 export async function completeExecutiveOnboarding(
   accountId: string,
   input: { firstName: string; lastName: string; phone: string; rut: string },

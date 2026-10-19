@@ -414,17 +414,6 @@ export async function fetchExecutiveAccounts(): Promise<StaffAccountRecord[]> {
   });
 }
 
-export async function deleteStaffAccount(
-  realm: StaffRealm,
-  id: string,
-): Promise<{ message: string }> {
-  const response = await fetch(
-    `/api/admin/accounts/${encodeURIComponent(id)}?realm=${realm}`,
-    { method: "DELETE" },
-  );
-  return parseJsonResponse<{ message: string }>(response);
-}
-
 export async function resendPendingStaffInvite(
   inviteId: string,
 ): Promise<{ message: string }> {
