@@ -85,6 +85,7 @@ Panel: sección `clientes`. Ficha Premium: `components/executive/client-premium-
 |---------|--------|
 | Cartera, alta manual, origen, pipeline (`NUEVO` … `PERDIDO`) | `/api/executive/clients`, `lib/client-pipeline/` |
 | Vista global de todos los clientes solo para administradores; ejecutivos reciben por API y pueden abrir fichas solo de su cartera y seguimiento | `app/api/executive/clients/route.ts`, `lib/client-pipeline/tracking.ts`, `components/executive/executive-clients-panel.tsx` |
+| Seguimiento: última gestión con fecha registrada, historial unificado de notas y eventos comerciales, próxima acción con responsable y urgencia por día en Chile. Reutiliza API de actividades y permisos vigentes; solo lectura, sin inferir contactos desde updatedAt | `components/executive/client-seguimiento-flow-view.tsx`, `lib/client-pipeline/follow-up.ts` |
 | Flujos Zoom, Premium, Isapres y seguimiento | `client-protocolo-flow-view.tsx`, `client-seguimiento-flow-view.tsx` |
 | Agenda, confirmación de llamado, reunión Zoom, recordatorios | `executive-calendar-panel.tsx`, `CalendlyBooking` |
 | Webhook y link de agendamiento Calendly | `/api/webhooks/calendly`, `/api/executive/calendly/scheduling-link` |

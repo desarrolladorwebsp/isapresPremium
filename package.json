@@ -42,6 +42,7 @@
     "verify-blob": "tsx scripts/verify-blob-connection.ts",
     "verify-cpanel-ftp": "tsx scripts/verify-cpanel-ftp.ts",
     "sync-pdf-urls": "node scripts/with-db-env.mjs --destructive -- npx tsx scripts/sync-pdf-urls-from-blob.ts",
+    "test:follow-up": "node --import tsx scripts/test-client-follow-up.ts",
     "test:auto-assignment": "node --import tsx scripts/test-auto-assignment-preference.ts",
     "test-cotizacion-notify": "tsx scripts/test-cotizacion-notify.ts",
     "test-plan-query": "tsx scripts/test-plan-query.ts",

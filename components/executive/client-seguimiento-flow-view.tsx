@@ -1,18 +1,15 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { fetchClientActivities } from "@/lib/api/admin-client";
+import { buildFollowUpHistory, lastFollowUpEvent, nextFollowUpActions, type FollowUpEvent } from "@/lib/client-pipeline/follow-up";
 import { Button } from "@/components/ui/button";
 import { ClientPipelineStatusBadge } from "@/components/executive/client-pipeline-status-badge";
 import {
   CLIENT_PIPELINE_STATUS_DESCRIPTIONS,
   CLIENT_PIPELINE_STATUS_DISPLAY_LABELS,
 } from "@/lib/client-pipeline/constants";
-import {
-  clientNoteDisplayText,
-  extractPipelineNoteStamp,
-  listClientNoteLines,
-  listPipelineModificationLines,
-} from "@/lib/client-pipeline/note-stamp";
 import { formatPersonDisplayName } from "@/lib/format-person-name";
 import { joinClasses } from "@/lib/utils";
 import {
@@ -151,68 +148,26 @@ function Section({
   );
 }
 
-function TimelineList({
-  lines,
-  emptyLabel,
-  ariaLabel,
-  mode,
-}: {
-  lines: string[];
-  emptyLabel: string;
-  ariaLabel: string;
-  mode: "history" | "notes";
-}) {
-  if (lines.length === 0) {
-    return (
-      <p className="rounded-xl border border-dashed border-border bg-bg-layout/40 px-3 py-4 text-center text-sm text-muted">
-        {emptyLabel}
-      </p>
-    );
-  }
+const ACTION_LABELS = {
+  overdue: "Vencida", today: "Hoy", upcoming: "Programada",
+  unscheduled: "Sin agendar", finished: "Finalizado",
+};
 
+function FollowUpTimeline({ events }: { events: FollowUpEvent[] }) {
   return (
-    <div className="space-y-2">
-      <p className="text-[11px] font-medium text-muted">
-        {lines.length}{" "}
-        {lines.length === 1 ? "registro" : "registros"} · más reciente primero
-      </p>
-      <div
-        className="max-h-72 min-h-0 overflow-y-auto overscroll-contain rounded-xl border border-border bg-bg-layout/40 px-3 py-3"
-        role="log"
-        aria-label={ariaLabel}
-      >
-        <ol className="relative space-y-0 border-l border-[color:var(--dash-navy,#092558)]/15 pl-4">
-          {lines.map((line, index) => {
-            const stamp = extractPipelineNoteStamp(line);
-            const body =
-              mode === "notes"
-                ? clientNoteDisplayText(line)
-                : stamp
-                  ? line.replace(stamp, "").trim()
-                  : line;
-            return (
-              <li
-                key={`${index}-${line.slice(0, 32)}`}
-                className="relative pb-4 last:pb-0"
-              >
-                <span
-                  className="absolute -left-[1.28rem] top-1.5 size-2.5 rounded-full bg-[color:var(--dash-cyan,#1ac9ea)] ring-4 ring-white"
-                  aria-hidden
-                />
-                {stamp ? (
-                  <p className="text-[11px] font-semibold text-primary-dark">
-                    {stamp}
-                  </p>
-                ) : null}
-                <p className="mt-0.5 whitespace-pre-wrap text-[13px] leading-snug text-foreground">
-                  {body || line}
-                </p>
-              </li>
-            );
-          })}
-        </ol>
-      </div>
-    </div>
+    <ol className="space-y-3" aria-label="Historial unificado del cliente">
+      {events.map(event => (
+        <li key={event.id} className="border-l-2 border-cyan-400 py-1 pl-3">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <p className="text-sm font-semibold text-foreground">{event.title}</p>
+            {event.at ? <time dateTime={event.at} className="text-xs text-muted">{formatDateTime(event.at)}</time>
+              : <span className="text-xs text-muted">Fecha no registrada</span>}
+          </div>
+          <p className="mt-1 whitespace-pre-wrap text-sm text-foreground">{event.body}</p>
+          <p className="mt-1 text-xs text-muted">{event.actor ? `Por ${event.actor}` : "Autor no registrado"}</p>
+        </li>
+      ))}
+    </ol>
   );
 }
 
@@ -287,12 +242,26 @@ export function ClientSeguimientoFlowView({
   isTrackingOnly,
   onBack,
 }: ClientSeguimientoFlowViewProps) {
-  const modificationLines = canViewInternalNotes
-    ? listPipelineModificationLines(pipelineNotes)
-    : [];
-  const noteLines = canViewInternalNotes
-    ? listClientNoteLines(pipelineNotes)
-    : [];
+  const [historyFilter, setHistoryFilter] = useState("all");
+  const activityQuery = useQuery({
+    queryKey: ["executive", "follow-up-history", client.id, client.updatedAt],
+    queryFn: () => fetchClientActivities(client.id),
+    enabled: canViewInternalNotes,
+    retry: false,
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnWindowFocus: true,
+    refetchInterval: 60_000,
+  });
+  // Never display cached commercial data after access is revoked or a refresh fails.
+  const history = useMemo(() => buildFollowUpHistory(client, pipelineNotes,
+    canViewInternalNotes && !activityQuery.isError ? activityQuery.data ?? [] : [], canViewInternalNotes),
+    [client, pipelineNotes, canViewInternalNotes, activityQuery.data, activityQuery.isError]);
+  const lastEvent = lastFollowUpEvent(history);
+  const actions = nextFollowUpActions({ ...client, pipelineStatus });
+  const nextAction = actions[0];
+  const filteredHistory = history.filter(event => historyFilter === "all" || event.kind === historyFilter);
+  const historyIncomplete = activityQuery.isPending || activityQuery.isError;
   const closed = client.closedRecord;
   const contactMethod = client.preferredContactMethod
     ? CLIENT_CONTACT_METHOD_LABELS[client.preferredContactMethod]
@@ -304,24 +273,6 @@ export function ClientSeguimientoFlowView({
         ? "tracking"
         : null;
 
-  const agendaRows = [
-    {
-      label: "Reunión / llamado",
-      value: formatDateTime(client.nextCallAt),
-      present: Boolean(client.nextCallAt),
-    },
-    {
-      label: "Confirmación Zoom",
-      value: formatDateTime(client.confirmationCallAt),
-      present: Boolean(client.confirmationCallAt),
-    },
-    {
-      label: "Recordatorio",
-      value: formatDateTime(client.reminderAt),
-      present: Boolean(client.reminderAt),
-      detail: client.reminderNote?.trim() || null,
-    },
-  ];
 
   return (
     <div className="-mx-3 -mb-5 -mt-5 flex flex-col sm:-mx-4 sm:-mb-7 sm:-mt-7 lg:-mx-5 lg:-mb-8 lg:-mt-8 lg:h-[calc(100dvh-5rem)] lg:max-h-[calc(100dvh-5rem)] lg:overflow-hidden">
@@ -364,14 +315,55 @@ export function ClientSeguimientoFlowView({
             <MetaCell label="Creado">
               {formatDate(client.createdAt)}
             </MetaCell>
-            <MetaCell label="Última gestión">
-              {formatDateTime(client.updatedAt)}
+            <MetaCell label="Última gestión registrada">
+              {!canViewInternalNotes ? "Sin acceso al historial" : activityQuery.isPending ? "Cargando historial…"
+                : activityQuery.isError ? "Historial incompleto" : lastEvent ? formatDateTime(lastEvent.at) : "Sin gestiones registradas"}
             </MetaCell>
           </div>
         </div>
       </div>
 
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain bg-bg-layout/40 px-3 py-4 sm:px-4 lg:px-5">
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Section title="Última gestión registrada" description="Acción guardada en el historial del cliente.">
+            {!canViewInternalNotes ? <p className="text-sm text-muted">No tienes permiso para ver el historial interno.</p>
+              : activityQuery.isPending ? <p role="status" className="text-sm text-muted">Cargando historial…</p>
+              : <>
+                {activityQuery.isError ? <p role="alert" className="mb-2 text-sm text-amber-800">Historial incompleto: no se pudieron consultar planes y cotizaciones. Se muestran solo los registros disponibles.</p> : null}
+                {lastEvent ? <>
+                  <p className="font-semibold text-foreground">{lastEvent.title}</p>
+                  <p className="mt-1 whitespace-pre-wrap text-sm text-foreground">{lastEvent.body}</p>
+                  <p className="mt-2 text-xs text-muted">{formatDateTime(lastEvent.at)} · {lastEvent.actor || "Autor no registrado"}</p>
+                </> : <p className="text-sm text-muted">Sin gestiones con fecha registrada. La creación o edición de la ficha no acredita un contacto.</p>}
+              </>}
+          </Section>
+          <Section title="Próxima acción" description="Pendiente más antiguo de la agenda actual; vencimientos por día en Chile.">
+            <span className={joinClasses("inline-block rounded-full px-2 py-1 text-xs font-semibold",
+              nextAction.urgency === "overdue" ? "bg-red-50 text-red-800"
+                : nextAction.urgency === "today" || nextAction.urgency === "unscheduled" ? "bg-amber-50 text-amber-800" : "bg-sky-50 text-sky-800")}>{ACTION_LABELS[nextAction.urgency]}</span>
+            <p className="mt-2 font-semibold text-foreground">{nextAction.title}</p>
+            <p className="mt-1 text-sm text-muted">{nextAction.detail}</p>
+            {nextAction.at ? <p className="mt-2 text-sm font-semibold">{formatDateTime(nextAction.at)}</p> : null}
+            <p className="mt-2 text-xs text-muted">Responsable: {nextAction.responsible}</p>
+          </Section>
+        </div>
+        <Section title="Historial unificado" description="Gestiones, anotaciones, planes y cotizaciones registrados; más recientes primero.">
+          {canViewInternalNotes ? <>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <label className="flex items-center gap-2 text-sm text-muted">Mostrar
+                <select aria-label="Filtrar historial" value={historyFilter} onChange={event => setHistoryFilter(event.target.value)} className="rounded-lg border border-border bg-white p-2 text-foreground">
+                  <option value="all">Todos los registros</option><option value="gestion">Gestiones</option>
+                  <option value="commercial">Planes y cotizaciones</option><option value="note">Anotaciones</option>
+                </select>
+              </label>
+              <Button type="button" size="sm" variant="ghost" disabled={activityQuery.isFetching} onClick={() => void activityQuery.refetch()}>Actualizar historial</Button>
+            </div>
+            {activityQuery.isPending ? <p role="status" className="text-sm text-muted">Cargando planes y cotizaciones…</p> : null}
+            {activityQuery.isError ? <p role="alert" className="text-sm text-amber-800">Historial parcial. No se pudieron cargar planes y cotizaciones. Usa Actualizar historial para reintentar.</p> : null}
+            {!historyIncomplete && !lastEvent ? <p className="text-sm text-muted">Sin gestiones con fecha registrada todavía.</p> : null}
+            {filteredHistory.length ? <FollowUpTimeline events={filteredHistory} /> : <p className="text-sm text-muted">No hay registros disponibles para este filtro.</p>}
+          </> : <p className="text-sm text-muted">No tienes permiso para ver el historial interno de este cliente.</p>}
+        </Section>
         <Section
           title="Etapa del pipeline"
           description="Estado comercial actual y avance en el embudo."
@@ -394,10 +386,10 @@ export function ClientSeguimientoFlowView({
                 highlight={responsibleRole === "assigned"}
               />
               <RoleCell
-                label="En seguimiento"
+                label="Ejecutivo que acompaña"
                 value={
                   client.trackingExecutiveName?.trim() ||
-                  "Sin seguimiento activo"
+                  "Sin ejecutivo adicional de seguimiento"
                 }
                 highlight={responsibleRole === "tracking"}
               />
@@ -416,33 +408,13 @@ export function ClientSeguimientoFlowView({
             title="Agenda de seguimiento"
             description="Próximas gestiones calendarizadas para este cliente."
           >
-            <ul className="space-y-2.5">
-              {agendaRows.map((row) => (
-                <li
-                  key={row.label}
-                  className={joinClasses(
-                    "rounded-xl border px-3 py-2.5",
-                    row.present
-                      ? "border-[color:var(--dash-navy,#092558)]/15 bg-[color-mix(in_srgb,var(--dash-navy,#092558)_4%,white)]"
-                      : "border-dashed border-border bg-transparent",
-                  )}
-                >
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-primary-dark/60">
-                    {row.label}
-                  </p>
-                  <p
-                    className={joinClasses(
-                      "mt-0.5 text-sm font-semibold",
-                      row.present ? "text-foreground" : "text-muted",
-                    )}
-                  >
-                    {row.present ? row.value : "Sin agendar"}
-                  </p>
-                  {"detail" in row && row.detail ? (
-                    <p className="mt-1 text-xs text-muted">{row.detail}</p>
-                  ) : null}
-                </li>
-              ))}
+            <ul className="space-y-3">
+              {actions.map(action => <li key={action.kind} className="rounded-xl border border-border px-3 py-2.5">
+                <p className="text-sm font-semibold text-foreground">{action.title} · {ACTION_LABELS[action.urgency]}</p>
+                {action.at ? <p className="mt-1 text-sm">{formatDateTime(action.at)}</p> : null}
+                <p className="mt-1 text-xs text-muted">{action.detail}</p>
+                <p className="mt-1 text-xs text-muted">Responsable: {action.responsible}</p>
+              </li>)}
             </ul>
             {client.lastCallOutcome?.trim() ? (
               <p className="mt-3 text-xs text-muted">
@@ -505,43 +477,7 @@ export function ClientSeguimientoFlowView({
           </Section>
         ) : null}
 
-        <div className="grid gap-4 lg:grid-cols-2">
-          <Section
-            title="Historial de gestiones"
-            description="Movimientos del sistema: contacto, reagendar, derivaciones y cambios de etapa."
-          >
-            {canViewInternalNotes ? (
-              <TimelineList
-                lines={modificationLines}
-                emptyLabel="Sin movimientos registrados aún."
-                ariaLabel="Historial de gestiones"
-                mode="history"
-              />
-            ) : (
-              <p className="text-sm text-muted">
-                No tienes permiso para ver el historial interno de este cliente.
-              </p>
-            )}
-          </Section>
 
-          <Section
-            title="Anotaciones"
-            description="Notas libres del equipo. Distintas del historial automático."
-          >
-            {canViewInternalNotes ? (
-              <TimelineList
-                lines={noteLines}
-                emptyLabel="Aún no hay anotaciones."
-                ariaLabel="Anotaciones del cliente"
-                mode="notes"
-              />
-            ) : (
-              <p className="text-sm text-muted">
-                No tienes permiso para ver las anotaciones internas.
-              </p>
-            )}
-          </Section>
-        </div>
       </div>
     </div>
   );
