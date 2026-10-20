@@ -56,7 +56,7 @@ La membresía es para usuarios externos: no reciben asignación de clientes ni a
 - **Todo lo del catálogo**: planes, clínicas, coberturas, GES.
 - Ver **todas las cotizaciones** del sistema.
 - **Asignar un cliente** (`User`) a un ejecutivo operativo, a Zoom o a **otro administrador** (no a membresía).
-- **Recibir clientes asignados** como destino operativo (misma elegibilidad que Ejecutivo Isapres Premium y Zoom en redirects y round-robin).
+- **Recibir clientes asignados** como destino operativo (asignación manual conservada; round-robin solo si activa «Asignación automática» en Usuarios).
 - **Asignar una cotización** (`Quote`) a un ejecutivo o administrador.
 - **Invitar usuarios** admin, ejecutivo o membresía desde Usuarios.
 - **Suspender y reactivar** cuentas admin o ejecutivas. Suspender bloquea el login y las solicitudes autenticadas, y conserva cotizaciones e historial.

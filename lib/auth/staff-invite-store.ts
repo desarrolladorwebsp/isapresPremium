@@ -270,6 +270,7 @@ export async function activateStaffAccountFromInvite(
       active: true,
       mustChangePassword: false,
       onboardingCompleted: false,
+      autoAssignmentEnabled: !isMembership,
       subscriptionStatus,
       subscriptionExpiresAt: isMembership ? trialExpiresAt : null,
     },

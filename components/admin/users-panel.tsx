@@ -300,6 +300,8 @@ function UsersDirectoryTable({
   onCancelInvite,
   onChangeRole,
   onToggleAssignments,
+  onToggleAutoAssignments,
+  assignmentSaving,
   onToggleActive,
 }: {
   rows: ExecutiveDirectoryRow[];
@@ -315,6 +317,8 @@ function UsersDirectoryTable({
   onCancelInvite: (inviteId: string) => void;
   onChangeRole: (account: StaffAccountRecord) => void;
   onToggleAssignments: (account: StaffAccountRecord) => void;
+  onToggleAutoAssignments: (account: StaffAccountRecord) => void;
+  assignmentSaving: boolean;
   onToggleActive: (account: StaffAccountRecord) => void;
 }) {
   return (
@@ -335,6 +339,7 @@ function UsersDirectoryTable({
               Clientes
             </AdminTableHeaderCell>
           ) : null}
+          <AdminTableHeaderCell>Asignación automática</AdminTableHeaderCell>
           <AdminTableHeaderCell {...sortProps("estado")}>
             Estado
           </AdminTableHeaderCell>
@@ -369,6 +374,9 @@ function UsersDirectoryTable({
                 {executivesOnly ? (
                   <AdminTableCell className="text-muted">—</AdminTableCell>
                 ) : null}
+                <AdminTableCell>
+                  <span className="text-muted">Disponible al activar la cuenta</span>
+                </AdminTableCell>
                 <AdminTableCell>
                   <AdminBadge tone="warning">Pendiente por activar</AdminBadge>
                   <p className="mt-2 text-xs text-muted">
@@ -442,6 +450,28 @@ function UsersDirectoryTable({
                   )}
                 </AdminTableCell>
               ) : null}
+              <AdminTableCell>
+                {account.executiveKind === "MEMBRESIA_ISAPRES_PREMIUM" ? (
+                  <span className="text-xs text-muted">No aplica</span>
+                ) : (
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={account.autoAssignmentEnabled === true}
+                      disabled={!canManage || assignmentSaving}
+                      onChange={() => onToggleAutoAssignments(account)}
+                      aria-label={`Asignación automática de clientes para ${account.fullName}`}
+                      className="h-4 w-4 accent-primary"
+                    />
+                    {account.autoAssignmentEnabled ? "Activada" : "Desactivada"}
+                  </label>
+                )}
+                {account.autoAssignmentEnabled &&
+                (!account.active || account.assignmentsSuspended ||
+                  (account.realm === "executive" && !account.onboardingCompleted)) ? (
+                  <p className="mt-1 text-xs text-muted">En pausa por el estado de la cuenta</p>
+                ) : null}
+              </AdminTableCell>
               <AdminTableCell>
                 <AdminBadge tone={status.tone}>{status.label}</AdminBadge>
               </AdminTableCell>
@@ -534,6 +564,7 @@ export function UsersPanel({
   const [roleTarget, setRoleTarget] = useState<StaffAccountRecord | null>(null);
   const [roleDraft, setRoleDraft] = useState<ExecutiveKind>("ISAPRES_PREMIUM");
   const [saving, setSaving] = useState(false);
+  const [assignmentSaving, setAssignmentSaving] = useState(false);
   const [draft, setDraft] = useState<{
     email: string;
     role: InviteRoleValue;
@@ -740,6 +771,33 @@ export function UsersPanel({
     }
   }
 
+  async function handleToggleAutoAssignments(account: StaffAccountRecord) {
+    if (assignmentSaving) return;
+    setAssignmentSaving(true);
+    try {
+      const { account: updated } = await updateStaffAccount(
+        account.realm,
+        account.id,
+        { autoAssignmentEnabled: !account.autoAssignmentEnabled },
+      );
+      setAccounts((current) =>
+        current.map((item) => item.id === updated.id ? updated : item),
+      );
+      onNotify(
+        updated.autoAssignmentEnabled
+          ? "Asignación automática activada. Recibirá clientes cuando la cuenta esté habilitada."
+          : "Asignación automática desactivada. Conserva su cartera y las asignaciones manuales.",
+      );
+    } catch (error) {
+      onNotify(
+        error instanceof Error ? error.message : "No se pudo guardar la asignación automática.",
+        "error",
+      );
+    } finally {
+      setAssignmentSaving(false);
+    }
+  }
+
   async function handleToggleAssignments(account: StaffAccountRecord) {
     try {
       await updateStaffAccount(account.realm, account.id, {
@@ -893,6 +951,8 @@ export function UsersPanel({
           onCancelInvite={(id) => void handleCancelPendingInvite(id)}
           onChangeRole={openRoleModal}
           onToggleAssignments={(account) => void handleToggleAssignments(account)}
+          onToggleAutoAssignments={(account) => void handleToggleAutoAssignments(account)}
+          assignmentSaving={assignmentSaving}
           onToggleActive={(account) => void handleToggleActive(account)}
         />
       </AdminTableCard>

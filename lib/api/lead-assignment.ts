@@ -5,10 +5,6 @@ import {
   isClientAssignableExecutiveKind,
   staffRoleToRealm,
 } from "@/lib/auth/staff-role";
-import {
-  INBOUND_CLIENT_ASSIGNMENT_EMAILS,
-  normalizeInboundAssignmentEmail,
-} from "@/lib/api/inbound-assignment-pool";
 import { queueExecutiveClientAssignmentEmail } from "@/lib/email/notify-executive-client-assignment";
 import type { ExecutiveKind, StaffRole } from "@prisma/client";
 import type { StaffRealm } from "@/types/staff-account";
@@ -28,10 +24,11 @@ export interface ListEligibleExecutivesOptions {
   /** Incluir nombre/email (listados UI). */
   withProfile?: boolean;
   /**
-   * Pool fijo formulario/cotizador (Javiera, Isidora, Catalina).
-   * Ignora kind y no incluye admins.
+   * Formulario/cotizador: usa la preferencia de asignación automática de Usuarios.
    */
   inboundPool?: boolean;
+  /** Solo reparto automático; los selectores manuales conservan su elegibilidad. */
+  automatic?: boolean;
 }
 
 /**
@@ -39,15 +36,11 @@ export interface ListEligibleExecutivesOptions {
  * activos, onboarding completo, sin suspensión de asignaciones y suscripción vigente.
  * Excluye membresía (no reciben cartera).
  * Incluye administradores activos cuando el kind es Premium, Zoom o pool general.
- * Con `inboundPool`, solo el pool configurado de formulario/cotizador.
+ * Con `automatic` o `inboundPool`, exige la preferencia explícita de Usuarios.
  */
 export async function listEligibleExecutivesForAssignment(
   options?: ListEligibleExecutivesOptions,
 ): Promise<EligibleExecutiveRow[]> {
-  if (options?.inboundPool) {
-    return listInboundPoolExecutives(options.withProfile);
-  }
-
   if (
     options?.executiveKind &&
     !isClientAssignableExecutiveKind(options.executiveKind)
@@ -61,6 +54,9 @@ export async function listEligibleExecutivesForAssignment(
 
   const accounts = await prisma.staffAccount.findMany({
     where: {
+      ...(options?.automatic || options?.inboundPool
+        ? { autoAssignmentEnabled: true }
+        : {}),
       OR: [
         {
           role: "EXECUTIVE",
@@ -114,58 +110,6 @@ export async function listEligibleExecutivesForAssignment(
   return eligible.map((account) => mapEligibleRow(account, options?.withProfile));
 }
 
-async function listInboundPoolExecutives(
-  withProfile?: boolean,
-): Promise<EligibleExecutiveRow[]> {
-  const emails = INBOUND_CLIENT_ASSIGNMENT_EMAILS.map(
-    normalizeInboundAssignmentEmail,
-  );
-
-  const accounts = await prisma.staffAccount.findMany({
-    where: {
-      email: { in: emails },
-      role: "EXECUTIVE",
-      active: true,
-      onboardingCompleted: true,
-      assignmentsSuspended: false,
-      executiveKind: { not: "MEMBRESIA_ISAPRES_PREMIUM" },
-    },
-    select: {
-      id: true,
-      fullName: true,
-      email: true,
-      role: true,
-      executiveKind: true,
-      subscriptionStatus: true,
-      subscriptionExpiresAt: true,
-    },
-  });
-
-  const byEmail = new Map(
-    accounts.map((account) => [
-      normalizeInboundAssignmentEmail(account.email),
-      account,
-    ]),
-  );
-
-  // Orden estable del pool configurado (1×1 predecible).
-  const ordered = emails
-    .map((email) => byEmail.get(email))
-    .filter((account): account is (typeof accounts)[number] => Boolean(account))
-    .filter((account) =>
-      isExecutiveSubscriptionAllowingAccess({
-        executiveKind: account.executiveKind,
-        subscriptionStatus: account.subscriptionStatus ?? "TRIAL",
-        subscriptionExpiresAt: account.subscriptionExpiresAt,
-      }),
-    )
-    .filter((account) =>
-      isClientAssignableExecutiveKind(account.executiveKind),
-    );
-
-  return ordered.map((account) => mapEligibleRow(account, withProfile));
-}
-
 function mapEligibleRow(
   account: {
     id: string;
@@ -201,7 +145,10 @@ function mapEligibleRow(
 export async function pickExecutiveRoundRobin(
   options?: Pick<ListEligibleExecutivesOptions, "executiveKind" | "inboundPool">,
 ): Promise<string | null> {
-  const executives = await listEligibleExecutivesForAssignment(options);
+  const executives = await listEligibleExecutivesForAssignment({
+    ...options,
+    automatic: true,
+  });
 
   if (executives.length === 0) return null;
 
@@ -275,23 +222,40 @@ export async function autoAssignClientExecutive(
   const executiveId = await pickExecutiveRoundRobin(options);
   if (!executiveId) return null;
 
-  // Defensa en profundidad: nunca persistir asignación a membresía.
+  // Revalida el destino por si cambió su disponibilidad durante la selección.
   const target = await prisma.staffAccount.findUnique({
     where: { id: executiveId },
-    select: { role: true, executiveKind: true },
+    select: {
+      role: true,
+      executiveKind: true,
+      active: true,
+      assignmentsSuspended: true,
+      autoAssignmentEnabled: true,
+    },
   });
   if (
     !target ||
+    !target.active ||
+    target.assignmentsSuspended ||
+    !target.autoAssignmentEnabled ||
     (target.role === "EXECUTIVE" &&
       !isClientAssignableExecutiveKind(target.executiveKind))
   ) {
     return null;
   }
 
-  await prisma.user.update({
-    where: { id: userId },
+  const result = await prisma.user.updateMany({
+    where: { id: userId, role: "CLIENT", assignedExecutiveId: null },
     data: { assignedExecutiveId: executiveId },
   });
+
+  if (result.count === 0) {
+    const current = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { assignedExecutiveId: true },
+    });
+    return current?.assignedExecutiveId ?? null;
+  }
 
   queueExecutiveClientAssignmentEmail({
     clientUserId: userId,

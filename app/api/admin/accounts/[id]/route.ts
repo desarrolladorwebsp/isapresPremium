@@ -51,6 +51,8 @@ function isValidUpdateInput(payload: unknown): payload is UpdateStaffAccountInpu
     (data.subscriptionStatus === undefined ||
       (typeof data.subscriptionStatus === "string" &&
         SUBSCRIPTION_STATUSES.has(data.subscriptionStatus as SubscriptionStatus))) &&
+    (data.autoAssignmentEnabled === undefined ||
+      typeof data.autoAssignmentEnabled === "boolean") &&
     (data.assignmentsSuspended === undefined ||
       typeof data.assignmentsSuspended === "boolean") &&
     (data.executiveKind === undefined || isExecutiveKind(data.executiveKind))

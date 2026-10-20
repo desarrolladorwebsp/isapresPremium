@@ -57,6 +57,7 @@ function mapStaffRecord(account: StaffAccount): StaffAccountRecord {
     rut: account.rut,
     subscriptionStatus: account.subscriptionStatus ?? undefined,
     subscriptionExpiresAt: account.subscriptionExpiresAt?.toISOString() ?? null,
+    autoAssignmentEnabled: account.autoAssignmentEnabled,
     assignmentsSuspended: account.assignmentsSuspended,
     onboardingCompleted: account.onboardingCompleted,
     avatarUrl: account.avatarUrl,
@@ -317,13 +318,25 @@ export async function updateStaffAccount(
   id: string,
   input: UpdateStaffAccountInput,
 ): Promise<StaffAccountRecord> {
-  await assertStaffRealm(id, realm);
+  const current = await assertStaffRealm(id, realm);
+  if (
+    input.autoAssignmentEnabled === true &&
+    realm === "executive" &&
+    !isClientAssignableExecutiveKind(input.executiveKind ?? current.executiveKind)
+  ) {
+    throw new ApiError(
+      "La membresía no puede recibir clientes automáticamente.",
+      400,
+      "INVALID_INPUT",
+    );
+  }
 
   if (realm === "admin") {
     const account = await prisma.staffAccount.update({
       where: { id },
       data: {
         active: input.active,
+        autoAssignmentEnabled: input.autoAssignmentEnabled,
         fullName: input.fullName?.trim(),
       },
     });
@@ -343,12 +356,15 @@ export async function updateStaffAccount(
       phone: input.phone,
       rut: input.rut,
       subscriptionStatus: input.subscriptionStatus,
+      autoAssignmentEnabled: input.autoAssignmentEnabled,
       assignmentsSuspended: input.assignmentsSuspended,
       ...(input.executiveKind !== undefined
         ? { executiveKind: input.executiveKind }
         : {}),
       // Membresía no opera cartera: al pasar a ese kind se suspende recepción.
-      ...(becomingMembership ? { assignmentsSuspended: true } : {}),
+      ...(becomingMembership
+        ? { assignmentsSuspended: true, autoAssignmentEnabled: false }
+        : {}),
     },
   });
 

@@ -457,6 +457,8 @@ model StaffAccount {
   active                  Boolean              @default(true)
   /// Sin recibir nuevos clientes/solicitudes (solo ejecutivos).
   assignmentsSuspended    Boolean              @default(false) @map("assignments_suspended")
+  /// Permite reparto automático; independiente de acceso y asignación manual.
+  autoAssignmentEnabled   Boolean              @default(false) @map("auto_assignment_enabled")
   /// Perfil obligatorio completado tras activación (solo ejecutivos).
   onboardingCompleted     Boolean              @default(false) @map("onboarding_completed")
   /// Foto de perfil (URL pública Blob o ruta /api/staff/avatars/:id).

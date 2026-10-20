@@ -34,6 +34,7 @@ export interface StaffAccountRecord {
   rut?: string | null;
   subscriptionStatus?: SubscriptionStatus;
   subscriptionExpiresAt?: string | null;
+  autoAssignmentEnabled?: boolean;
   assignmentsSuspended?: boolean;
   onboardingCompleted?: boolean;
   avatarUrl?: string | null;
@@ -67,6 +68,7 @@ export interface UpdateStaffAccountInput {
   phone?: string | null;
   rut?: string | null;
   subscriptionStatus?: SubscriptionStatus;
+  autoAssignmentEnabled?: boolean;
   assignmentsSuspended?: boolean;
   /**
    * Solo cuentas executive: cambia el kind (Zoom / Isapres / Isapres Premium).

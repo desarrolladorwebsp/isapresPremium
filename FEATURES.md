@@ -70,6 +70,7 @@ Detalle de permisos: `docs/ROLES-AND-PERMISSIONS.md`. Menú: `lib/staff/staff-se
 | Recuperación y cambio de contraseña, onboarding de ejecutivo | `/api/auth/password-reset`, `components/executive/executive-onboarding-form.tsx` |
 | Avatar | `/api/executive/profile/avatar`, `/api/staff/avatars/[id]` |
 | Gate de suscripción **solo** para membresía (estado en BD) | `lib/auth/subscription.ts` |
+| Asignación automática configurable por usuario (admin y ejecutivos operativos); check en Usuarios, independiente de asignación manual y acceso. Admin desactivado por defecto; reemplaza el pool fijo de correos inbound. Respeta suspensión, perfil y membresía; no reasigna cartera existente | `StaffAccount.autoAssignmentEnabled`, `components/admin/users-panel.tsx`, `lib/api/lead-assignment.ts` |
 | Suspensión de asignaciones | `StaffAccount.assignmentsSuspended` |
 
 No hay integración Stripe. `stripeCustomerId` está en el schema y no lo usa ningún módulo.
@@ -92,7 +93,7 @@ Panel: sección `clientes`. Ficha Premium: `components/executive/client-premium-
 | Historial de cambios de plan | `ClientActivity`, `client-plan-history-timeline.tsx` |
 | Documentos (RUT, liquidación, plan, otros) | `ClientDocument`, `/api/executive/clients/[id]/documents` |
 | Ficha PDF de protocolo | `client-ficha-pdf-modal.tsx` |
-| Distribución round-robin de pendientes | `POST /api/executive/clients/distribute`, `lib/api/inbound-assignment-pool.ts` |
+| Distribución round-robin de pendientes | `POST /api/executive/clients/distribute`, `lib/api/lead-assignment.ts` |
 | Reportes de equipo (pipeline, primer contacto, Zoom, cotizaciones enviadas) | sección `reportes`, `lib/executive/admin-reports.ts`, `lib/executive/sent-quotation-kpi.ts` |
 | Prospectos (bandeja admin de leads) | sección `prospectos` |
 | Inicio con gestiones del día | `executive-dashboard-home.tsx`. El detalle de una tarjeta usa el mes y el ejecutivo ya elegidos en el dashboard, sin repetir esos filtros |

@@ -444,3 +444,19 @@ ALTER TABLE "sendpulse_bot_lines" ADD COLUMN IF NOT EXISTS "api_key_enc" TEXT;
 ALTER TABLE "sendpulse_bot_lines" ADD COLUMN IF NOT EXISTS "api_key_prefix" TEXT;
 
 ALTER TABLE "sendpulse_webhook_events" ADD COLUMN IF NOT EXISTS "api_outcome" TEXT;
+
+-- Staff automatic assignment preference.
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = current_schema() AND table_name = 'staff_accounts'
+      AND column_name = 'auto_assignment_enabled'
+  ) THEN
+    ALTER TABLE "staff_accounts" ADD COLUMN "auto_assignment_enabled" BOOLEAN NOT NULL DEFAULT false;
+    -- Preserve executive eligibility; administrators require explicit opt-in.
+    UPDATE "staff_accounts" SET "auto_assignment_enabled" = true
+      WHERE "role" = 'EXECUTIVE'
+        AND "executive_kind" <> 'MEMBRESIA_ISAPRES_PREMIUM';
+  END IF;
+END $$;
