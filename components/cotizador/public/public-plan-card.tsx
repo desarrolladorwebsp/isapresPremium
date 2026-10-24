@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { CoverageColumnCompact } from "@/components/plan-card/coverage-column-compact";
 import {
   AmbulatoryCoverageIcon,
@@ -180,6 +180,7 @@ export function PublicPlanCard({
   highlightHospitalClinicIds = [],
   highlightAmbulatoryClinicIds = [],
 }: PublicPlanCardProps) {
+  const reduceMotion = useReducedMotion();
   const [isHovered, setIsHovered] = useState(false);
   const [pdfModalOpen, setPdfModalOpen] = useState(false);
   const needsClinicDetail =
@@ -226,11 +227,11 @@ export function PublicPlanCard({
   return (
     <motion.article
       ref={ref}
-      layout="position"
+      layout={reduceMotion ? undefined : "position"}
       onHoverStart={() => setIsHovered(true)}
       onHoverEnd={() => setIsHovered(false)}
       animate={{
-        y: isHovered ? -planCard.elevation.hoverLiftPx : 0,
+        y: isHovered && !reduceMotion ? -2 : 0,
         borderColor: isHovered
           ? planCard.elevation.borderHover
           : planCard.elevation.borderRest,
@@ -238,64 +239,51 @@ export function PublicPlanCard({
           ? planCard.elevation.shadowHover
           : planCard.elevation.shadowRest,
       }}
-      transition={planCard.elevation.spring}
+      transition={{ duration: reduceMotion ? 0 : 0.16, ease: "easeOut" }}
       className={planCard.root}
       data-public-plan-card
     >
       {/* Cabecera — hero del plan */}
-      <div className={joinClasses(planCard.header, "plan-card-header")}>
-        <div className="flex min-w-0 flex-1 items-start gap-2.5 sm:gap-3">
-          <IsapreLogo isapre={plan.isapre} size="lg" />
+      <div className="plan-card-header grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-2 border-b border-[var(--plan-card-border)] bg-[var(--plan-card-header-bg)] px-3 py-3 sm:px-4">
+        <div className="col-span-2 flex min-w-0 items-center gap-2.5 sm:gap-3">
+          <IsapreLogo
+            isapre={plan.isapre}
+            size="sm"
+            className="h-8 w-14 min-[400px]:h-9 min-[400px]:w-20 sm:h-11 sm:w-28"
+          />
 
-          <div className="min-w-0 flex-1">
-            <h3 className="truncate text-xs font-bold uppercase leading-snug tracking-wide text-primary-dark sm:text-sm">
+          <div className="flex min-w-0 flex-1 items-center gap-1.5">
+            <h3 className="min-w-0 truncate text-xs font-bold uppercase leading-snug tracking-normal text-primary-dark sm:text-sm">
               {commercialName}
             </h3>
-            <div className="mt-2 flex flex-wrap items-center gap-1.5">
-              <span className={planMetaStyles.code} title="Código del plan">
-                {plan.unique_code}
-              </span>
-              <span className={planMetaStyles.base} title="Precio base en UF">
-                <span className="font-normal text-primary-dark/70">Base</span>
-                <span className="font-bold tabular-nums">
-                  {formatQuotedUf(priceQuote.basePriceUf).replace("UF ", "")} UF
-                </span>
-              </span>
-              <span className={planTypeMetaStyle[planType]}>{planTypeLabel}</span>
-              {plan.has_top ? (
-                <span className={planMetaStyles.top}>Top</span>
-              ) : null}
-            </div>
+            <span
+              className={joinClasses(planMetaStyles.code, "max-[399px]:px-1.5 max-[399px]:tracking-normal")}
+              title="Código del plan"
+            >
+              {plan.unique_code}
+            </span>
           </div>
         </div>
 
-        <div className="plan-card-header-actions flex shrink-0 flex-col items-stretch gap-2 sm:items-end sm:gap-2.5">
+        <div className="flex min-w-0 flex-wrap items-center gap-1.5 self-center">
+          <span className={planMetaStyles.base} title="Precio base en UF">
+            <span className="font-normal text-primary-dark/70">Base</span>
+            <span className="font-bold tabular-nums">
+              {formatQuotedUf(priceQuote.basePriceUf).replace("UF ", "")} UF
+            </span>
+          </span>
+          <span className={planTypeMetaStyle[planType]}>{planTypeLabel}</span>
+          {plan.has_top ? (
+            <span className={planMetaStyles.top}>Top</span>
+          ) : null}
+        </div>
+
+        <div className="plan-card-header-actions min-w-0 self-center text-right">
           <PublicPlanAgreementPrices
             prices={agreementPrices}
             currency={currency}
+            compact
           />
-
-          <div className="flex flex-wrap items-center gap-2">
-            <PlanCardActionButton
-              label="PDF"
-              icon={<FileIcon />}
-              variant="secondary"
-              onClick={() => setPdfModalOpen(true)}
-              title={
-                hasPdf
-                  ? "Ver contrato PDF del plan"
-                  : "PDF no disponible para este plan"
-              }
-              disabled={!hasPdf}
-            />
-            <PlanCardActionButton
-              label="Solicitar"
-              icon={<ChatIcon />}
-              variant="primary"
-              onClick={onRequest}
-              title="Solicitar asesoría del plan"
-            />
-          </div>
         </div>
       </div>
 
@@ -331,6 +319,28 @@ export function PublicPlanCard({
           Cargando prestadores…
         </p>
       ) : null}
+
+      <div className="grid grid-cols-2 gap-2 border-t border-[var(--plan-card-border)] bg-[var(--plan-card-coverage-bg)] px-3 py-3 sm:flex sm:justify-end sm:px-4">
+        <PlanCardActionButton
+          label="PDF"
+          icon={<FileIcon />}
+          variant="secondary"
+          onClick={() => setPdfModalOpen(true)}
+          title={
+            hasPdf
+              ? "Ver contrato PDF del plan"
+              : "PDF no disponible para este plan"
+          }
+          disabled={!hasPdf}
+        />
+        <PlanCardActionButton
+          label="Solicitar"
+          icon={<ChatIcon />}
+          variant="primary"
+          onClick={onRequest}
+          title="Solicitar asesoría del plan"
+        />
+      </div>
 
       <PublicPlanPdfModal
         open={pdfModalOpen}

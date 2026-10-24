@@ -50,6 +50,7 @@ import type {
 import type { QuoteSortKey } from "@/lib/quote-criteria-options";
 import type { CurrencyDisplay } from "./public-results-toolbar";
 import type { DashboardFiltersState } from "@/types/filters";
+import { PublicPlanDetailLoading } from "./public-plan-results-loading";
 import { ModalPlanOverviewPanel } from "./modal-plan-overview-panel";
 import { ModalPricePanel } from "./modal-price-panel";
 import {
@@ -449,6 +450,7 @@ export function ContractPlanModal({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
+          transition={{ duration: 0.18, ease: "easeOut" }}
         >
           <button
             type="button"
@@ -457,16 +459,18 @@ export function ContractPlanModal({
             onClick={onClose}
           />
 
+          {/* Mobile uses one scroll container so the header cannot collapse the form. */}
           <motion.div
             role="dialog"
             aria-modal="true"
             aria-labelledby="contract-plan-title"
-            initial={{ opacity: 0, y: 32 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 24 }}
+            exit={{ opacity: 0, y: 8 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
             className={joinClasses(
               safeWidth,
-              "relative z-10 flex min-h-0 w-full max-w-full max-h-[min(96dvh,100svh)] flex-col overflow-hidden overscroll-none rounded-t-2xl border bg-white shadow-2xl sm:max-h-[92dvh] sm:max-w-6xl sm:rounded-2xl",
+              "relative z-10 block h-[min(96dvh,100svh)] w-full max-w-full max-h-[min(96dvh,100svh)] overflow-x-clip overflow-y-auto overscroll-y-contain rounded-t-2xl border bg-white shadow-2xl sm:flex sm:h-[92dvh] sm:min-h-0 sm:max-h-[92dvh] sm:max-w-6xl sm:flex-col sm:overflow-hidden sm:overscroll-none sm:rounded-2xl",
               ui.border,
             )}
           >
@@ -475,7 +479,12 @@ export function ContractPlanModal({
               aria-hidden
             />
 
-            <div className="flex shrink-0 items-center justify-end px-3 pb-0 pt-2 sm:px-5 sm:pt-2.5">
+            <div className="sticky top-0 z-20 flex shrink-0 items-center justify-between bg-white px-4 pb-1 pt-2 sm:static sm:justify-end sm:px-5 sm:pb-0 sm:pt-2.5">
+              <IsapreLogo
+                isapre={summary.isapre}
+                size="sm"
+                className="!h-7 !w-20 !border-0 !shadow-none sm:hidden"
+              />
               <button
                 type="button"
                 onClick={onClose}
@@ -489,25 +498,25 @@ export function ContractPlanModal({
               </button>
             </div>
 
-            <div className="shrink-0 px-4 pb-5 pt-1 sm:px-6 sm:pb-6 sm:pt-2">
+            <div className="shrink-0 px-4 pb-3 pt-1 sm:px-6 sm:pb-6 sm:pt-2">
               <div
                 className={joinClasses(
-                  "grid items-center gap-6 sm:grid-cols-[auto_minmax(0,1fr)_minmax(0,1.15fr)_auto] sm:gap-x-8 sm:gap-y-0 lg:gap-x-10",
+                  "grid grid-cols-1 items-center gap-3 sm:grid-cols-[auto_minmax(0,1fr)_minmax(0,1.15fr)_auto] sm:gap-x-8 sm:gap-y-0 lg:gap-x-10",
                   safeWidth,
                 )}
               >
-                <div className="flex min-w-0 items-center gap-3 sm:w-[9.5rem] sm:flex-col sm:items-start sm:gap-2.5">
+                <div className="hidden min-w-0 items-center gap-3 sm:flex sm:w-[9.5rem] sm:flex-col sm:items-start sm:gap-2.5">
                   <IsapreLogo
                     isapre={summary.isapre}
                     size="md"
-                    className="!border-0 !shadow-none"
+                    className="!border-0 !shadow-none max-sm:h-8 max-sm:w-20"
                   />
-                  <p className="truncate text-sm font-bold leading-snug text-primary-dark">
+                  <p className="hidden truncate text-sm font-bold leading-snug text-primary-dark sm:block">
                     {summary.isapre}
                   </p>
                 </div>
 
-                <div className="min-w-0 space-y-2">
+                <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 sm:block sm:space-y-2">
                   <span
                     className={joinClasses(
                       "inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide",
@@ -518,16 +527,16 @@ export function ContractPlanModal({
                   </span>
                   <h2
                     id="contract-plan-title"
-                    className="text-xl font-bold leading-[1.15] tracking-tight text-primary-dark sm:text-[1.65rem]"
+                    className="break-words text-sm font-bold leading-[1.15] tracking-tight text-primary-dark sm:text-[1.65rem]"
                   >
                     {commercialName}
                   </h2>
-                  <p className="font-mono text-[11px] tracking-wide text-muted/80">
+                  <p className="hidden font-mono text-[11px] tracking-wide text-muted/80 sm:block">
                     {summary.unique_code}
                   </p>
                 </div>
 
-                <div className="flex min-w-0 items-start gap-3.5 sm:items-center">
+                <div className="hidden min-w-0 items-start gap-3.5 sm:flex sm:items-center">
                   <span
                     className={joinClasses(
                       "mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-full sm:mt-0 sm:size-11",
@@ -559,17 +568,19 @@ export function ContractPlanModal({
                   </div>
                 </div>
 
-                <div className="flex flex-col items-center justify-center rounded-2xl bg-primary px-7 py-5 text-center text-primary-foreground sm:min-h-[7.25rem] sm:min-w-[14.5rem] sm:px-8">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/70">
+                <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 rounded-lg bg-primary px-3 py-2.5 text-primary-foreground sm:flex sm:min-h-[7.25rem] sm:min-w-[14.5rem] sm:flex-col sm:justify-center sm:gap-0 sm:rounded-2xl sm:px-8 sm:py-5 sm:text-center">
+                  <p className="col-span-2 text-[10px] font-bold uppercase tracking-wide text-white/70 sm:tracking-[0.18em]">
                     Precio estimado mensual
+                    <span className="sm:hidden"> · Desde</span>
                   </p>
-                  <p className="mt-2.5 text-[1.45rem] font-bold leading-none tracking-tight sm:text-[1.65rem]">
-                    Desde {formatPlanClp(uiPrices.displayFinalPriceClp)}
+                  <p className="whitespace-nowrap text-xl font-bold leading-none tracking-tight sm:mt-2.5 sm:text-[1.65rem]">
+                    <span className="hidden sm:inline">Desde </span>
+                    {formatPlanClp(uiPrices.displayFinalPriceClp)}
                     <span className="ml-1.5 text-sm font-semibold text-white/80">
                       /mes
                     </span>
                   </p>
-                  <span className="mt-3 inline-flex rounded-full bg-white/15 px-3 py-1 text-xs font-semibold tabular-nums text-white">
+                  <span className="inline-flex rounded-full bg-white/15 px-2 py-1 text-xs font-semibold tabular-nums text-white sm:mt-3 sm:px-3">
                     {formatQuotedUf(uiPrices.displayFinalPriceUf)}
                   </span>
                 </div>
@@ -579,7 +590,7 @@ export function ContractPlanModal({
             <div
               className={joinClasses(
                 horizontalScrollRail,
-                "flex shrink-0 gap-1 border-b px-4 py-2 sm:px-6",
+                "flex shrink-0 gap-1 border-b px-2 py-2 sm:px-6",
               )}
               role="tablist"
               aria-label="Secciones del plan"
@@ -594,7 +605,7 @@ export function ContractPlanModal({
                     aria-selected={active}
                     onClick={() => setActiveTab(tab.id)}
                     className={joinClasses(
-                      "inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition",
+                      "inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold transition max-sm:min-h-11 max-sm:min-w-0 max-sm:flex-1 max-sm:justify-center max-sm:px-2",
                       active
                         ? "bg-primary/10 text-primary-dark ring-1 ring-primary/20"
                         : "text-muted hover:bg-surface-hover/80",
@@ -602,7 +613,7 @@ export function ContractPlanModal({
                   >
                     <span
                       className={joinClasses(
-                        "flex size-5 items-center justify-center rounded-md text-[10px]",
+                        "hidden size-5 items-center justify-center rounded-md text-[10px] sm:flex",
                         active
                           ? accentIconClass[tab.tone]
                           : "bg-surface-hover text-muted",
@@ -617,158 +628,68 @@ export function ContractPlanModal({
               })}
             </div>
 
-            <div className="min-h-0 flex-1 overflow-x-clip overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]">
-              {submitted ? (
-                <div className="space-y-4 px-6 py-12 text-center">
-                  <div
-                    className={joinClasses(
-                      "mx-auto flex size-16 items-center justify-center rounded-full text-2xl",
-                      accentIconClass.primary,
-                    )}
-                  >
-                    ✓
-                  </div>
-                  <p className="text-xl font-bold text-primary-dark">
-                    Solicitud enviada correctamente
-                  </p>
-                  <p className="mx-auto max-w-md text-sm leading-relaxed text-muted">
-                    Tu información fue cargada correctamente. Un ejecutivo
-                    especializado de Isapres Premium se pondrá en contacto
-                    contigo próximamente para entregarte el precio final y
-                    acompañarte en tu incorporación a {summary.isapre}.
-                  </p>
-                  {emailNotifyFailed ? (
-                    <p
-                      className="mx-auto mt-4 max-w-md rounded-lg border border-accent-warning/40 bg-warning-muted px-4 py-3 text-sm text-accent-warning-foreground"
-                      role="alert"
-                    >
-                      Tu solicitud quedó registrada, pero no pudimos enviar el
-                      correo de confirmación en este momento.
-                      {emailNotifyError ? (
-                        <>
-                          {" "}
-                          <span className="block mt-2 text-xs text-muted">
-                            {emailNotifyError}
-                          </span>
-                        </>
-                      ) : null}
-                      {" "}
-                      Revisa tu bandeja más tarde o contáctanos si no recibes
-                      respuesta.
-                    </p>
-                  ) : (
-                    <p className="mx-auto mt-3 max-w-md text-sm font-medium text-primary">
-                      Te enviamos un correo de confirmación a {email.trim()}. Si
-                      no lo ves en unos minutos, revisa tu carpeta de spam o
-                      correo no deseado.
-                    </p>
-                  )}
-                  <Button type="button" onClick={onClose} className="mt-2">
-                    Cerrar
-                  </Button>
-                </div>
-              ) : activeTab === "overview" ? (
-                detailLoading || !detailPlan ? (
-                  <p className="px-6 py-12 text-center text-sm text-muted">
-                    Cargando coberturas del plan…
-                  </p>
-                ) : (
-                  <ModalPlanOverviewPanel
-                    plan={detailPlan}
-                    name={name}
-                    onNameChange={setName}
-                    rut={rut}
-                    onRutChange={setRut}
-                    email={email}
-                    onEmailChange={setEmail}
-                    phone={phone}
-                    onPhoneChange={setPhone}
-                    acceptPrivacy={acceptPrivacy}
-                    onAcceptPrivacyChange={setAcceptPrivacy}
-                    attemptedSubmit={attemptedSubmit}
-                    validationErrors={validationErrors}
-                    submitError={submitError}
-                    submitting={submitting}
-                    onSubmit={handleSubmit}
-                  />
-                )
-              ) : activeTab === "price" ? (
-                <ModalPricePanel
-                  basePriceUf={summary.base_price_uf}
-                  ufToClp={ufToClp}
-                  priceQuote={priceQuote}
-                  highlightAge={chartHighlightAge}
-                  beneficiarySummary={beneficiarySummary}
-                  dependents={dependents}
-                />
-              ) : (
-                <div className="grid gap-0 lg:grid-cols-[minmax(0,17rem)_minmax(0,1fr)]">
-                  <aside className="space-y-4 border-b bg-bg-layout/40 p-4 sm:p-5 lg:border-b-0 lg:border-r">
+            <div className="pb-[max(1rem,env(safe-area-inset-bottom))] sm:min-h-0 sm:flex-1 sm:overflow-x-clip sm:overflow-y-auto sm:overscroll-y-contain sm:pb-0 [-webkit-overflow-scrolling:touch]">
+              <motion.div
+                key={submitted ? "submitted" : activeTab}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.16, ease: "easeOut" }}
+              >
+                {submitted ? (
+                  <div className="space-y-4 px-6 py-12 text-center">
                     <div
                       className={joinClasses(
-                        "rounded-xl border border-primary/15 bg-primary/5 p-4",
-                        accent.ringPrimary,
+                        "mx-auto flex size-16 items-center justify-center rounded-full text-2xl",
+                        accentIconClass.primary,
                       )}
                     >
-                      <h3 className="text-sm font-bold text-primary-dark">
-                        ¿Por qué Isapres Premium?
-                      </h3>
-                      <ul className="mt-3 space-y-3">
-                        {BENEFITS.map((benefit) => (
-                          <li key={benefit.title} className="flex gap-3">
-                            <span
-                              className={joinClasses(
-                                "flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-bold",
-                                accentIconClass[benefit.tone],
-                              )}
-                            >
-                              {benefit.icon}
-                            </span>
-                            <div>
-                              <p className="text-sm font-semibold text-foreground">
-                                {benefit.title}
-                              </p>
-                              <p className="text-xs leading-relaxed text-muted">
-                                {benefit.description}
-                              </p>
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
+                      ✓
                     </div>
-
-                    <div
-                      className={joinClasses(
-                        "rounded-xl border bg-white p-4",
-                        accent.borderSecondary,
-                      )}
-                    >
-                      <p className="text-[10px] font-bold uppercase tracking-wide text-muted">
-                        Tu selección
-                      </p>
-                      <p className="mt-2 text-sm font-bold text-primary-dark">
-                        {commercialName}
-                      </p>
-                      <p className="mt-2 text-lg font-bold text-foreground">
-                        {formatPlanClp(uiPrices.displayFinalPriceClp)}
-                        <span className="text-xs font-medium text-muted">
-                          {" "}
-                          /mes
-                        </span>
-                      </p>
+                    <p className="text-xl font-bold text-primary-dark">
+                      Solicitud enviada correctamente
+                    </p>
+                    <p className="mx-auto max-w-md text-sm leading-relaxed text-muted">
+                      Tu información fue cargada correctamente. Un ejecutivo
+                      especializado de Isapres Premium se pondrá en contacto
+                      contigo próximamente para entregarte el precio final y
+                      acompañarte en tu incorporación a {summary.isapre}.
+                    </p>
+                    {emailNotifyFailed ? (
                       <p
-                        className={joinClasses(
-                          "mt-1 text-xs font-semibold",
-                          accent.valueSecondary,
-                        )}
+                        className="mx-auto mt-4 max-w-md rounded-lg border border-accent-warning/40 bg-warning-muted px-4 py-3 text-sm text-accent-warning-foreground"
+                        role="alert"
                       >
-                        {formatQuotedUf(uiPrices.displayFinalPriceUf)}
+                        Tu solicitud quedó registrada, pero no pudimos enviar el
+                        correo de confirmación en este momento.
+                        {emailNotifyError ? (
+                          <>
+                            {" "}
+                            <span className="block mt-2 text-xs text-muted">
+                              {emailNotifyError}
+                            </span>
+                          </>
+                        ) : null}
+                        {" "}
+                        Revisa tu bandeja más tarde o contáctanos si no recibes
+                        respuesta.
                       </p>
-                    </div>
-                  </aside>
-
-                  <div className="p-4 sm:p-6">
-                    <ModalRequestForm
+                    ) : (
+                      <p className="mx-auto mt-3 max-w-md text-sm font-medium text-primary">
+                        Te enviamos un correo de confirmación a {email.trim()}. Si
+                        no lo ves en unos minutos, revisa tu carpeta de spam o
+                        correo no deseado.
+                      </p>
+                    )}
+                    <Button type="button" onClick={onClose} className="mt-2">
+                      Cerrar
+                    </Button>
+                  </div>
+                ) : activeTab === "overview" ? (
+                  detailLoading || !detailPlan ? (
+                    <PublicPlanDetailLoading />
+                  ) : (
+                    <ModalPlanOverviewPanel
+                      plan={detailPlan}
                       name={name}
                       onNameChange={setName}
                       rut={rut}
@@ -784,11 +705,106 @@ export function ContractPlanModal({
                       submitError={submitError}
                       submitting={submitting}
                       onSubmit={handleSubmit}
-                      variant="plain"
                     />
+                  )
+                ) : activeTab === "price" ? (
+                  <ModalPricePanel
+                    basePriceUf={summary.base_price_uf}
+                    ufToClp={ufToClp}
+                    priceQuote={priceQuote}
+                    highlightAge={chartHighlightAge}
+                    beneficiarySummary={beneficiarySummary}
+                    dependents={dependents}
+                  />
+                ) : (
+                  <div className="grid gap-0 lg:grid-cols-[minmax(0,17rem)_minmax(0,1fr)]">
+                    <aside className="order-2 space-y-4 border-t bg-bg-layout/40 p-4 sm:p-5 lg:order-none lg:border-b-0 lg:border-r lg:border-t-0">
+                      <div
+                        className={joinClasses(
+                          "rounded-xl border border-primary/15 bg-primary/5 p-4",
+                          accent.ringPrimary,
+                        )}
+                      >
+                        <h3 className="text-sm font-bold text-primary-dark">
+                          ¿Por qué Isapres Premium?
+                        </h3>
+                        <ul className="mt-3 space-y-3">
+                          {BENEFITS.map((benefit) => (
+                            <li key={benefit.title} className="flex gap-3">
+                              <span
+                                className={joinClasses(
+                                  "flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-bold",
+                                  accentIconClass[benefit.tone],
+                                )}
+                              >
+                                {benefit.icon}
+                              </span>
+                              <div>
+                                <p className="text-sm font-semibold text-foreground">
+                                  {benefit.title}
+                                </p>
+                                <p className="text-xs leading-relaxed text-muted">
+                                  {benefit.description}
+                                </p>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      <div
+                        className={joinClasses(
+                          "rounded-xl border bg-white p-4",
+                          accent.borderSecondary,
+                        )}
+                      >
+                        <p className="text-[10px] font-bold uppercase tracking-wide text-muted">
+                          Tu selección
+                        </p>
+                        <p className="mt-2 text-sm font-bold text-primary-dark">
+                          {commercialName}
+                        </p>
+                        <p className="mt-2 text-lg font-bold text-foreground">
+                          {formatPlanClp(uiPrices.displayFinalPriceClp)}
+                          <span className="text-xs font-medium text-muted">
+                            {" "}
+                            /mes
+                          </span>
+                        </p>
+                        <p
+                          className={joinClasses(
+                            "mt-1 text-xs font-semibold",
+                            accent.valueSecondary,
+                          )}
+                        >
+                          {formatQuotedUf(uiPrices.displayFinalPriceUf)}
+                        </p>
+                      </div>
+                    </aside>
+
+                    <div className="order-1 p-4 sm:p-6 lg:order-none">
+                      <ModalRequestForm
+                        name={name}
+                        onNameChange={setName}
+                        rut={rut}
+                        onRutChange={setRut}
+                        email={email}
+                        onEmailChange={setEmail}
+                        phone={phone}
+                        onPhoneChange={setPhone}
+                        acceptPrivacy={acceptPrivacy}
+                        onAcceptPrivacyChange={setAcceptPrivacy}
+                        attemptedSubmit={attemptedSubmit}
+                        validationErrors={validationErrors}
+                        submitError={submitError}
+                        submitting={submitting}
+                        onSubmit={handleSubmit}
+                        variant="plain"
+                      />
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </motion.div>
             </div>
           </motion.div>
         </motion.div>

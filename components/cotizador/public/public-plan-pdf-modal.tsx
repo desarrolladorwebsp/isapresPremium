@@ -80,6 +80,7 @@ export function PublicPlanPdfModal({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
+          transition={{ duration: 0.18, ease: "easeOut" }}
         >
           <button
             type="button"
@@ -92,9 +93,10 @@ export function PublicPlanPdfModal({
             role="dialog"
             aria-modal="true"
             aria-labelledby="public-plan-pdf-title"
-            initial={{ opacity: 0, y: 28 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
+            exit={{ opacity: 0, y: 8 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
             className={joinClasses(
               safeWidth,
               "relative z-10 flex max-h-[min(96dvh,100svh)] w-full max-w-full flex-col overflow-hidden rounded-t-2xl border bg-bg-layout shadow-2xl sm:max-h-[92dvh] sm:max-w-5xl sm:rounded-2xl",

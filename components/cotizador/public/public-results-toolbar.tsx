@@ -1,5 +1,6 @@
 "use client";
 
+import { PublicPlanResultsLoadingInline } from "./public-plan-results-loading";
 import { buildPaginationItems } from "@/lib/pagination";
 import { safeWidth, touchTarget, ui } from "@/lib/ui-tokens";
 import { joinClasses } from "@/lib/utils";
@@ -13,6 +14,7 @@ export interface PublicResultsToolbarPagination {
 }
 
 export interface PublicResultsToolbarProps {
+  loading?: boolean;
   displayedCount: number;
   totalCount: number;
   /** Rango “1–12 de 2264” cuando hay paginación. */
@@ -46,6 +48,7 @@ function PaginationChevron({ direction }: { direction: "prev" | "next" }) {
 }
 
 export function PublicResultsToolbar({
+  loading = false,
   displayedCount,
   totalCount,
   rangeLabel = null,
@@ -83,7 +86,7 @@ export function PublicResultsToolbar({
     >
       <div
         className={joinClasses(
-          "flex min-w-0 flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3 sm:gap-y-1",
+          "flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5",
           "lg:max-w-[min(100%,22rem)] lg:shrink-0",
           compactEmbed && "max-md:gap-1",
         )}
@@ -97,6 +100,7 @@ export function PublicResultsToolbar({
         >
           {resultsLabel}
         </span>
+        {loading ? <PublicPlanResultsLoadingInline /> : null}
       </div>
 
       <input

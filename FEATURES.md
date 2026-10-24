@@ -34,6 +34,9 @@ El tenant es de **marca**, no de datos. Isapres, planes, clínicas, coberturas y
 | Ruta legacy `/{partnerSlug}` y `/embed` | `app/[partnerSlug]/`, `app/embed/` |
 | Widget `cotizador-widget.js` (iframe, 4 planes, salida al cotizador completo; host por defecto `https://isaprespremium.cl`) | `public/cotizador-widget.js`, `EMBED_WIDGET_PLANS_LIMIT` en `lib/plan-search-config.ts` |
 | Búsqueda y filtros de planes (precio, isapre, zona, tipo, cobertura H/A, clínicas) | `GET /api/plans/search`, `lib/api/plan-search.ts`, `lib/apply-plan-filters.ts` |
+| Vista pública responsive: beneficios en tres columnas móviles, código junto al nombre del plan, UF/pesos siempre en paralelo junto a metadata y acciones PDF/Solicitar al final de cada tarjeta | `public-cotizador-view.tsx`, `public-plan-card.tsx`, `company-agreement/plan-agreement-price.tsx` |
+| Movimiento y carga públicos: transiciones breves sin rebote, esqueletos con la estructura de las tarjetas, indicador de actualización junto al contador y respeto de reducir movimiento (incluido scroll). Conserva los resultados mientras actualiza | `public-plan-results-loading.tsx`, `public-plan-results-list.tsx`, `public-results-toolbar.tsx`, `contract-plan-modal.tsx`, `lib/scroll/scroll-into-view.ts` |
+| Modal público de plan adaptable a móvil: cabecera con logo y cierre alineados, tipo e identificador juntos, precio compacto, desplazamiento completo, formulario antes de beneficios y campos legibles. Conserva el envío y el cálculo existentes | `components/cotizador/public/contract-plan-modal.tsx`, `modal-request-form.tsx` |
 | Precio final UF/CLP, escenarios, descuento por convenio de empresa aplicado a la base del plan (GES permanece intacto) | `lib/plan-final-price.ts`, `lib/plan-price-scenarios.ts`, `lib/company-agreements/plan-price-discount.ts` |
 | UF | `GET /api/uf`, `lib/economic-indicators.ts` |
 | PDF de plan | `GET /api/plans/[uniqueCode]/pdf` |

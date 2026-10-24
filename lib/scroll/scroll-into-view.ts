@@ -23,6 +23,9 @@ export function scrollElementIntoAppShell(
 ): void {
   if (!target) return;
 
+  const behavior = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ? "auto"
+    : options.behavior ?? "smooth";
   const scrollRoot = getAppShellScrollElement(target);
   const useAppShellScroll =
     scrollRoot &&
@@ -40,18 +43,21 @@ export function scrollElementIntoAppShell(
 
     scrollRoot.scrollTo({
       top: Math.max(0, top),
-      behavior: options.behavior ?? "smooth",
+      behavior,
     });
     return;
   }
 
-  target.scrollIntoView(options);
+  target.scrollIntoView({ ...options, behavior });
 }
 
 /** Lleva el scroll al inicio del contenedor app-shell o de la ventana. */
 export function scrollAppShellToTop(
   behavior: ScrollBehavior = "smooth",
 ): void {
+  const effectiveBehavior = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ? "auto"
+    : behavior;
   const scrollRoot = getAppShellScrollElement();
   const useAppShellScroll =
     scrollRoot &&
@@ -59,9 +65,9 @@ export function scrollAppShellToTop(
     isScrollableAppShell(scrollRoot);
 
   if (useAppShellScroll && scrollRoot) {
-    scrollRoot.scrollTo({ top: 0, behavior });
+    scrollRoot.scrollTo({ top: 0, behavior: effectiveBehavior });
     return;
   }
 
-  window.scrollTo({ top: 0, behavior });
+  window.scrollTo({ top: 0, behavior: effectiveBehavior });
 }

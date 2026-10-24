@@ -113,7 +113,7 @@ export function ModalRequestForm({
             onChange={(e) => onNameChange(e.target.value)}
             placeholder="Ingresa tu nombre"
             className={joinClasses(
-              "h-11 w-full max-w-full rounded-xl px-3 text-sm",
+              "h-11 w-full max-w-full rounded-xl px-3 text-base sm:text-sm",
               ui.input,
               requestFieldErrorClass(attemptedSubmit && !name.trim()),
             )}
@@ -129,7 +129,7 @@ export function ModalRequestForm({
             onChange={(e) => onRutChange(e.target.value)}
             placeholder="12.345.678-9"
             className={joinClasses(
-              "h-11 w-full max-w-full rounded-xl px-3 text-sm",
+              "h-11 w-full max-w-full rounded-xl px-3 text-base sm:text-sm",
               ui.input,
               requestFieldErrorClass(
                 attemptedSubmit &&
@@ -149,7 +149,7 @@ export function ModalRequestForm({
             onChange={(e) => onEmailChange(e.target.value)}
             placeholder="correo@ejemplo.cl"
             className={joinClasses(
-              "h-11 w-full max-w-full rounded-xl px-3 text-sm",
+              "h-11 w-full max-w-full rounded-xl px-3 text-base sm:text-sm",
               ui.input,
               requestFieldErrorClass(
                 attemptedSubmit &&
@@ -169,7 +169,7 @@ export function ModalRequestForm({
             onChange={(e) => onPhoneChange(e.target.value)}
             placeholder="+56 9 1234 5678"
             className={joinClasses(
-              "h-11 w-full max-w-full rounded-xl px-3 text-sm",
+              "h-11 w-full max-w-full rounded-xl px-3 text-base sm:text-sm",
               ui.input,
               requestFieldErrorClass(
                 attemptedSubmit &&

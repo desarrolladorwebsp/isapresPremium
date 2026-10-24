@@ -15,27 +15,42 @@ export function formatAgreementDiscountBadge(percent: number): string {
 interface PublicPlanAgreementPricesProps {
   prices: PlanAgreementPriceDisplay;
   currency: "uf" | "clp";
+  /** Keep both currencies side by side with a tighter gap in narrow cards. */
+  compact?: boolean;
 }
 
 /** Precios "Desde" para la tarjeta pública / widget. */
 export function PublicPlanAgreementPrices({
   prices,
   currency,
+  compact = false,
 }: PublicPlanAgreementPricesProps) {
   const ufPrimary = currency === "uf";
   const clpPrimary = currency === "clp";
   const discounted = prices.hasAgreementDiscount;
 
   return (
-    <div className="flex flex-col items-stretch gap-1.5 sm:items-end">
+    <div
+      className={joinClasses(
+        "flex flex-col gap-1.5",
+        compact ? "items-end" : "items-stretch sm:items-end",
+      )}
+    >
       {discounted ? (
         <span className="inline-flex w-fit items-center rounded-md bg-red-600 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white sm:ml-auto">
           {formatAgreementDiscountBadge(prices.discountPercent)} convenio
         </span>
       ) : null}
 
-      <div className="flex items-center gap-3 sm:gap-4">
-        <div className="text-left sm:text-right">
+      <div
+        className={joinClasses(
+          "flex",
+          compact
+            ? "items-center gap-2 sm:gap-4"
+            : "items-center gap-3 sm:gap-4",
+        )}
+      >
+        <div className={compact ? "text-right" : "text-left sm:text-right"}>
           <p className="text-[10px] font-medium text-muted">
             {discounted ? "Total con convenio" : "Desde"}
           </p>
@@ -46,7 +61,7 @@ export function PublicPlanAgreementPrices({
           ) : null}
           <p
             className={joinClasses(
-              "font-bold tabular-nums",
+              "whitespace-nowrap font-bold tabular-nums",
               discounted ? "text-red-700" : "text-primary-dark",
               ufPrimary
                 ? "text-base sm:text-lg"
@@ -57,7 +72,7 @@ export function PublicPlanAgreementPrices({
             {formatQuotedUf(prices.displayFinalPriceUf)}
           </p>
         </div>
-        <div className="text-left sm:text-right">
+        <div className={compact ? "text-right" : "text-left sm:text-right"}>
           <p className="text-[10px] font-medium text-muted">
             {discounted ? "Total / mes" : "Desde"}
           </p>
@@ -68,7 +83,7 @@ export function PublicPlanAgreementPrices({
           ) : null}
           <p
             className={joinClasses(
-              "font-bold tabular-nums",
+              "whitespace-nowrap font-bold tabular-nums",
               discounted ? "text-red-700" : "text-primary-dark",
               clpPrimary
                 ? "text-base sm:text-lg"

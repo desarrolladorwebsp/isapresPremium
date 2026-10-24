@@ -92,7 +92,7 @@ export function PublicFiltersSidebar({
         data-filters-panel
         initial={false}
         animate={{ x: isLargeScreen ? 0 : open ? 0 : "-100%" }}
-        transition={{ type: "spring", stiffness: 320, damping: 32 }}
+        transition={{ duration: 0.2, ease: "easeOut" }}
         className={joinClasses(
           "fixed inset-y-0 left-0 z-50 flex w-full max-w-full flex-col overflow-hidden border-r shadow-xl",
           "bg-white text-foreground",

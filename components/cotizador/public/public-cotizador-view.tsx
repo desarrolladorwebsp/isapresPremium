@@ -9,6 +9,8 @@ import {
   useState,
 } from "react";
 import { useSearchParams } from "next/navigation";
+import { MotionConfig } from "framer-motion";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import { FiltersFab } from "@/components/filters";
 import {
   PartnerEntityProvider,
@@ -84,7 +86,6 @@ import { PublicFiltersSidebar } from "./public-filters-sidebar";
 import { PublicPlanResultsList } from "./public-plan-results-list";
 import {
   PublicPlanResultsLoading,
-  PublicPlanResultsLoadingInline,
 } from "./public-plan-results-loading";
 import {
   PublicQuoteCriteriaBar,
@@ -105,30 +106,37 @@ export function PublicCotizadorView({
   entity = null,
   embedMode = false,
 }: PublicCotizadorViewProps) {
+  const reduceMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
   return (
-    <PartnerEntityProvider entity={entity}>
-      <CompanyAgreementProvider>
-        <Suspense
-          fallback={
-            <div
-              className={
-                embedMode
-                  ? "flex flex-col items-center justify-center gap-3 bg-bg-layout px-4 py-12 text-center"
-                  : "flex min-h-[320px] flex-col items-center justify-center gap-3 bg-bg-layout px-4 text-center"
-              }
-            >
-              <div className="size-10 motion-safe:animate-spin rounded-full border-2 border-primary/15 border-t-primary" />
-              <p className="text-sm font-semibold text-primary-dark">
-                Buscando el mejor plan para ti…
-              </p>
-              <p className="text-xs text-muted">Cargando cotizador</p>
-            </div>
-          }
-        >
-          <PublicCotizadorViewInner embedMode={embedMode} />
-        </Suspense>
-      </CompanyAgreementProvider>
-    </PartnerEntityProvider>
+    <MotionConfig
+      reducedMotion="user"
+      skipAnimations={reduceMotion}
+      transition={{ duration: 0.18, ease: "easeOut" }}
+    >
+      <PartnerEntityProvider entity={entity}>
+        <CompanyAgreementProvider>
+          <Suspense
+            fallback={
+              <div
+                className={
+                  embedMode
+                    ? "flex flex-col items-center justify-center gap-3 bg-bg-layout px-4 py-12 text-center"
+                    : "flex min-h-[320px] flex-col items-center justify-center gap-3 bg-bg-layout px-4 text-center"
+                }
+              >
+                <div className="size-10 motion-safe:animate-spin rounded-full border-2 border-primary/15 border-t-primary" />
+                <p className="text-sm font-semibold text-primary-dark">
+                  Buscando el mejor plan para ti…
+                </p>
+                <p className="text-xs text-muted">Cargando cotizador</p>
+              </div>
+            }
+          >
+            <PublicCotizadorViewInner embedMode={embedMode} />
+          </Suspense>
+        </CompanyAgreementProvider>
+      </PartnerEntityProvider>
+    </MotionConfig>
   );
 }
 
@@ -931,7 +939,7 @@ function PublicCotizadorViewInner({ embedMode }: { embedMode: boolean }) {
               </div>
 
               <ul
-                className="flex w-full shrink-0 flex-col gap-3.5 sm:flex-row sm:flex-wrap sm:items-center sm:divide-x sm:divide-border sm:gap-0 lg:w-auto lg:max-w-none lg:flex-nowrap lg:justify-end"
+                className="grid w-full shrink-0 grid-cols-3 gap-2 sm:flex sm:flex-row sm:flex-wrap sm:items-center sm:divide-x sm:divide-border sm:gap-0 lg:w-auto lg:max-w-none lg:flex-nowrap lg:justify-end"
                 aria-label="Beneficios del cotizador"
               >
                 {(
@@ -1008,12 +1016,12 @@ function PublicCotizadorViewInner({ embedMode }: { embedMode: boolean }) {
                 ).map((item) => (
                   <li
                     key={item.title}
-                    className="flex min-w-0 items-center gap-3 sm:px-5 lg:px-6 first:sm:pl-0 last:sm:pr-0"
+                    className="flex min-w-0 flex-col items-center gap-1.5 text-center sm:flex-row sm:gap-3 sm:px-5 sm:text-left lg:px-6 first:sm:pl-0 last:sm:pr-0"
                   >
-                    <span className="inline-flex size-10 shrink-0 items-center justify-center text-primary">
+                    <span className="inline-flex size-8 shrink-0 items-center justify-center text-primary sm:size-10">
                       <svg
                         viewBox="0 0 24 24"
-                        className="size-9"
+                        className="size-7 sm:size-9"
                         fill="none"
                         aria-hidden
                       >
@@ -1021,10 +1029,10 @@ function PublicCotizadorViewInner({ embedMode }: { embedMode: boolean }) {
                       </svg>
                     </span>
                     <span className="min-w-0 leading-tight">
-                      <span className="block text-[15px] font-bold text-primary-dark">
+                      <span className="block text-[13px] font-bold text-primary-dark sm:text-[15px]">
                         {item.title}
                       </span>
-                      <span className="mt-0.5 block text-xs text-muted sm:text-[13px]">
+                      <span className="mt-0.5 block text-[11px] leading-snug text-muted sm:text-[13px]">
                         {item.subtitle}
                       </span>
                     </span>
@@ -1068,6 +1076,7 @@ function PublicCotizadorViewInner({ embedMode }: { embedMode: boolean }) {
                 )}
               >
                 <PublicResultsToolbar
+                  loading={showInlineLoading}
                   displayedCount={sortedPlans.length}
                   totalCount={total}
                   rangeLabel={resultsRangeLabel}
@@ -1186,11 +1195,6 @@ function PublicCotizadorViewInner({ embedMode }: { embedMode: boolean }) {
                         setContractPlan(plan);
                       }}
                     />
-                    {showInlineLoading ? (
-                      <div className="mt-4">
-                        <PublicPlanResultsLoadingInline />
-                      </div>
-                    ) : null}
                     {hasMoreEmbedResults && !showInlineLoading ? (
                       <div className="mt-6 flex justify-center">
                         <button
