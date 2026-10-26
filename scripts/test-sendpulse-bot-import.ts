@@ -72,6 +72,10 @@ async function main(){
     const p=prepareSendpulseImport({rows:source,bots:[a,b,c],existing:[]});
     assert.equal(p.sourceRows,13000);assert.equal(p.decisions.length,11000);assert.equal(new Set(p.decisions.map(d=>d.phone)).size,11000);assert.deepEqual(p.bots.map(b=>b.assignedCount),[6000,3000,2000]);
   });
+  await test("Reutiliza un celular chileno guardado sin +56 en lugar de duplicarlo",()=>{
+    const p=prepareSendpulseImport({rows:[row(a.sourceFile,"sp-local","56910000001")],bots:[a],existing:[{id:"local-client",email:"local@example.test",phone:"910000001",sendpulseContactId:null,assignedExecutiveId:"exec",updatedAt:"2026-10-26T12:00:00.000Z"}]});
+    assert.equal(p.decisions.length,1);assert.equal(p.decisions[0].existing?.id,"local-client");assert.equal(p.decisions[0].phone,"+56910000001");assert.equal(p.review.length,0);
+  });
   let sessions=0,writes=0,verifiedPasswords=0,resetTokens=0;
   const fixture={id:"bot-fixture",email:"bot.fixture@bots.isaprespremium.cl",fullName:"Bot ficticio",role:"BOT",phone:"+56980000001",executiveKind:null,active:true,onboardingCompleted:true,autoAssignmentEnabled:false,assignmentsSuspended:false,createdAt:new Date(),lastLoginAt:null,subscriptionExpiresAt:null,passwordHash:"fixture-only"};
   const db={staffAccount:{findUnique:async()=>fixture,update:async()=>{writes++;return fixture;}},passwordResetToken:{updateMany:async()=>{resetTokens++;},create:async()=>{resetTokens++;}}};

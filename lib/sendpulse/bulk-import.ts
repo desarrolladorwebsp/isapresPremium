@@ -44,6 +44,14 @@ export interface SendpulseImportPlan {
   sourceRows: number;
 }
 
+/** Los celulares chilenos locales del CRM usan 9 dígitos y comienzan en 9. */
+function normalizeImportPhone(value: string): string | null {
+  const normalized = normalizeSendpulseContactPhone(value);
+  if (!normalized) return null;
+  const digits = normalized.slice(1);
+  return /^9\d{8}$/.test(digits) ? `+56${digits}` : normalized;
+}
+
 const text = (v: unknown) => String(v ?? "").trim();
 const emailFrom = (row: SendpulseImportRow) =>
   ["direcc_email", "email_cliente", "email_cliente2"].map(key => text(row.raw[key]).toLowerCase())
@@ -59,7 +67,7 @@ export function prepareSendpulseImport(input: {
     throw new Error("Faltan exportaciones corregidas o confirmadas de los bots. No se calcula una asignación definitiva con un lote incompleto.");
   }
   const bots = input.bots.map(bot => {
-    const phone = normalizeSendpulseContactPhone(bot.phone);
+    const phone = normalizeImportPhone(bot.phone);
     if (!phone) throw new Error(`Teléfono de bot inválido: ${bot.label}`);
     return { ...bot, phone, sourceCount: 0, assignedCount: 0 };
   });
@@ -72,7 +80,7 @@ export function prepareSendpulseImport(input: {
   const idPhones = new Map<string, Set<string>>();
   for (const row of input.rows) {
     if (!byFile.has(row.sourceFile)) throw new Error("El lote contiene un archivo que no está en el manifiesto.");
-    const phone = normalizeSendpulseContactPhone(row.phoneDigits);
+    const phone = normalizeImportPhone(row.phoneDigits);
     if (!phone || !text(row.contactId) || row.contactId.length > 128) throw new Error(`Contacto inválido en ${row.sourceFile}, fila ${row.sourceRow}.`);
     const group = groups.get(phone) ?? []; group.push(row); groups.set(phone, group);
     const fileRows = files.get(row.sourceFile) ?? []; fileRows.push(row); files.set(row.sourceFile, fileRows);
@@ -84,7 +92,7 @@ export function prepareSendpulseImport(input: {
     if (!rows.length) throw new Error(`No hay contactos para ${bot.label}.`);
     const ids = rows.map(r=>r.contactId);
     if (new Set(ids).size !== ids.length) throw new Error(`IDs repetidos dentro del archivo de ${bot.label}.`);
-    bot.sourceCount = new Set(rows.map(r=>normalizeSendpulseContactPhone(r.phoneDigits))).size;
+    bot.sourceCount = new Set(rows.map(r=>normalizeImportPhone(r.phoneDigits))).size;
     const fingerprint = createHash("sha256").update(JSON.stringify(rows.map(r=>[r.contactId,r.phoneDigits,r.raw]).sort((a,b)=>String(a[0]).localeCompare(String(b[0]))))).digest("hex");
     if (fingerprints.has(fingerprint)) throw new Error("Dos bots tienen exactamente la misma exportación. Hay que confirmar/corregir los archivos antes de importar.");
     fingerprints.add(fingerprint);
@@ -93,7 +101,7 @@ export function prepareSendpulseImport(input: {
   const byPhone = new Map<string, SendpulseExistingClient[]>();
   const byEmail = new Map(input.existing.map(c=>[c.email.toLowerCase(),c]));
   for (const client of input.existing) {
-    const phone = client.phone ? normalizeSendpulseContactPhone(client.phone) : null;
+    const phone = client.phone ? normalizeImportPhone(client.phone) : null;
     if (phone) { const list=byPhone.get(phone)??[];list.push(client);byPhone.set(phone,list); }
   }
   const emailPhones = new Map<string, Set<string>>();
