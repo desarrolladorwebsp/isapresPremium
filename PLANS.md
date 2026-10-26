@@ -43,6 +43,8 @@ No hay una fase de producto en curso. El siguiente trabajo lo define el usuario.
 
 ## Operación SendPulse — 2026-10-26
 
-- Implementado: carteras BOT sin login e importador auditable con deduplicación y prioridad por tamaño del bot.
+- Implementado: carteras BOT sin login e importador auditable con deduplicación y prioridad del responsable humano; tamaño del bot solo sin dueño humano.
 - Lote autorizado: conservar PREMIUM 2; excluir la copia idéntica PREMIUM 9. Respaldos e informes en `Store/2026-10-26/sendpulse-clientes/`.
 - Las identidades ambiguas quedan fuera de la aplicación y requieren revisión independiente sin fusionar ni borrar historiales.
+
+- Corrección del 2026-10-26: restauradas 401 asignaciones humanas desde el respaldo (327 ejecutivos, 74 administradores), con comprobación de cambios posteriores. Evidencia privada en el Store del proyecto original: `2026-10-26/reversion-responsables/`.

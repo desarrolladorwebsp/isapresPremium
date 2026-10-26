@@ -12,6 +12,7 @@ import { prisma } from "../lib/prisma";
 import { assertSafeForDestructiveCommand, resolveDatabaseTargets } from "../lib/db/resolve-database-env.mjs";
 import { prepareSendpulseImport, type SendpulseImportBot, type SendpulseImportRow } from "../lib/sendpulse/bulk-import";
 import type { Prisma } from "@prisma/client";
+import { SENDPULSE_IMPORT_EXISTING_SQL } from "../lib/sendpulse/bulk-import-sql";
 
 interface Manifest { batch: string; rowsFile: string; reportDir: string; complete: boolean; bots: SendpulseImportBot[] }
 const sha = (data: string | Buffer) => createHash("sha256").update(data).digest("hex");
@@ -25,11 +26,12 @@ async function main() {
   const reportDir=path.resolve(path.dirname(manifestPath),manifest.reportDir);
   await mkdir(reportDir,{recursive:true,mode:0o700});
   const apply=process.argv.includes("--apply");
-  const existing=await prisma.user.findMany({where:{role:"CLIENT"},orderBy:{id:"asc"},select:{id:true,email:true,phone:true,sendpulseContactId:true,assignedExecutiveId:true,updatedAt:true}});
-  const plan=prepareSendpulseImport({rows,bots:manifest.bots,existing:existing.map(c=>({...c,updatedAt:c.updatedAt.toISOString()}))});
+  if(apply && process.argv.includes("--dry-run"))throw new Error("Elige --dry-run o --apply, no ambos.");
+  const existing=await prisma.user.findMany({where:{role:"CLIENT"},orderBy:{id:"asc"},select:{id:true,email:true,phone:true,sendpulseContactId:true,assignedExecutiveId:true,updatedAt:true,assignedExecutive:{select:{role:true}}}});
+  const plan=prepareSendpulseImport({rows,bots:manifest.bots,existing:existing.map(({assignedExecutive,...c})=>({...c,assignedExecutiveRole:assignedExecutive?.role??null,updatedAt:c.updatedAt.toISOString()}))});
   const sourceSha=sha(rowsBytes);
   const planSha=sha(JSON.stringify({batch:manifest.batch,sourceSha,plan}));
-  const summary={mode:apply?"apply":"dry-run",batch:manifest.batch,sourceSha,planSha,sourceRows:plan.sourceRows,distinctContacts:plan.decisions.length+plan.review.length,create:plan.decisions.filter(d=>!d.existing).length,update:plan.decisions.filter(d=>d.existing).length,review:plan.review.length,bots:plan.bots.map(b=>({label:b.label,phone:b.phone,source:b.sourceCount,assigned:b.assignedCount}))};
+  const summary={mode:apply?"apply":"dry-run",batch:manifest.batch,sourceSha,planSha,sourceRows:plan.sourceRows,distinctContacts:plan.decisions.length+plan.review.length,create:plan.decisions.filter(d=>!d.existing).length,update:plan.decisions.filter(d=>d.existing).length,preservedOwners:plan.decisions.filter(d=>d.preserveExistingOwner).length,review:plan.review.length,bots:plan.bots.map(b=>({label:b.label,phone:b.phone,source:b.sourceCount,assigned:b.assignedCount,backedUp:b.backedUpCount}))};
   await writeFile(path.join(reportDir,"plan.json"),JSON.stringify({summary,plan},null,2)+"\n",{mode:0o600});
   console.log(JSON.stringify(summary));
   if(!apply)return;
@@ -54,19 +56,10 @@ async function main() {
     const newIds=new Map(plan.decisions.filter(d=>!d.existing).map(d=>[d.phone,randomUUID()]));
     const createData=plan.decisions.filter(d=>!d.existing).map(d=>({id:newIds.get(d.phone)!,email:d.email,fullName:d.fullName,phone:d.phone,role:"CLIENT" as const,active:true,clientOrigin:"SENDPULSE" as const,sendpulseContactId:d.contactId,sendpulseBotPhone:d.botPhone,assignedExecutiveId:botIds.get(d.botPhone)!}));
     if(createData.length)await tx.user.createMany({data:createData});
-    const updateData=plan.decisions.filter(d=>d.existing).map(d=>({id:d.existing!.id,expectedUpdatedAt:d.existing!.updatedAt,botId:botIds.get(d.botPhone)!,botPhone:d.botPhone,contactId:d.contactId}));
+    const updateData=plan.decisions.filter(d=>d.existing).map(d=>({id:d.existing!.id,expectedUpdatedAt:d.existing!.updatedAt,expectedOwnerId:d.existing!.assignedExecutiveId,preserveOwner:d.preserveExistingOwner,botId:botIds.get(d.botPhone)!,botPhone:d.botPhone,contactId:d.contactId}));
     let updated=0;
     if(updateData.length){
-      updated=await tx.$executeRaw`
-        UPDATE users AS u
-        SET assigned_executive_id = incoming."botId",
-            sendpulse_bot_phone = incoming."botPhone",
-            sendpulse_contact_id = COALESCE(NULLIF(u.sendpulse_contact_id, ''), incoming."contactId"),
-            updated_at = CURRENT_TIMESTAMP
-        FROM jsonb_to_recordset(${JSON.stringify(updateData)}::jsonb)
-          AS incoming(id text, "expectedUpdatedAt" text, "botId" text, "botPhone" text, "contactId" text)
-        WHERE u.id = incoming.id AND u.updated_at = incoming."expectedUpdatedAt"::timestamp
-      `;
+      updated=await tx.$executeRawUnsafe(SENDPULSE_IMPORT_EXISTING_SQL, JSON.stringify(updateData));
       if(updated!==updateData.length)throw new Error("Un cliente cambió durante la preparación; se revierte la transacción completa.");
     }
     const importedIds:string[]=[];
@@ -75,7 +68,7 @@ async function main() {
     for(const d of plan.decisions){
       const userId=d.existing?.id??newIds.get(d.phone)!;
       importedIds.push(userId);
-      importData.push({userId,sourceBotAccountId:botIds.get(d.botPhone)!,sourceContactIds:d.contactIds,sourceBatch:manifest.batch,createdAt:firstImportAt.get(userId)??completedAt,rawData:{policy:"largest-source-bot-first",sourceRows:d.sourceRows,sourceSha,planSha,importedAt:completedAt.toISOString()} as unknown as Prisma.InputJsonValue});
+      importData.push({userId,sourceBotAccountId:botIds.get(d.botPhone)!,sourceContactIds:d.contactIds,sourceBatch:manifest.batch,createdAt:firstImportAt.get(userId)??completedAt,rawData:{policy:"human-owner-first-then-largest-source-bot",preservedOwner:d.preserveExistingOwner,sourceRows:d.sourceRows,sourceSha,planSha,importedAt:completedAt.toISOString()} as unknown as Prisma.InputJsonValue});
     }
     await tx.sendpulseClientImport.deleteMany({where:{userId:{in:importedIds}}});
     await tx.sendpulseClientImport.createMany({data:importData});
@@ -85,7 +78,8 @@ async function main() {
     for(const d of plan.decisions){
       const id=d.existing?.id??newIds.get(d.phone)!;
       const saved=persistedById.get(id);
-      if(!saved || saved.assignedExecutiveId!==botIds.get(d.botPhone))throw new Error("Un contacto quedó en una cartera incorrecta.");
+      const expectedOwner=d.preserveExistingOwner?d.existing!.assignedExecutiveId:botIds.get(d.botPhone);
+      if(!saved || saved.assignedExecutiveId!==expectedOwner)throw new Error("Un contacto quedó en una cartera incorrecta o perdió su responsable humano.");
     }
     return {batch:manifest.batch,planSha,created:createData.length,updated,quarantined:plan.review.length,botAccounts:[...botIds],importedIds,completedAt:completedAt.toISOString()};
   },{timeout:240000,isolationLevel:"Serializable"});

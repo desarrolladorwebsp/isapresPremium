@@ -22,6 +22,8 @@ export interface SendpulseExistingClient {
   phone: string | null;
   sendpulseContactId: string | null;
   assignedExecutiveId: string | null;
+  /** Si falta el rol y existe responsable, se conserva por precaución. */
+  assignedExecutiveRole?: "ADMIN" | "EXECUTIVE" | "BOT" | null;
   updatedAt: string;
 }
 
@@ -35,12 +37,13 @@ export interface SendpulseImportDecision {
   botLabel: string;
   sourceRows: SendpulseImportRow[];
   existing: SendpulseExistingClient | null;
+  preserveExistingOwner: boolean;
 }
 
 export interface SendpulseImportPlan {
   decisions: SendpulseImportDecision[];
   review: Array<{ phone: string; reason: string; existingIds?: string[] }>;
-  bots: Array<SendpulseImportBot & { sourceCount: number; assignedCount: number }>;
+  bots: Array<SendpulseImportBot & { sourceCount: number; assignedCount: number; backedUpCount: number }>;
   sourceRows: number;
 }
 
@@ -57,7 +60,7 @@ const emailFrom = (row: SendpulseImportRow) =>
   ["direcc_email", "email_cliente", "email_cliente2"].map(key => text(row.raw[key]).toLowerCase())
     .find(value => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) ?? null;
 
-/** Sin I/O. Una ficha por teléfono/ID; el bot con mayor cartera de origen tiene prioridad. */
+/** El responsable humano prevalece. La prioridad entre bots solo se aplica sin responsable humano. */
 export function prepareSendpulseImport(input: {
   rows: SendpulseImportRow[];
   bots: SendpulseImportBot[];
@@ -69,7 +72,7 @@ export function prepareSendpulseImport(input: {
   const bots = input.bots.map(bot => {
     const phone = normalizeImportPhone(bot.phone);
     if (!phone) throw new Error(`Teléfono de bot inválido: ${bot.label}`);
-    return { ...bot, phone, sourceCount: 0, assignedCount: 0 };
+    return { ...bot, phone, sourceCount: 0, assignedCount: 0, backedUpCount: 0 };
   });
   if (new Set(bots.map(b=>b.phone)).size !== bots.length || new Set(bots.map(b=>b.sourceFile)).size !== bots.length) {
     throw new Error("Un teléfono o archivo está asociado a más de un bot.");
@@ -145,8 +148,10 @@ export function prepareSendpulseImport(input: {
     usedContactIds.add(winner.contactId);
     if(existing)claimedExisting.add(existing.id);
     const fullName = rows.map(r=>text(r.raw["Nombre y Apellido"])||text(r.raw.name)).find(Boolean)||"Contacto SendPulse";
-    decisions.push({phone,contactId:winner.contactId,contactIds:ids,fullName:fullName.slice(0,160),email:sourceEmail && emailPhones.get(sourceEmail)?.size===1?sourceEmail:generatedEmail,botPhone:bot.phone,botLabel:bot.label,sourceRows:rows,existing});
-    bot.assignedCount+=1;
+    const preserveExistingOwner=Boolean(existing?.assignedExecutiveId && existing.assignedExecutiveRole!=="BOT");
+    decisions.push({phone,contactId:winner.contactId,contactIds:ids,fullName:fullName.slice(0,160),email:sourceEmail && emailPhones.get(sourceEmail)?.size===1?sourceEmail:generatedEmail,botPhone:bot.phone,botLabel:bot.label,sourceRows:rows,existing,preserveExistingOwner});
+    if(!preserveExistingOwner)bot.assignedCount+=1;
+    bot.backedUpCount+=1;
   }
   return {decisions,review,bots,sourceRows:input.rows.length};
 }

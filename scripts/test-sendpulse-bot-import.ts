@@ -47,9 +47,24 @@ async function main(){
     assert.throws(()=>prepareSendpulseImport({rows:[same,{...same,sourceFile:b.sourceFile}],bots:[a,b],existing:[]}),/misma exportación/);
   });
   const existing={id:"client-real-fixture",email:"fixture@example.test",phone:"+56 9 1000 0001",sendpulseContactId:null,assignedExecutiveId:"executive-fixture",updatedAt:"2026-10-26T15:00:00Z"};
-  await test("Reutiliza la ficha existente; conserva responsable previo para auditar la reasignación",()=>{
+  await test("Reutiliza la ficha existente y conserva su responsable humano",()=>{
     const p=prepareSendpulseImport({rows:[row(a.sourceFile,"a1","56910000001")],bots:[a],existing:[existing]});
     assert.equal(p.decisions.length,1);assert.equal(p.decisions[0].existing?.id,existing.id);assert.equal(p.decisions[0].existing?.assignedExecutiveId,"executive-fixture");
+    assert.equal(p.decisions[0].preserveExistingOwner,true);assert.equal(p.bots[0].assignedCount,0);assert.equal(p.bots[0].backedUpCount,1);
+  });
+  await test("Administrador, ejecutivo y rol desconocido conservan prioridad sobre todos los bots",()=>{
+    for(const role of ["ADMIN","EXECUTIVE",null] as const){
+      const p=prepareSendpulseImport({rows:[row(a.sourceFile,"a1","56910000001"),row(a.sourceFile,"a2","56910000002"),row(b.sourceFile,"b1","56910000001")],bots:[a,b],existing:[{...existing,assignedExecutiveRole:role}]});
+      const preserved=p.decisions.find(d=>d.existing);
+      assert.equal(preserved?.preserveExistingOwner,true);assert.equal(preserved?.existing?.assignedExecutiveId,existing.assignedExecutiveId);
+      assert.equal(p.bots.reduce((n,b)=>n+b.assignedCount,0),1);assert.equal(p.bots.reduce((n,b)=>n+b.backedUpCount,0),2);
+    }
+  });
+  await test("Solo una ficha sin responsable humano puede pasar al bot de mayor cartera",()=>{
+    for(const client of [{...existing,assignedExecutiveId:null,assignedExecutiveRole:null},{...existing,assignedExecutiveId:"old-bot",assignedExecutiveRole:"BOT" as const}]){
+      const p=prepareSendpulseImport({rows:[row(a.sourceFile,"a1","56910000001")],bots:[a],existing:[client]});
+      assert.equal(p.decisions[0].preserveExistingOwner,false);assert.equal(p.bots[0].assignedCount,1);
+    }
   });
   await test("Fichas históricas ambiguas y correos de otro cliente quedan en revisión",()=>{
     const source=[row(a.sourceFile,"a1","56910000001")];
