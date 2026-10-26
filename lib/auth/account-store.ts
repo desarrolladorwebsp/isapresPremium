@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { randomBytes } from "node:crypto";
 import {
   LOGIN_LOCKOUT,
   type AuthRealm,
@@ -14,6 +15,7 @@ import {
   isAdminRole,
   isClientAssignableExecutiveKind,
   isExecutiveRole,
+  isInteractiveStaffRole,
   normalizeExecutiveKind,
   staffRealmToRole,
   staffRoleToRealm,
@@ -37,11 +39,12 @@ import { ApiError } from "@/lib/api/api-error";
 
 const GENERIC_LOGIN_ERROR = "Correo o contraseña incorrectos.";
 
-function mapStaffRecord(account: StaffAccount): StaffAccountRecord {
+function mapStaffRecord(account: StaffAccount & { _count?: { assignedClients: number } }): StaffAccountRecord {
   const realm = staffRoleToRealm(account.role);
 
   return {
     id: account.id,
+    assignedClientCount: account._count?.assignedClients,
     realm,
     executiveKind:
       realm === "executive"
@@ -159,6 +162,9 @@ async function authenticateStaffAccount(
   account: StaffAccount,
   credentials: LoginCredentials,
 ): Promise<{ realm: AuthRealm; user: AdminSessionUser | ExecutiveSessionUser }> {
+  if (!isInteractiveStaffRole(account.role)) {
+    throw new ApiError(GENERIC_LOGIN_ERROR, 401, "INVALID_CREDENTIALS");
+  }
   if (!account.active) {
     throw new ApiError(GENERIC_LOGIN_ERROR, 401, "INVALID_CREDENTIALS");
   }
@@ -181,7 +187,7 @@ async function authenticateStaffAccount(
     throw new ApiError(GENERIC_LOGIN_ERROR, 401, "INVALID_CREDENTIALS");
   }
 
-  const realm = staffRoleToRealm(account.role);
+  const realm: AuthRealm = account.role === "ADMIN" ? "admin" : "executive";
 
   if (isExecutiveRole(account.role)) {
     const subscriptionStatus = account.subscriptionStatus ?? "TRIAL";
@@ -298,10 +304,38 @@ export async function readStaffById(id: string): Promise<StaffAccount | null> {
 
 export async function listStaffAccounts(): Promise<StaffAccountRecord[]> {
   const accounts = await prisma.staffAccount.findMany({
+    include: { _count: { select: { assignedClients: true } } },
     orderBy: { createdAt: "desc" },
   });
 
   return accounts.map(mapStaffRecord);
+}
+
+/** Alta administrativa sin invitación, credenciales entregables ni sesión. */
+export async function createBotStaffAccount(input: {
+  fullName: string;
+  phone: string;
+}): Promise<StaffAccountRecord> {
+  const { normalizeSendpulseContactPhone } = await import("@/lib/sendpulse/contract");
+  const phone = normalizeSendpulseContactPhone(input.phone);
+  const fullName = input.fullName.trim();
+  if (!phone || fullName.length < 2 || fullName.length > 160) {
+    throw new ApiError("Indica el nombre y el teléfono internacional del bot.", 400, "INVALID_INPUT");
+  }
+  const email = `bot.${phone.slice(1)}@bots.isaprespremium.cl`;
+  const existing = await prisma.staffAccount.findUnique({ where: { email } });
+  if (existing) {
+    throw new ApiError("Ya existe una cartera para ese bot.", 409, "BOT_EXISTS");
+  }
+  const account = await prisma.staffAccount.create({
+    data: {
+      email, phone, fullName, role: "BOT", executiveKind: null,
+      passwordHash: await hashPassword(randomBytes(48).toString("hex")),
+      active: true, onboardingCompleted: true, autoAssignmentEnabled: false,
+      assignmentsSuspended: false, mustChangePassword: false,
+    },
+  });
+  return mapStaffRecord(account);
 }
 
 export async function listExecutiveStaffAccounts(): Promise<StaffAccountRecord[]> {
@@ -319,6 +353,21 @@ export async function updateStaffAccount(
   input: UpdateStaffAccountInput,
 ): Promise<StaffAccountRecord> {
   const current = await assertStaffRealm(id, realm);
+  if (realm === "bot") {
+    if (input.autoAssignmentEnabled === true || input.executiveKind !== undefined ||
+        input.subscriptionStatus !== undefined || input.rut !== undefined ||
+        (input.phone !== undefined && input.phone !== current.phone)) {
+      throw new ApiError("La cartera BOT no admite acceso, suscripción, cambio de teléfono ni reparto automático.", 400, "INVALID_INPUT");
+    }
+    if (input.fullName !== undefined && (input.fullName.trim().length < 2 || input.fullName.trim().length > 160)) {
+      throw new ApiError("El nombre del bot debe tener entre 2 y 160 caracteres.", 400, "INVALID_INPUT");
+    }
+    const account = await prisma.staffAccount.update({
+      where: { id },
+      data: { active: input.active, fullName: input.fullName?.trim(), autoAssignmentEnabled: false },
+    });
+    return mapStaffRecord(account);
+  }
   if (
     input.autoAssignmentEnabled === true &&
     realm === "executive" &&
@@ -447,6 +496,9 @@ export async function changeStaffPassword(
   currentPassword: string,
   newPassword: string,
 ): Promise<AdminSessionUser | ExecutiveSessionUser> {
+  if (realm === "bot") {
+    throw new ApiError("Las carteras BOT no tienen inicio de sesión.", 403, "BOT_ACCESS_FORBIDDEN");
+  }
   const strengthError = validatePasswordStrength(newPassword);
   if (strengthError) {
     throw new ApiError(strengthError, 400, "WEAK_PASSWORD");

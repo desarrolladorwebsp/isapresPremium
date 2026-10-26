@@ -22,6 +22,7 @@ import {
 import {
   cancelPendingStaffInvite,
   createStaffAccount,
+  createBotAccount,
   fetchExecutiveAssignmentStats,
   fetchStaffAccounts,
   resendPendingStaffInvite,
@@ -143,11 +144,12 @@ type UsersSortKey =
 
 type SortDirection = "asc" | "desc";
 
-type DirectoryGroup = "usuarios" | "membresia";
+type DirectoryGroup = "usuarios" | "membresia" | "bots";
 
 const DIRECTORY_GROUP_OPTIONS: Array<{ value: DirectoryGroup; label: string }> = [
   { value: "usuarios", label: "Usuarios" },
   { value: "membresia", label: "Membresía" },
+  { value: "bots", label: "Bots" },
 ];
 
 function formatDate(value: string | null): string {
@@ -216,7 +218,7 @@ function usersSortValue(
       return account.email;
     case "clientes":
       return account.onboardingCompleted && account.active
-        ? assignmentCounts[account.id] ?? 0
+        ? account.assignedClientCount ?? assignmentCounts[account.id] ?? 0
         : -1;
     case "estado":
       return getAccountStatus(account).label;
@@ -431,7 +433,7 @@ function UsersDirectoryTable({
                 <AdminBadge tone="neutral">{getAccountRoleLabel(account)}</AdminBadge>
               </AdminTableCell>
               <AdminTableCell>
-                <p>{account.email}</p>
+                <p>{account.realm === "bot" ? "Cartera SendPulse" : account.email}</p>
                 {account.phone ? (
                   <p className="mt-1 text-xs text-muted">{account.phone}</p>
                 ) : null}
@@ -443,7 +445,7 @@ function UsersDirectoryTable({
                 <AdminTableCell>
                   {account.onboardingCompleted && account.active ? (
                     <span className="font-semibold text-foreground">
-                      {assignmentCounts[account.id] ?? 0}
+                      {account.assignedClientCount ?? assignmentCounts[account.id] ?? 0}
                     </span>
                   ) : (
                     <span className="text-muted">—</span>
@@ -451,7 +453,7 @@ function UsersDirectoryTable({
                 </AdminTableCell>
               ) : null}
               <AdminTableCell>
-                {account.executiveKind === "MEMBRESIA_ISAPRES_PREMIUM" ? (
+                {account.realm === "bot" || account.executiveKind === "MEMBRESIA_ISAPRES_PREMIUM" ? (
                   <span className="text-xs text-muted">No aplica</span>
                 ) : (
                   <label className="flex items-center gap-2 text-sm">
@@ -476,7 +478,7 @@ function UsersDirectoryTable({
                 <AdminBadge tone={status.tone}>{status.label}</AdminBadge>
               </AdminTableCell>
               <AdminTableCell className="text-muted">
-                {formatDate(account.lastLoginAt)}
+                {account.realm === "bot" ? "Sin inicio de sesión" : formatDate(account.lastLoginAt)}
               </AdminTableCell>
               <AdminTableCell align="right">
                 {canManage ? (
@@ -561,6 +563,8 @@ export function UsersPanel({
   const [sortKey, setSortKey] = useState<UsersSortKey | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [modalOpen, setModalOpen] = useState(false);
+  const [botModalOpen, setBotModalOpen] = useState(false);
+  const [botDraft, setBotDraft] = useState({ fullName: "", phone: "" });
   const [roleTarget, setRoleTarget] = useState<StaffAccountRecord | null>(null);
   const [roleDraft, setRoleDraft] = useState<ExecutiveKind>("ISAPRES_PREMIUM");
   const [saving, setSaving] = useState(false);
@@ -579,7 +583,7 @@ export function UsersPanel({
         fetchExecutiveAssignmentStats().catch(() => []),
       ]);
       const filteredAccounts = executivesOnly
-        ? data.accounts.filter((account) => account.realm === "executive")
+        ? data.accounts.filter((account) => account.realm === "executive" || account.realm === "bot")
         : data.accounts;
       const filteredInvites = executivesOnly
         ? data.pendingInvites.filter((invite) => invite.realm === "executive")
@@ -672,15 +676,31 @@ export function UsersPanel({
   }, [filteredRows, sortKey, sortDirection, assignmentCounts]);
 
   const staffRows = useMemo(
-    () => sortedRows.filter((row) => !isMembershipDirectoryRow(row)),
+    () => sortedRows.filter((row) => !isMembershipDirectoryRow(row) && !(row.kind === "account" && row.account.realm === "bot")),
     [sortedRows],
   );
   const membershipRows = useMemo(
     () => sortedRows.filter(isMembershipDirectoryRow),
     [sortedRows],
   );
-  const visibleRows =
+  const botRows = sortedRows.filter((row) => row.kind === "account" && row.account.realm === "bot");
+  const visibleRows = directoryGroup === "bots" ? botRows :
     directoryGroup === "membresia" ? membershipRows : staffRows;
+
+  async function handleCreateBot(event: React.FormEvent) {
+    event.preventDefault();
+    setSaving(true);
+    try {
+      const result = await createBotAccount(botDraft);
+      onNotify(result.message);
+      setBotModalOpen(false);
+      setBotDraft({ fullName: "", phone: "" });
+      setDirectoryGroup("bots");
+      await loadAccounts();
+    } catch (error) {
+      onNotify(error instanceof Error ? error.message : "No se pudo crear el bot.", "error");
+    } finally { setSaving(false); }
+  }
 
   function handleSort(nextKey: UsersSortKey) {
     if (sortKey === nextKey) {
@@ -877,7 +897,7 @@ export function UsersPanel({
               className={joinClasses("h-11", ui.input)}
             />
             <Select
-              aria-label="Ver usuarios o membresía"
+              aria-label="Ver usuarios, membresía o bots"
               value={directoryGroup}
               options={DIRECTORY_GROUP_OPTIONS}
               onChange={(event) =>
@@ -890,6 +910,11 @@ export function UsersPanel({
         actions={
           <>
             <AdminRefreshButton onClick={() => void loadAccounts()} />
+            {canManage ? (
+              <Button size="sm" variant="secondary" onClick={() => setBotModalOpen(true)}>
+                Crear bot
+              </Button>
+            ) : null}
             {canManage ? (
               <Button size="sm" onClick={openModal}>
                 {executivesOnly ? "Invitar ejecutivo" : "Invitar usuario"}
@@ -943,7 +968,7 @@ export function UsersPanel({
       >
         <UsersDirectoryTable
           rows={visibleRows}
-          executivesOnly={executivesOnly}
+          executivesOnly={executivesOnly || directoryGroup === "bots"}
           canManage={canManage}
           assignmentCounts={assignmentCounts}
           sortProps={sortProps}
@@ -957,6 +982,28 @@ export function UsersPanel({
         />
       </AdminTableCard>
 
+      {canManage ? (
+        <AdminFormModal open={botModalOpen} title="Crear cartera BOT"
+          description="Agrupa los contactos de un bot. La cartera se administra desde el CRM y no inicia sesión."
+          onClose={() => setBotModalOpen(false)} size="md">
+          <form onSubmit={handleCreateBot} className="space-y-4">
+            <label className="block space-y-2">
+              <span className="text-sm font-medium">Nombre del bot</span>
+              <Input required minLength={2} maxLength={160} value={botDraft.fullName}
+                onChange={event => setBotDraft(current => ({ ...current, fullName: event.target.value }))} />
+            </label>
+            <label className="block space-y-2">
+              <span className="text-sm font-medium">Teléfono del bot</span>
+              <Input required type="tel" placeholder="+56 9 1234 5678" value={botDraft.phone}
+                onChange={event => setBotDraft(current => ({ ...current, phone: event.target.value }))} />
+            </label>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="ghost" onClick={() => setBotModalOpen(false)}>Cancelar</Button>
+              <Button type="submit" disabled={saving}>{saving ? "Guardando…" : "Crear bot"}</Button>
+            </div>
+          </form>
+        </AdminFormModal>
+      ) : null}
       {canManage ? (
         <AdminFormModal
           open={modalOpen}

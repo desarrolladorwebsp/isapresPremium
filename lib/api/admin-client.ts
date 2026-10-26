@@ -349,6 +349,18 @@ export async function createStaffAccount(
   }>(response);
 }
 
+export async function createBotAccount(input: {
+  fullName: string;
+  phone: string;
+}): Promise<{ message: string; account: StaffAccountRecord }> {
+  const response = await fetch("/api/admin/accounts", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ...input, realm: "bot" }),
+  });
+  return parseJsonResponse<{ message: string; account: StaffAccountRecord }>(response);
+}
+
 export async function assignQuoteToExecutive(
   quoteId: string,
   input: { assignToMe?: boolean; executiveAccountId?: string | null; status?: QuoteRecord["status"] },

@@ -415,7 +415,7 @@ export async function createManualClient(
   }
 
   if (assignedExecutiveId) {
-    await assertAssignableExecutive(assignedExecutiveId);
+    await assertAssignableExecutive(assignedExecutiveId, { allowBot: actor.isAdmin });
   }
 
   const user = await prisma.user.create({
@@ -463,11 +463,12 @@ async function syncClientQuotesExecutive(
  */
 export async function assertAssignableExecutive(
   executiveAccountId: string,
-): Promise<void> {
+  options?: { allowBot?: boolean },
+): Promise<Pick<StaffAccount, "role">> {
   const executive = await prisma.staffAccount.findFirst({
     where: {
       id: executiveAccountId,
-      role: { in: ["EXECUTIVE", "ADMIN"] },
+      role: { in: ["EXECUTIVE", "ADMIN", ...(options?.allowBot ? ["BOT" as const] : [])] },
       active: true,
     },
     select: { id: true, role: true, executiveKind: true },
@@ -491,11 +492,13 @@ export async function assertAssignableExecutive(
       "MEMBERSHIP_ASSIGNMENT_FORBIDDEN",
     );
   }
+  return executive;
 }
 
 export async function assignUserToExecutive(
   userId: string,
   executiveAccountId: string | null,
+  options?: { allowBot?: boolean },
 ): Promise<UserRecord> {
   const existing = await prisma.user.findUnique({
     where: { id: userId },
@@ -506,9 +509,9 @@ export async function assignUserToExecutive(
     throw new ApiError("Cliente no encontrado.", 404, "NOT_FOUND");
   }
 
-  if (executiveAccountId) {
-    await assertAssignableExecutive(executiveAccountId);
-  }
+  const target = executiveAccountId
+    ? await assertAssignableExecutive(executiveAccountId, options)
+    : null;
 
   const user = await prisma.user.update({
     where: { id: userId },
@@ -516,7 +519,7 @@ export async function assignUserToExecutive(
     include: clientRecordInclude,
   });
 
-  if (executiveAccountId) {
+  if (executiveAccountId && target?.role !== "BOT") {
     await syncClientQuotesExecutive(userId, executiveAccountId);
     if (existing.assignedExecutiveId !== executiveAccountId) {
       queueExecutiveClientAssignmentEmail({

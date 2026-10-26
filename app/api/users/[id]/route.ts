@@ -4,6 +4,7 @@ import { apiErrorResponse, parseJsonBody, ApiError } from "@/lib/api/api-error";
 import { requireExecutiveOrAdminSession, assertSessionStaffSection } from "@/lib/auth/require-auth";
 import { AUTH_REALM } from "@/lib/auth/constants";
 import { canManageClientPortfolioAsExecutive } from "@/lib/auth/staff-role";
+import { canViewClientAsExecutive } from "@/lib/client-pipeline/tracking";
 import type { ExecutiveSessionUser } from "@/lib/auth/types";
 
 interface RouteContext {
@@ -36,6 +37,9 @@ export async function PATCH(request: Request, context: RouteContext) {
     if (!client) {
       return NextResponse.json({ error: "Cliente no encontrado." }, { status: 404 });
     }
+    if (!canViewClientAsExecutive(client, sessionUser.id, isAdmin, executiveKind)) {
+      throw new ApiError("No tienes acceso a la cartera de este cliente.", 403, "FORBIDDEN");
+    }
 
     if (payload.assignedExecutiveId !== undefined) {
       const assignedExecutiveId =
@@ -45,7 +49,7 @@ export async function PATCH(request: Request, context: RouteContext) {
             ? payload.assignedExecutiveId
             : null;
 
-      const updated = await assignUserToExecutive(id, assignedExecutiveId);
+      const updated = await assignUserToExecutive(id, assignedExecutiveId, { allowBot: isAdmin });
       return NextResponse.json(updated);
     }
 

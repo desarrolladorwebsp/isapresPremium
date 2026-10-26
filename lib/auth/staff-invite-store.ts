@@ -76,6 +76,9 @@ export async function createStaffInvite(input: {
   };
 }> {
   const email = normalizeEmail(input.email);
+  if (input.realm === "bot") {
+    throw new ApiError("Las carteras BOT se crean sin invitación ni acceso.", 400, "INVALID_REALM");
+  }
   const rut = input.rut?.trim() ? formatRut(input.rut) : null;
 
   if (rut && !isValidRut(rut)) {

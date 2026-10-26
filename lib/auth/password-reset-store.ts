@@ -39,10 +39,10 @@ export async function createPasswordResetTokenForEmail(
 
   const account = await prisma.staffAccount.findUnique({
     where: { email },
-    select: { id: true, email: true, active: true },
+    select: { id: true, email: true, active: true, role: true },
   });
 
-  if (!account || !account.active) {
+  if (!account || !account.active || account.role === "BOT") {
     return null;
   }
 
@@ -87,12 +87,12 @@ export async function readPasswordResetToken(
     },
     include: {
       staffAccount: {
-        select: { email: true, active: true },
+        select: { email: true, active: true, role: true },
       },
     },
   });
 
-  if (!record || !record.staffAccount.active) {
+  if (!record || !record.staffAccount.active || record.staffAccount.role === "BOT") {
     return null;
   }
 
@@ -137,12 +137,12 @@ export async function resetStaffPasswordWithToken(input: {
     },
     include: {
       staffAccount: {
-        select: { id: true, active: true },
+        select: { id: true, active: true, role: true },
       },
     },
   });
 
-  if (!record || !record.staffAccount.active) {
+  if (!record || !record.staffAccount.active || record.staffAccount.role === "BOT") {
     throw new ApiError(
       "El enlace no es válido o expiró. Solicita uno nuevo.",
       400,

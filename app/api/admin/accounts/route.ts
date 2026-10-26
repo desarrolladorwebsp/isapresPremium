@@ -3,7 +3,7 @@ import {
   apiErrorResponse,
   parseJsonBody,
 } from "@/lib/api/api-error";
-import { readAdminById } from "@/lib/auth/account-store";
+import { readAdminById, createBotStaffAccount } from "@/lib/auth/account-store";
 import { DEFAULT_EXECUTIVE_KIND } from "@/lib/auth/staff-role";
 import { requireAdminSession } from "@/lib/auth/require-auth";
 import { createStaffInvite } from "@/lib/auth/staff-invite-store";
@@ -61,6 +61,15 @@ export async function POST(request: Request) {
   try {
     const { session } = await requireAdminSession(request);
     const payload = await parseJsonBody(request);
+
+    if (payload && typeof payload === "object" && (payload as Record<string, unknown>).realm === "bot") {
+      const data = payload as Record<string, unknown>;
+      if (typeof data.fullName !== "string" || typeof data.phone !== "string") {
+        return NextResponse.json({ error: "Indica el nombre y el teléfono del bot." }, { status: 400 });
+      }
+      const account = await createBotStaffAccount({ fullName: data.fullName, phone: data.phone });
+      return NextResponse.json({ account, message: "Cartera BOT creada." }, { status: 201 });
+    }
 
     if (!isValidCreateInput(payload)) {
       return NextResponse.json(

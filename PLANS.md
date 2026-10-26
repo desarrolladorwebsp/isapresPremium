@@ -40,3 +40,9 @@ No hay una fase de producto en curso. El siguiente trabajo lo define el usuario.
 | Métricas de conversión por socio | Los reportes miden pipeline y gestiones, no cotizaciones por `embedKey`. |
 | Cobro de membresía | El acceso de `MEMBRESIA_ISAPRES_PREMIUM` depende de `subscriptionStatus` en BD. No hay Stripe ni checkout. |
 | Docs de migración | `docs/WIDGET-INTEGRATION.md` y partes de `docs/email-actions-map.md` siguen citando `cotizadorpremium.cl` y `src/`. El widget en ese host redirige a este; la fuente de verdad de rutas es el código y `FEATURES.md`. |
+
+## Operación SendPulse — 2026-10-26
+
+- Implementado: carteras BOT sin login e importador auditable con deduplicación y prioridad por tamaño del bot.
+- Lote autorizado: conservar PREMIUM 2; excluir la copia idéntica PREMIUM 9. Respaldos e informes en `Store/2026-10-26/sendpulse-clientes/`.
+- Las identidades ambiguas quedan fuera de la aplicación y requieren revisión independiente sin fusionar ni borrar historiales.

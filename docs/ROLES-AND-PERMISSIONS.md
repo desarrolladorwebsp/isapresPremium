@@ -1,6 +1,6 @@
 # Roles y permisos — Cotizador Premium
 
-El acceso de staff usa `StaffAccount` con `role` (`ADMIN` | `EXECUTIVE`) y, en ejecutivos, `executiveKind`.
+El acceso de staff usa `StaffAccount` con `role` (`ADMIN` | `EXECUTIVE` | `BOT`) y, en ejecutivos, `executiveKind`.
 
 ## Resumen
 
@@ -137,3 +137,9 @@ NEXT_PUBLIC_APP_URL=https://cotizadorpremium.cl
 - [x] Bandeja de cotizaciones en panel ejecutivo
 - [ ] Envío de cotización por email/WhatsApp desde panel ejecutivo
 - [ ] CRUD de agentes/socios (`PartnerEntity`) en admin
+
+## Rol BOT (2026-10-26)
+
+`StaffAccount.role = BOT` representa una cartera SendPulse. Solo un administrador puede crearla y asignarle clientes. No inicia sesión, no tiene secciones de panel ni puede recuperar o cambiar contraseña. No recibe invitaciones ni participa en el reparto automático. Su administrador puede suspenderla conservando los clientes y el historial. Los BOT aparecen en el grupo Bots del directorio y en los destinos de asignación de clientes para administradores; no en destinos de cotizaciones.
+
+La importación reutiliza la ficha existente cuando la identidad es inequívoca y conserva sus datos e historial. Si el contacto figura en varios bots, lo asigna una sola vez al bot con más contactos únicos en la exportación original; en empate usa el teléfono del bot como criterio estable. Los conflictos entre fichas existentes se apartan para revisión. Los archivos originales y los informes del lote se respaldan con fecha; todos los campos de las fuentes se guardan en `sendpulse_client_imports`, fuera de las respuestas habituales de listas CRM.

@@ -31,6 +31,7 @@ export async function GET(request: Request) {
     const accounts = await listStaffAccounts();
     const assignable = accounts.filter((account) => {
       if (!account.active) return false;
+      if (account.realm === "bot") return isAdmin;
       // Membresía: solo cotizador — jamás en selectores de asignación de clientes.
       if (account.executiveKind === "MEMBRESIA_ISAPRES_PREMIUM") return false;
       if (account.realm === "admin") return true;

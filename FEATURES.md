@@ -170,3 +170,14 @@ En SendPulse se configura con el elemento Solicitud API (POST). El encabezado pu
 | Postgres vía Prisma; local usa Neon DEV | `lib/prisma.ts`, `scripts/with-db-env.mjs` |
 | Health check | `GET /api/health` |
 | Semilla | `prisma/seed.ts` |
+
+## Carteras BOT e importación SendPulse (2026-10-26)
+
+| Función | Dónde |
+|---------|--------|
+| Rol BOT como cartera administrada: creación directa por administrador, teléfono, contador de clientes y suspensión. Sin login, contraseña utilizable, recuperación, invitación ni reparto automático | `StaffRole.BOT`, `lib/auth/account-store.ts`, `components/admin/users-panel.tsx` |
+| Asignación manual de clientes a BOT solo por administrador; las cotizaciones mantienen sus destinatarios operativos anteriores | `lib/api/user-store.ts`, `/api/executive/assignable-executives` |
+| Importador por manifiesto completo: una ficha por teléfono/ID, prioridad al bot con más contactos únicos de origen, revisión de conflictos históricos, preservación de campos y respaldo antes de reasignar. Preparación por defecto; escritura exige SHA revisado | `lib/sendpulse/bulk-import.ts`, `scripts/import-sendpulse-clients.ts` |
+| Todos los campos originales se conservan en metadatos separados de la lista CRM, sin enviar correos ni llamar a SendPulse | `SendpulseClientImport`, `sendpulse_client_imports` |
+
+La ejecución de cada lote se acredita con sus informes fechados en Store; el código por sí solo no confirma una importación.

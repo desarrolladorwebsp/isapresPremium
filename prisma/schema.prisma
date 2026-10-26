@@ -60,6 +60,7 @@ enum ClientActivityType {
 enum StaffRole {
   ADMIN
   EXECUTIVE
+  BOT
 }
 
 /// Discriminador de ejecutivo (null en ADMIN).
@@ -371,6 +372,7 @@ model User {
   advisedPlan            Plan?                @relation("AdvisedPlans", fields: [advisedPlanCode], references: [uniqueCode], onDelete: SetNull)
   assignedPlans          ClientAssignedPlan[]
   commercialQuotations   ClientQuotation[]
+  sendpulseImport        SendpulseClientImport?
 
   @@index([role])
   @@index([assignedExecutiveId])
@@ -482,11 +484,29 @@ model StaffAccount {
   uploadedClientDocuments ClientDocument[]     @relation("UploadedClientDocuments")
   commercialQuotations    ClientQuotation[]
   passwordResetTokens     PasswordResetToken[]
+  sendpulseSourceClients  SendpulseClientImport[]
 
   @@index([role])
   @@index([executiveKind])
   @@index([subscriptionStatus])
   @@map("staff_accounts")
+}
+
+/// Respaldo estructurado de importación. Se consulta aparte, no se carga en listados del CRM.
+model SendpulseClientImport {
+  userId             String       @id @map("user_id")
+  sourceBotAccountId String       @map("source_bot_account_id")
+  sourceContactIds   String[]     @map("source_contact_ids")
+  sourceBatch        String       @map("source_batch")
+  rawData            Json         @map("raw_data")
+  createdAt          DateTime     @default(now()) @map("created_at")
+  updatedAt          DateTime     @updatedAt @map("updated_at")
+  user               User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceBotAccount   StaffAccount @relation(fields: [sourceBotAccountId], references: [id], onDelete: Restrict)
+
+  @@index([sourceBotAccountId])
+  @@index([sourceBatch])
+  @@map("sendpulse_client_imports")
 }
 
 /// Token de recuperación de contraseña (staff). Solo se guarda el hash SHA-256.

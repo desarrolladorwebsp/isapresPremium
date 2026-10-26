@@ -42,11 +42,18 @@ export function canManageClientPortfolioAsExecutive(
 }
 
 export function staffRoleToRealm(role: StaffRole): StaffRealm {
+  if (role === "BOT") return "bot";
   return role === "ADMIN" ? "admin" : "executive";
 }
 
 export function staffRealmToRole(realm: StaffRealm): StaffRole {
+  if (realm === "bot") return "BOT";
   return realm === "admin" ? "ADMIN" : "EXECUTIVE";
+}
+
+/** Las carteras BOT nunca autentican ni reciben reparto automático. */
+export function isInteractiveStaffRole(role: StaffRole): boolean {
+  return role === "ADMIN" || role === "EXECUTIVE";
 }
 
 export function isExecutiveRole(role: StaffRole): boolean {
@@ -67,6 +74,7 @@ export function getStaffRoleLabel(input: {
   realm: StaffRealm;
   executiveKind?: ExecutiveKind | null;
 }): string {
+  if (input.realm === "bot") return "Bot";
   if (input.realm === "admin") return "Administrador";
 
   switch (normalizeExecutiveKind(input.executiveKind)) {
@@ -103,6 +111,7 @@ export function getStaffRoleLabelLower(input: {
   realm: StaffRealm;
   executiveKind?: ExecutiveKind | null;
 }): string {
+  if (input.realm === "bot") return "bot";
   if (input.realm === "admin") return "administrador";
 
   switch (normalizeExecutiveKind(input.executiveKind)) {
@@ -122,6 +131,7 @@ export function getStaffSectionsForAccount(input: {
   realm: StaffRealm;
   executiveKind?: ExecutiveKind | null;
 }): StaffSection[] {
+  if (input.realm === "bot") return [];
   if (input.realm === "admin") {
     return withStaffProfileSection([
       ...STAFF_BASE_SECTIONS,

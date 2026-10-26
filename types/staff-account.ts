@@ -1,6 +1,7 @@
 import type { ExecutiveKind, SubscriptionStatus } from "@prisma/client";
 
-export type StaffRealm = "admin" | "executive";
+/** BOT es una cartera sin sesión; los realms de autenticación siguen siendo admin/executive. */
+export type StaffRealm = "admin" | "executive" | "bot";
 
 export type { ExecutiveKind };
 
@@ -38,6 +39,7 @@ export interface StaffAccountRecord {
   assignmentsSuspended?: boolean;
   onboardingCompleted?: boolean;
   avatarUrl?: string | null;
+  assignedClientCount?: number;
 }
 
 export interface CreateStaffAccountInput {

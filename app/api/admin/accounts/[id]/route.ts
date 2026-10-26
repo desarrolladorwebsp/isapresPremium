@@ -32,7 +32,7 @@ const SUBSCRIPTION_STATUSES = new Set<SubscriptionStatus>([
 ]);
 
 function parseRealm(value: string | null): StaffRealm | null {
-  if (value === "admin" || value === "executive") return value;
+  if (value === "admin" || value === "executive" || value === "bot") return value;
   return null;
 }
 
@@ -67,7 +67,7 @@ export async function PATCH(request: Request, context: RouteContext) {
 
     if (!realm) {
       return NextResponse.json(
-        { error: "Parámetro realm inválido (admin o executive)." },
+        { error: "Parámetro realm inválido (admin, executive o bot)." },
         { status: 400 },
       );
     }
@@ -178,7 +178,7 @@ export async function POST(request: Request, context: RouteContext) {
 
     if (!realm) {
       return NextResponse.json(
-        { error: "Parámetro realm inválido (admin o executive)." },
+        { error: "Parámetro realm inválido (admin, executive o bot)." },
         { status: 400 },
       );
     }
