@@ -360,6 +360,7 @@ export function ExecutiveClientsPanel({
   const isFetching = clientsQuery.isFetching || executivesQuery.isFetching;
 
   const [search, setSearch] = useState("");
+  const [clientPage, setClientPage] = useState({ key: "", page: 1 });
   const [segment, setSegment] = useState<
     "cartera" | "derivados" | "devueltos" | "todos"
   >("cartera");
@@ -647,6 +648,19 @@ export function ExecutiveClientsPanel({
     return rows;
   }, [filteredClients, sortKey, sortDirection]);
 
+  // Filtra y ordena la cartera completa, pero limita el DOM al tamaño de página.
+  const pageSize = 50;
+  const pageKey = JSON.stringify([
+    search, segment, gestionFilters, executiveFilterId, statusFilter,
+    sortKey, sortDirection,
+  ]);
+  const pageCount = Math.max(1, Math.ceil(sortedClients.length / pageSize));
+  const currentPage = clientPage.key === pageKey
+    ? Math.min(clientPage.page, pageCount)
+    : 1;
+  const pageStart = (currentPage - 1) * pageSize;
+  const pagedClients = sortedClients.slice(pageStart, pageStart + pageSize);
+
   function toggleSort(nextKey: ClientsSortKey) {
     if (sortKey === nextKey) {
       setSortDirection((current) => (current === "asc" ? "desc" : "asc"));
@@ -777,7 +791,31 @@ export function ExecutiveClientsPanel({
     }
   }
 
-  const listFooter = `Mostrando ${sortedClients.length} de ${segmentedClients.length} clientes.`;
+  function renderPagination(location: string) {
+    return (
+      <nav aria-label={`Paginación ${location} de clientes`}
+        className="flex flex-wrap items-center justify-between gap-3 text-sm">
+        <span aria-live="polite">
+          Mostrando {sortedClients.length ? pageStart + 1 : 0}–{Math.min(pageStart + pageSize, sortedClients.length)} de {sortedClients.length} clientes
+          {sortedClients.length !== segmentedClients.length ? ` (${segmentedClients.length} en la cartera)` : ""}.
+        </span>
+        {pageCount > 1 ? (
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="secondary" disabled={currentPage === 1}
+              onClick={() => setClientPage({ key: pageKey, page: currentPage - 1 })}>
+              Anterior
+            </Button>
+            <span>Página {currentPage} de {pageCount}</span>
+            <Button size="sm" variant="secondary" disabled={currentPage === pageCount}
+              onClick={() => setClientPage({ key: pageKey, page: currentPage + 1 })}>
+              Siguiente
+            </Button>
+          </div>
+        ) : null}
+      </nav>
+    );
+  }
+  const listFooter = renderPagination("inferior");
 
   function renderExecutiveAssign(client: UserRecord) {
     const currentExecutiveId = client.assignedExecutiveId ?? "";
@@ -1355,6 +1393,8 @@ export function ExecutiveClientsPanel({
         </div>
       ) : null}
 
+      {!loading && sortedClients.length > pageSize ? renderPagination("superior") : null}
+
       <AdminTableCard
         loading={loading}
         empty={!loading && sortedClients.length === 0}
@@ -1424,7 +1464,7 @@ export function ExecutiveClientsPanel({
               </tr>
             </AdminTableHead>
             <AdminTableBody>
-              {sortedClients.map((client) => (
+              {pagedClients.map((client) => (
                 <AdminTableRow key={client.id} className="hover:bg-transparent">
                   <AdminTableCell
                     valign="top"
@@ -1535,7 +1575,7 @@ export function ExecutiveClientsPanel({
           </AdminTable>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {sortedClients.map((client) => (
+            {pagedClients.map((client) => (
               <ClientPortfolioCard
                 key={client.id}
                 client={client}

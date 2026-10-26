@@ -181,3 +181,5 @@ En SendPulse se configura con el elemento Solicitud API (POST). El encabezado pu
 | Todos los campos originales se conservan en metadatos separados de la lista CRM, sin enviar correos ni llamar a SendPulse | `SendpulseClientImport`, `sendpulse_client_imports` |
 
 La ejecución de cada lote se acredita con sus informes fechados en Store; el código por sí solo no confirma una importación.
+
+La bandeja de clientes pagina tablas y cuadros en grupos de 50; búsqueda, filtros y ordenación se aplican a toda la cartera. Cambiar filtros u orden vuelve a la primera página (`components/executive/executive-clients-panel.tsx`).
