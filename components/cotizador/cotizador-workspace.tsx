@@ -13,7 +13,6 @@ import { AnimatePresence, motion } from "framer-motion";
 import { FiltersFab, FiltersSidebar } from "@/components/filters";
 import {
   CompanyAgreementProvider,
-  CompanyAgreementValidationSection,
   useOptionalCompanyAgreementContext,
 } from "@/components/cotizador/company-agreement";
 import { PlanResultsList } from "@/components/plan-card";
@@ -806,13 +805,6 @@ function CotizadorWorkspaceInner({
                   </div>
                 </div>
 
-                {isExecutive ? (
-                  <CompanyAgreementValidationSection
-                    source="executive"
-                    fields="companyRutOnly"
-                    className="min-w-0 w-full sm:w-auto sm:min-w-[14.5rem] sm:max-w-sm sm:flex-1 lg:flex-none"
-                  />
-                ) : null}
 
                 {isExecutive && canUseClients ? (
                   <div

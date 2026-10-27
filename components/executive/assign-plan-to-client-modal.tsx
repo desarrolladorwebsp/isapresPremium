@@ -11,13 +11,7 @@ import {
   fetchExecutiveClients,
 } from "@/lib/api/admin-client";
 import { useOptionalCompanyAgreementContext } from "@/components/cotizador/company-agreement";
-import { formatAgreementDiscountBadge } from "@/components/cotizador/company-agreement/plan-agreement-price";
-import {
-  buildPlanAgreementPriceDisplay,
-  resolveAgreementDiscountPercentForPlan,
-  resolveAgreementPlanMapping,
-  buildPlanAgreementPriceDisplayWithMapping,
-} from "@/lib/company-agreements/plan-price-discount";
+import { buildIndividualPlanAgreementPricing } from "@/lib/company-agreements/individual-plan-price";
 import { sanitizeRutInput, isValidRut } from "@/lib/auth/rut";
 import {
   getClientManagementRutErrors,
@@ -135,11 +129,6 @@ export function AssignPlanToClientModal({
   const agreement =
     useOptionalCompanyAgreementContext()?.validatedAgreement ?? null;
 
-  const agreementMapping = useMemo(() => {
-    if (!plan) return null;
-    return resolveAgreementPlanMapping(plan.unique_code, plan.isapre, agreement);
-  }, [plan, agreement]);
-
   const standardQuote = useMemo(() => {
     if (!plan) return null;
     return buildPlanFinalPriceQuote(
@@ -150,28 +139,13 @@ export function AssignPlanToClientModal({
     );
   }, [plan, beneficiarySummary, ufToClp]);
 
-  const convenioQuote = useMemo(() => {
-    if (!plan || !agreementMapping) return null;
-    return buildPlanFinalPriceQuote(
-      agreementMapping.price,
-      beneficiarySummary,
-      ufToClp,
-      plan.ges_premium_uf,
-    );
-  }, [plan, agreementMapping, beneficiarySummary, ufToClp]);
-
-  const priceQuote = convenioQuote ?? standardQuote;
-
-  const agreementPrices = useMemo(() => {
+  const pricing = useMemo(() => {
     if (!plan || !standardQuote) return null;
-    if (agreementMapping && convenioQuote) {
-      return buildPlanAgreementPriceDisplayWithMapping(standardQuote, convenioQuote);
-    }
-    return buildPlanAgreementPriceDisplay(
-      standardQuote,
-      resolveAgreementDiscountPercentForPlan(plan.isapre, agreement),
-    );
-  }, [agreement, plan, agreementMapping, standardQuote, convenioQuote]);
+    return buildIndividualPlanAgreementPricing(standardQuote, plan.unique_code, plan.isapre, agreement);
+  }, [plan, standardQuote, agreement]);
+  const priceQuote = pricing?.quote ?? standardQuote;
+  const agreementPrices = pricing?.prices ?? null;
+  const agreementMapping = pricing?.quote.beneficiaryPrices?.find(person => person.mappingCode);
 
   if (!plan) return null;
 
@@ -265,7 +239,7 @@ export function AssignPlanToClientModal({
                 className="inline-flex shrink-0 items-center gap-1 rounded-md border border-red-200 bg-red-50 px-1.5 py-0.5 text-[9px] font-bold leading-none tracking-wide text-red-700 shadow-sm"
                 title="Código del plan en convenio"
               >
-                Convenio: {agreementMapping.code}
+                Convenio: {agreementMapping.mappingCode}
               </span>
             )}
           </p>
@@ -273,8 +247,7 @@ export function AssignPlanToClientModal({
             <div className="mt-2 space-y-1">
               {agreementPrices.hasAgreementDiscount ? (
                 <span className="inline-flex rounded-md bg-red-600 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
-                  {formatAgreementDiscountBadge(agreementPrices.discountPercent)}{" "}
-                  convenio
+                  Beneficios por cotizante
                 </span>
               ) : null}
               {agreementPrices.hasAgreementDiscount ? (

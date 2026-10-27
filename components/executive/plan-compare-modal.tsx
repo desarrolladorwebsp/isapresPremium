@@ -18,12 +18,7 @@ import {
   type HealthPlan,
 } from "@/domain";
 import { getZoneLabel } from "@/lib/clinic-admin";
-import {
-  buildPlanAgreementPriceDisplay,
-  buildPlanAgreementPriceDisplayWithMapping,
-  resolveAgreementDiscountPercentForPlan,
-  resolveAgreementPlanMapping,
-} from "@/lib/company-agreements/plan-price-discount";
+import { buildIndividualPlanAgreementPricing } from "@/lib/company-agreements/individual-plan-price";
 import { resolveGesPremiumUf } from "@/lib/isapre-pricing-rules";
 import { getPlanZoneIds } from "@/lib/plan-admin";
 import { planHasPdf } from "@/lib/plan-pdf";
@@ -90,44 +85,12 @@ function buildCompareColumn(
     plan.ges_premium_uf,
   );
 
-  const mapping = resolveAgreementPlanMapping(
-    plan.unique_code,
-    plan.isapre,
-    validatedAgreement,
+  const { quote } = buildIndividualPlanAgreementPricing(
+    standardQuote, plan.unique_code, plan.isapre, validatedAgreement,
   );
-
-  let finalUf = standardQuote.finalPriceUf;
-  let finalClp = standardQuote.finalPriceClp;
-  let baseUf = plan.base_price_uf;
-
-  if (mapping) {
-    const convenioQuote = buildPlanFinalPriceQuote(
-      mapping.price,
-      beneficiarySummary,
-      ufToClp,
-      plan.ges_premium_uf,
-    );
-    const display = buildPlanAgreementPriceDisplayWithMapping(
-      standardQuote,
-      convenioQuote,
-    );
-    finalUf = display.displayFinalPriceUf;
-    finalClp = display.displayFinalPriceClp;
-    baseUf = mapping.price;
-  } else {
-    const discountPercent = resolveAgreementDiscountPercentForPlan(
-      plan.isapre,
-      validatedAgreement,
-    );
-    const display = buildPlanAgreementPriceDisplay(
-      standardQuote,
-      discountPercent,
-    );
-    if (display.hasAgreementDiscount) {
-      finalUf = display.displayFinalPriceUf;
-      finalClp = display.displayFinalPriceClp;
-    }
-  }
+  const finalUf = quote.finalPriceUf;
+  const finalClp = quote.finalPriceClp;
+  const baseUf = plan.base_price_uf;
 
   const { hospitalaria, ambulatoria } = splitCoverageByType(plan.coverage);
   const zones = getPlanZoneIds(plan)

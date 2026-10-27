@@ -38,7 +38,7 @@ export function PublicPlanAgreementPrices({
     >
       {discounted ? (
         <span className="inline-flex w-fit items-center rounded-md bg-red-600 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white sm:ml-auto">
-          {formatAgreementDiscountBadge(prices.discountPercent)} convenio
+          {prices.individualBenefits ? "Beneficios por cotizante" : `${formatAgreementDiscountBadge(prices.discountPercent)} convenio`}
         </span>
       ) : null}
 
@@ -52,7 +52,7 @@ export function PublicPlanAgreementPrices({
       >
         <div className={compact ? "text-right" : "text-left sm:text-right"}>
           <p className="text-[10px] font-medium text-muted">
-            {discounted ? "Total con convenio" : "Desde"}
+            {discounted ? "Total con beneficios" : "Desde"}
           </p>
           {discounted ? (
             <p className="text-[10px] tabular-nums text-muted line-through">
@@ -119,11 +119,11 @@ export function ExecutivePlanAgreementPrices({
     >
       <div className="flex items-center gap-2 lg:justify-end">
         <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-primary-dark/70">
-          {discounted ? "Total con convenio" : "Desde"}
+          {discounted ? "Total con beneficios" : "Desde"}
         </p>
         {discounted ? (
           <span className="inline-flex items-center rounded-md bg-red-600 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
-            {formatAgreementDiscountBadge(prices.discountPercent)} convenio
+            {prices.individualBenefits ? "Por cotizante" : `${formatAgreementDiscountBadge(prices.discountPercent)} convenio`}
           </span>
         ) : null}
       </div>

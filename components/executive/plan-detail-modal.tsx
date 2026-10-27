@@ -376,7 +376,8 @@ function SummaryPanel({
 
     beneficiarySummary.contributors.forEach((contributor, index) => {
       if (contributor.age == null) return;
-      const uf = personUnitPriceUf(
+      const individual = priceQuote.beneficiaryPrices?.find(person => person.id === contributor.id && person.role === "contributor");
+      const uf = individual?.finalPriceUf ?? personUnitPriceUf(
         contributor,
         priceQuote.basePriceUf,
         gesRate,
@@ -385,8 +386,8 @@ function SummaryPanel({
         key: contributor.id,
         label:
           beneficiarySummary.contributors.length > 1
-            ? `Cotizante ${index + 1}`
-            : "Cotizante",
+            ? `Cotizante ${index + 1}${individual?.agreementName ? ` · ${individual.agreementName}` : " · Sin convenio"}`
+            : `Cotizante${individual?.agreementName ? ` · ${individual.agreementName}` : ""}`,
         badge: "COT",
         uf,
         clp: calculateFinalPlanPriceClp(uf, priceQuote.ufToClp),
@@ -394,7 +395,8 @@ function SummaryPanel({
     });
 
     beneficiarySummary.dependents.forEach((dependent, index) => {
-      const uf = personUnitPriceUf(
+      if (dependent.age == null) return;
+      const uf = priceQuote.beneficiaryPrices?.find(person => person.id === dependent.id && person.role === "dependent")?.finalPriceUf ?? personUnitPriceUf(
         dependent,
         priceQuote.basePriceUf,
         gesRate,
@@ -409,7 +411,7 @@ function SummaryPanel({
     });
 
     return items;
-  }, [beneficiarySummary, gesRate, priceQuote.basePriceUf, priceQuote.ufToClp]);
+  }, [beneficiarySummary, gesRate, priceQuote]);
 
   return (
     <div className="space-y-5">
@@ -468,7 +470,7 @@ function SummaryPanel({
               maximumFractionDigits: 3,
             })}
           </p>
-          <p className="mt-1 text-xs text-muted">UF por cotizante</p>
+          <p className="mt-1 text-xs text-muted">UF de lista, antes de beneficios individuales</p>
         </div>
         <div className={joinClasses(
           "rounded-xl border bg-[var(--plan-card-surface)] p-4 ring-1 ring-inset ring-[var(--plan-card-ring)]",

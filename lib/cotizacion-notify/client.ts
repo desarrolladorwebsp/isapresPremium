@@ -33,11 +33,8 @@ import type {
 } from "@/domain";
 import type { DashboardFiltersState } from "@/types/filters";
 import type { PartnerEntityTheme } from "@/types/partner-entity";
+import { buildIndividualPlanAgreementPricing } from "@/lib/company-agreements/individual-plan-price";
 import type { PlanAgreementPriceDisplay } from "@/lib/company-agreements/plan-price-discount";
-import {
-  buildPlanAgreementPriceDisplay,
-  resolveAgreementDiscountPercentForPlan,
-} from "@/lib/company-agreements/plan-price-discount";
 
 export interface BuildCotizacionNotifyPayloadInput {
   email: string;
@@ -122,8 +119,8 @@ function buildPlanPayload(
     tipoPlan: PLAN_TYPE_LABELS[planType],
     precioUf: formatQuotedUf(displayUf),
     precioClp: formatPlanClp(displayClp),
-    precioListaUf: formatQuotedUf(priceQuote.finalPriceUf),
-    precioListaClp: formatPlanClp(priceQuote.finalPriceClp),
+    precioListaUf: formatQuotedUf(agreementPrices?.listFinalPriceUf ?? priceQuote.finalPriceUf),
+    precioListaClp: formatPlanClp(agreementPrices?.listFinalPriceClp ?? priceQuote.finalPriceClp),
     ...(hasDiscount
       ? {
           precioConConvenioUf: formatQuotedUf(
@@ -152,6 +149,23 @@ function buildPlanPayload(
   };
 }
 
+function agreementPricesForNotify(
+  plan: HealthPlanSummary,
+  quote: PlanFinalPriceQuote,
+  convenio?: CotizacionNotifyConvenio,
+): PlanAgreementPriceDisplay {
+  return buildIndividualPlanAgreementPricing(quote, plan.unique_code, plan.isapre,
+    convenio ? {
+      companyRut: convenio.rutEmpresa,
+      companyRutRaw: convenio.rutEmpresa,
+      companyName: convenio.nombreEmpresa,
+      discountPercent: convenio.descuentoPercent ?? null,
+      isapreId: convenio.isapreId ?? null,
+      isapreName: convenio.isapreName ?? null,
+    } : null,
+  ).prices;
+}
+
 function enrichConvenioForNotify(
   convenio: CotizacionNotifyConvenio | undefined,
   plan: HealthPlanSummary | undefined,
@@ -162,16 +176,7 @@ function enrichConvenioForNotify(
 
   const derived =
     agreementPrices ??
-    (plan && priceQuote
-      ? buildPlanAgreementPriceDisplay(
-          priceQuote,
-          resolveAgreementDiscountPercentForPlan(plan.isapre, {
-            discountPercent: convenio.descuentoPercent ?? null,
-            isapreId: convenio.isapreId ?? null,
-            isapreName: convenio.isapreName ?? null,
-          }),
-        )
-      : null);
+    (plan && priceQuote ? agreementPricesForNotify(plan, priceQuote, convenio) : null);
 
   if (!derived?.hasAgreementDiscount) {
     return {
@@ -205,15 +210,8 @@ export function buildCotizacionNotifyPayload(
 
   const agreementPrices =
     input.agreementPrices ??
-    (input.plan && input.priceQuote && input.convenioEmpresa
-      ? buildPlanAgreementPriceDisplay(
-          input.priceQuote,
-          resolveAgreementDiscountPercentForPlan(input.plan.isapre, {
-            discountPercent: input.convenioEmpresa.descuentoPercent ?? null,
-            isapreId: input.convenioEmpresa.isapreId ?? null,
-            isapreName: input.convenioEmpresa.isapreName ?? null,
-          }),
-        )
+    (input.plan && input.priceQuote
+      ? agreementPricesForNotify(input.plan, input.priceQuote, input.convenioEmpresa)
       : null);
 
   const payload: CotizacionNotifyInput = {

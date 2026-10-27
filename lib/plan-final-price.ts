@@ -1,6 +1,18 @@
 import { DEFAULT_UF_VALUE_CLP } from "@/lib/economic-indicators";
 import { resolveGesPremiumUf } from "@/lib/isapre-pricing-rules";
-import type { BeneficiaryGroupSummary } from "@/types/beneficiary";
+import type { BeneficiaryGroupSummary, PersonRiskFactor } from "@/types/beneficiary";
+
+export interface BeneficiaryPlanPrice {
+  id: string;
+  role: PersonRiskFactor["role"];
+  basePriceUf: number;
+  riskComponentUf: number;
+  gesUf: number;
+  finalPriceUf: number;
+  discountPercent: number;
+  agreementName: string | null;
+  mappingCode: string | null;
+}
 
 export interface PlanFinalPriceQuote {
   basePriceUf: number;
@@ -12,6 +24,9 @@ export interface PlanFinalPriceQuote {
   finalPriceUf: number;
   finalPriceClp: number;
   ufToClp: number;
+  /** Factores e identidad para aplicar beneficios exclusivamente al titular. */
+  beneficiaryFactors?: PersonRiskFactor[];
+  beneficiaryPrices?: BeneficiaryPlanPrice[];
 }
 
 export function calculateFinalPlanPriceUf(
@@ -57,5 +72,6 @@ export function buildPlanFinalPriceQuote(
     finalPriceUf,
     finalPriceClp,
     ufToClp,
+    beneficiaryFactors: [...summary.contributors, ...summary.dependents],
   };
 }

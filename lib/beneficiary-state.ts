@@ -76,7 +76,7 @@ export function setPrimaryContributorAge(
   return {
     ...state,
     contributors: [
-      { id: primary?.id ?? "contributor", age },
+      { ...primary, id: primary?.id ?? "contributor", age },
       ...rest,
     ],
   };

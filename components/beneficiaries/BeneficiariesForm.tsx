@@ -21,6 +21,7 @@ import type {
 } from "@/domain";
 import { DependentLoadsEditor } from "./dependent-loads-editor";
 import { FactorBadge } from "./factor-badge";
+import { ContributorAgreementField } from "./contributor-agreement-field";
 
 export interface BeneficiariesFormProps {
   value: FamilyBeneficiariesState;
@@ -327,11 +328,11 @@ export function BeneficiariesForm({
           </div>
 
           {rows.length > 0 ? (
-            <ul className="max-h-64 space-y-2 overflow-y-auto pr-0.5">
+            <ul className="space-y-2">
               {rows.map((row) => (
                 <li
                   key={`${row.role}-${row.id}`}
-                  className="flex items-center gap-2 rounded-lg border border-border/70 bg-white px-2.5 py-2 shadow-sm"
+                  className="flex flex-wrap items-center gap-2 rounded-lg border border-border/70 bg-white px-2.5 py-2 shadow-sm"
                 >
                   <span className="inline-flex size-8 shrink-0 items-center justify-center text-primary">
                     <PersonGlyph className="size-5" />
@@ -367,6 +368,16 @@ export function BeneficiariesForm({
                   >
                     <TrashGlyph className="size-4" />
                   </button>
+                  {row.role === "contributor" ? (
+                    <ContributorAgreementField
+                      label={`Convenio del cotizante ${value.contributors.findIndex(person => person.id === row.id) + 1}`}
+                      agreement={value.contributors.find(person => person.id === row.id)?.companyAgreement}
+                      onChange={(companyAgreement) => emit({
+                        ...value,
+                        contributors: value.contributors.map(person => person.id === row.id ? { ...person, companyAgreement } : person),
+                      })}
+                    />
+                  ) : null}
                 </li>
               ))}
             </ul>

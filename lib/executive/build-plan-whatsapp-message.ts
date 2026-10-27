@@ -12,13 +12,9 @@ import {
 import { formatPlanClp, formatQuotedUf, splitCoverageByType } from "@/lib/plan-format";
 import { getPlanPdfDownloadUrl, planHasPdf } from "@/lib/plan-pdf";
 import { resolveAppBaseUrl } from "@/lib/platform/routing";
-import {
-  buildPlanAgreementPriceDisplay,
-  buildPlanAgreementPriceDisplayWithMapping,
-  resolveAgreementDiscountPercentForPlan,
-  resolveAgreementPlanMapping,
-  type PlanAgreementPriceDisplay,
-} from "@/lib/company-agreements/plan-price-discount";
+import { buildIndividualPlanAgreementPricing } from "@/lib/company-agreements/individual-plan-price";
+import type { PlanAgreementPriceDisplay } from "@/lib/company-agreements/plan-price-discount";
+import type { BeneficiaryPlanPrice } from "@/lib/plan-final-price";
 import type { BeneficiaryGroupSummary, PersonRiskFactor } from "@/types/beneficiary";
 import type { ValidatedCompanyAgreement } from "@/types/company-agreement";
 import type { CoverageEntry, HealthPlan } from "@/types/plan";
@@ -69,13 +65,12 @@ function buildBeneficiaryValueLines(
   basePriceUf: number,
   gesPremiumUfPerPerson: number,
   ufToClp: number,
-  /** Factor 0–1 aplicado solo al componente base; GES queda intacto. */
-  priceFactor = 1,
+  individualPrices: BeneficiaryPlanPrice[] = [],
 ): string[] {
   const lines: string[] = [];
   const beneficiaryPrice = (person: PersonRiskFactor) =>
-    Math.round(
-      ((person.factor ?? 0) * basePriceUf * priceFactor +
+    individualPrices.find(price => price.id === person.id && price.role === person.role)?.finalPriceUf ?? Math.round(
+      ((person.factor ?? 0) * basePriceUf +
         gesPremiumUfPerPerson) *
         1_000_000,
     ) / 1_000_000;
@@ -134,6 +129,7 @@ function resolveAgreementPricesForPlan(
   agreementPrices: PlanAgreementPriceDisplay;
   activeBasePriceUf: number;
   mappingCode: string | null;
+  individualPrices: BeneficiaryPlanPrice[];
 } {
   const standardQuote = buildPlanFinalPriceQuote(
     plan.base_price_uf,
@@ -142,42 +138,13 @@ function resolveAgreementPricesForPlan(
     plan.ges_premium_uf,
   );
 
-  const mapping = resolveAgreementPlanMapping(
-    plan.unique_code,
-    plan.isapre,
-    agreement,
-  );
-
-  if (mapping) {
-    const convenioQuote = buildPlanFinalPriceQuote(
-      mapping.price,
-      beneficiarySummary,
-      ufToClp,
-      plan.ges_premium_uf,
-    );
-    return {
-      standardQuote,
-      agreementPrices: buildPlanAgreementPriceDisplayWithMapping(
-        standardQuote,
-        convenioQuote,
-      ),
-      activeBasePriceUf: mapping.price,
-      mappingCode: mapping.code,
-    };
-  }
-
-  const discountPercent = resolveAgreementDiscountPercentForPlan(
-    plan.isapre,
-    agreement,
-  );
+  const pricing = buildIndividualPlanAgreementPricing(standardQuote, plan.unique_code, plan.isapre, agreement);
   return {
     standardQuote,
-    agreementPrices: buildPlanAgreementPriceDisplay(
-      standardQuote,
-      discountPercent,
-    ),
+    agreementPrices: pricing.prices,
     activeBasePriceUf: plan.base_price_uf,
     mappingCode: null,
+    individualPrices: pricing.quote.beneficiaryPrices ?? [],
   };
 }
 
@@ -204,7 +171,7 @@ function buildPlanShareBlocks(
     validatedAgreement = null,
   } = input;
 
-  const { standardQuote, agreementPrices, activeBasePriceUf, mappingCode } =
+  const { standardQuote, agreementPrices, activeBasePriceUf, individualPrices } =
     resolveAgreementPricesForPlan(
       plan,
       beneficiarySummary,
@@ -218,16 +185,6 @@ function buildPlanShareBlocks(
   const { hospitalaria, ambulatoria } = splitCoverageByType(plan.coverage);
   const pdfUrl = resolveAbsolutePlanPdfUrl(plan);
   const hasConvenio = agreementPrices.hasAgreementDiscount;
-  const priceFactor = hasConvenio
-    ? Math.max(0, 1 - agreementPrices.discountPercent / 100)
-    : 1;
-  // Con mapping el base ya es el de convenio; no reaplicar % sobre el unitario.
-  const beneficiaryBaseUf = hasConvenio
-    ? activeBasePriceUf
-    : plan.base_price_uf;
-  const beneficiaryFactor =
-    hasConvenio && mappingCode == null ? priceFactor : 1;
-
   const blocks: string[] = [];
 
   blocks.push(`📌 *PLAN DE SALUD* [${planTypeLabel}]`);
@@ -236,29 +193,24 @@ function buildPlanShareBlocks(
     `(${plan.unique_code}) ${formatBaseBracket(activeBasePriceUf)}`,
   );
 
-  if (hasConvenio && validatedAgreement) {
+  const contributorPrices = individualPrices.filter(person => person.role === "contributor");
+  contributorPrices.forEach((person, index) => {
+    if (!person.agreementName) return;
     blocks.push("");
-    blocks.push("🏢 *CONVENIO EMPRESA*");
-    blocks.push(validatedAgreement.companyName.trim());
-    if (validatedAgreement.isapreName?.trim()) {
-      blocks.push(`Isapre convenio: ${validatedAgreement.isapreName.trim()}`);
-    }
-    blocks.push(
-      `Descuento: −${formatDiscountPercentLabel(agreementPrices.discountPercent)}`,
-    );
-    if (mappingCode) {
-      blocks.push(`Código plan convenio: ${mappingCode}`);
-    }
-  }
+    blocks.push(`🏢 *CONVENIO COTIZANTE ${index + 1}*`);
+    blocks.push(person.agreementName);
+    blocks.push(`Descuento de su base: −${formatDiscountPercentLabel(person.discountPercent)}`);
+    if (person.mappingCode) blocks.push(`Código plan convenio: ${person.mappingCode}`);
+  });
 
   blocks.push("");
   blocks.push("✅ *VALOR POR BENEFICIARIO*");
   const beneficiaryLines = buildBeneficiaryValueLines(
     beneficiarySummary,
-    beneficiaryBaseUf,
+    plan.base_price_uf,
     gesRate,
     ufToClp,
-    beneficiaryFactor,
+    individualPrices,
   );
   if (beneficiaryLines.length > 0) {
     blocks.push(...beneficiaryLines);
@@ -273,7 +225,7 @@ function buildPlanShareBlocks(
       `Lista: ${formatQuotedUf(agreementPrices.listFinalPriceUf)} - ${formatPlanClp(agreementPrices.listFinalPriceClp)}`,
     );
     blocks.push(
-      `Con convenio (−${formatDiscountPercentLabel(agreementPrices.discountPercent)}): ${formatQuotedUf(agreementPrices.displayFinalPriceUf)} - ${formatPlanClp(agreementPrices.displayFinalPriceClp)}`,
+      `Con beneficios individuales: ${formatQuotedUf(agreementPrices.displayFinalPriceUf)} - ${formatPlanClp(agreementPrices.displayFinalPriceClp)}`,
     );
   } else {
     blocks.push("✅ *VALOR MENSUAL*");
@@ -464,7 +416,7 @@ export function buildSelectedPlansEmailSnapshots(
   input: SelectedPlansShareInput,
 ): SelectedPlanEmailSnapshot[] {
   return input.plans.map((plan) => {
-    const { standardQuote, agreementPrices } = resolveAgreementPricesForPlan(
+    const { standardQuote, agreementPrices, individualPrices } = resolveAgreementPricesForPlan(
       plan,
       input.beneficiarySummary,
       input.ufToClp,
@@ -495,8 +447,10 @@ export function buildSelectedPlansEmailSnapshots(
         ? formatPlanClp(agreementPrices.listFinalPriceClp)
         : null,
       convenioLabel:
-        hasConvenio && input.validatedAgreement
-          ? `${input.validatedAgreement.companyName.trim()} (−${formatDiscountPercentLabel(agreementPrices.discountPercent)})`
+        hasConvenio
+          ? individualPrices.filter(person => person.agreementName).map((person) =>
+              `Cotizante ${input.beneficiarySummary.contributors.findIndex(p => p.id === person.id) + 1}: ${person.agreementName} (−${formatDiscountPercentLabel(person.discountPercent)} de su base)`,
+            ).join("; ")
           : null,
       hospitalCoverage: formatCoverageCompact(hospitalaria),
       ambulatoryCoverage: formatCoverageCompact(ambulatoria),

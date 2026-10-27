@@ -1,7 +1,7 @@
 import { buildPlanFinalPriceQuote } from "@/domain";
 import type { BeneficiaryGroupSummary } from "@/types/beneficiary";
 import type { HealthPlan, HealthPlanSummary } from "@/types/plan";
-import { resolveAgreementPlanMapping } from "@/lib/company-agreements/plan-price-discount";
+import { buildIndividualPlanAgreementPricing } from "@/lib/company-agreements/individual-plan-price";
 import type { ValidatedCompanyAgreement } from "@/types/company-agreement";
 
 type PlanWithBasePrice = {
@@ -46,25 +46,22 @@ export function comparePlansByFinalPriceAsc(
   ufToClp: number,
   agreement?: ValidatedCompanyAgreement | null,
 ): number {
-  // If there is an active agreement, check if the plans have mapped base prices
-  const mappingA = a.isapre ? resolveAgreementPlanMapping(a.unique_code, a.isapre, agreement) : null;
-  const mappingB = b.isapre ? resolveAgreementPlanMapping(b.unique_code, b.isapre, agreement) : null;
-
-  const basePriceA = mappingA ? mappingA.price : a.base_price_uf;
-  const basePriceB = mappingB ? mappingB.price : b.base_price_uf;
-
-  const priceA = buildPlanFinalPriceQuote(
-    basePriceA,
+  const basePriceA = a.base_price_uf;
+  const basePriceB = b.base_price_uf;
+  const standardA = buildPlanFinalPriceQuote(
+    a.base_price_uf,
     beneficiarySummary,
     ufToClp,
     a.ges_premium_uf,
-  ).finalPriceUf;
-  const priceB = buildPlanFinalPriceQuote(
-    basePriceB,
+  );
+  const standardB = buildPlanFinalPriceQuote(
+    b.base_price_uf,
     beneficiarySummary,
     ufToClp,
     b.ges_premium_uf,
-  ).finalPriceUf;
+  );
+  const priceA = buildIndividualPlanAgreementPricing(standardA, a.unique_code, a.isapre ?? "", agreement).quote.finalPriceUf;
+  const priceB = buildIndividualPlanAgreementPricing(standardB, b.unique_code, b.isapre ?? "", agreement).quote.finalPriceUf;
   const diff = priceA - priceB;
   if (Math.abs(diff) > 1e-9) return diff;
   const baseDiff = basePriceA - basePriceB;

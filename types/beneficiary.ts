@@ -1,8 +1,12 @@
+import type { ValidatedCompanyAgreement } from "@/types/company-agreement";
+
 export type BeneficiaryRole = "contributor" | "dependent";
 
 export interface DependentBeneficiary {
   id: string;
   age: number | null;
+  /** Beneficio propio del cotizante; no se hereda a otras personas. */
+  companyAgreement?: ValidatedCompanyAgreement | null;
 }
 
 export interface FamilyBeneficiariesState {
@@ -24,6 +28,7 @@ export interface PersonRiskFactor {
   tableFactor: number | null;
   factor: number | null;
   isRiskFactorExempt: boolean;
+  companyAgreement?: ValidatedCompanyAgreement | null;
 }
 
 export interface BeneficiaryGroupSummary {

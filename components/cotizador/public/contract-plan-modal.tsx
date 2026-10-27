@@ -37,12 +37,7 @@ import type { QuoteCriteria } from "./public-quote-criteria-bar";
 import { notifyCotizacionByEmail } from "@/lib/cotizacion-notify/client";
 import { useCompanyAgreementContext } from "@/components/cotizador/company-agreement";
 import { toCotizacionNotifyConvenio } from "@/lib/company-agreements/cotizacion-notify-convenio";
-import {
-  buildPlanAgreementPriceDisplay,
-  resolveAgreementDiscountPercentForPlan,
-  resolveAgreementPlanMapping,
-  buildPlanAgreementPriceDisplayWithMapping,
-} from "@/lib/company-agreements/plan-price-discount";
+import { buildIndividualPlanAgreementPricing } from "@/lib/company-agreements/individual-plan-price";
 import type {
   ParsedCotizadorDeepLink,
   SolicitarModalTab,
@@ -233,15 +228,6 @@ export function ContractPlanModal({
     };
   }, [open, onClose]);
 
-  const agreementMapping = useMemo(() => {
-    if (!planSummary) return null;
-    return resolveAgreementPlanMapping(
-      planSummary.unique_code,
-      planSummary.isapre,
-      validatedAgreement,
-    );
-  }, [planSummary, validatedAgreement]);
-
   const standardQuote = useMemo(() => {
     if (!planSummary) return null;
     return buildPlanFinalPriceQuote(
@@ -252,37 +238,22 @@ export function ContractPlanModal({
     );
   }, [planSummary, beneficiarySummary, ufToClp]);
 
-  const convenioQuote = useMemo(() => {
-    if (!planSummary || !agreementMapping) return null;
-    return buildPlanFinalPriceQuote(
-      agreementMapping.price,
-      beneficiarySummary,
-      ufToClp,
-      planSummary.ges_premium_uf,
-    );
-  }, [planSummary, agreementMapping, beneficiarySummary, ufToClp]);
-
-  /** Precios con convenio (solo para notify/API interno; no se muestran en UI pública). */
-  const agreementPrices = useMemo(() => {
+  const pricing = useMemo(() => {
     if (!planSummary || !standardQuote) return null;
-    if (agreementMapping && convenioQuote) {
-      return buildPlanAgreementPriceDisplayWithMapping(standardQuote, convenioQuote);
-    }
-    const discountPercent = resolveAgreementDiscountPercentForPlan(
-      planSummary.isapre,
-      validatedAgreement,
-    );
-    return buildPlanAgreementPriceDisplay(standardQuote, discountPercent);
-  }, [validatedAgreement, planSummary, agreementMapping, standardQuote, convenioQuote]);
-
-  /** UI pública: siempre precio de lista, sin % ni tachado de convenio. */
-  const uiPrices = useMemo(() => {
-    if (!standardQuote) return null;
-    return buildPlanAgreementPriceDisplay(standardQuote, null);
-  }, [standardQuote]);
-
+    return buildIndividualPlanAgreementPricing(standardQuote, planSummary.unique_code, planSummary.isapre, validatedAgreement);
+  }, [planSummary, standardQuote, validatedAgreement]);
+  const agreementPrices = pricing?.prices ?? null;
+  // El público sigue mostrando la tarifa de lista.
+  const uiPrices = standardQuote ? {
+    listFinalPriceUf: standardQuote.finalPriceUf,
+    listFinalPriceClp: standardQuote.finalPriceClp,
+    displayFinalPriceUf: standardQuote.finalPriceUf,
+    displayFinalPriceClp: standardQuote.finalPriceClp,
+    hasAgreementDiscount: false,
+    discountPercent: 0,
+  } : null;
   const priceQuote = standardQuote;
-  const notifyPriceQuote = convenioQuote ?? standardQuote;
+  const notifyPriceQuote = pricing?.quote ?? standardQuote;
 
   const chartHighlightAge = useMemo(
     () => resolveChartHighlightAge(beneficiarySummary.contributor.age),

@@ -54,7 +54,10 @@ export function buildBeneficiaryGroupSummary(
   const normalized = normalizeFamilyBeneficiaries(state);
 
   const contributors = normalized.contributors.map((person) =>
-    toPersonRiskFactor(person.id, person.age, "contributor"),
+    ({
+      ...toPersonRiskFactor(person.id, person.age, "contributor"),
+      companyAgreement: person.companyAgreement,
+    }),
   );
 
   const dependents = normalized.dependents.map((person) =>

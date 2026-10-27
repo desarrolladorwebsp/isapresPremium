@@ -5,11 +5,7 @@ import { motion } from "framer-motion";
 import { useOptionalCompanyAgreementContext } from "@/components/cotizador/company-agreement";
 import { splitCoverageByType } from "@/domain";
 import { buildPlanFinalPriceQuote } from "@/domain";
-import {
-  buildPlanAgreementQuoteFromBasePrice,
-  resolveAgreementDiscountPercentForPlan,
-  resolveAgreementPlanMapping,
-} from "@/lib/company-agreements/plan-price-discount";
+import { buildIndividualPlanAgreementPricing } from "@/lib/company-agreements/individual-plan-price";
 import {
   buildPlanWhatsAppMessage,
   copyTextToClipboard,
@@ -91,31 +87,10 @@ export function PlanCard({
     [plan.base_price_uf, plan.ges_premium_uf, beneficiarySummary, ufToClp],
   );
 
-  const detailPriceQuote = useMemo(() => {
-    if (!validatedAgreement) return priceQuote;
-
-    const mapping = resolveAgreementPlanMapping(
-      plan.unique_code,
-      plan.isapre,
-      validatedAgreement,
-    );
-    if (mapping) {
-      return buildPlanAgreementQuoteFromBasePrice(priceQuote, mapping.price);
-    }
-
-    const discountPercent = resolveAgreementDiscountPercentForPlan(
-      plan.isapre,
-      validatedAgreement,
-    );
-    if (discountPercent == null) return priceQuote;
-
-    const discountedBasePriceUf =
-      priceQuote.basePriceUf * Math.max(0, 1 - discountPercent / 100);
-    return buildPlanAgreementQuoteFromBasePrice(
-      priceQuote,
-      discountedBasePriceUf,
-    );
-  }, [validatedAgreement, priceQuote, plan.unique_code, plan.isapre]);
+  const detailPriceQuote = useMemo(
+    () => buildIndividualPlanAgreementPricing(priceQuote, plan.unique_code, plan.isapre, validatedAgreement).quote,
+    [priceQuote, plan.unique_code, plan.isapre, validatedAgreement],
+  );
 
   const isAssignCta = selectVariant === "success";
 

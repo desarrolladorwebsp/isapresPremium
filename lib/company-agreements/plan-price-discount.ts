@@ -13,6 +13,8 @@ export interface PlanAgreementPriceDisplay {
   displayFinalPriceClp: number;
   hasAgreementDiscount: boolean;
   discountPercent: number;
+  /** El porcentaje agregado no representa el beneficio personal de cada cotizante. */
+  individualBenefits?: boolean;
 }
 
 /**

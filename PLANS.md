@@ -13,6 +13,8 @@ Si un ítem de aquí pasa a código, márcalo cerrado y agrega la fila en `FEATU
 
 ## Cerrado (no reabrir)
 
+- 2026-10-27: convenios individuales por cotizante. Beneficio exclusivo de su titular; cargas sin descuento y GES intacto. Cálculo compartido y 22 pruebas. Publicación sin migraciones automáticas; conserva cotizaciones anteriores.
+
 El roadmap histórico (fases 1–4 de `docs/ARCHITECTURE-COTIZADOR-PREMIUM.md`) describía la migración desde cotizador-virtual. Esto ya está en el código:
 
 | Ítem que el doc marcaba pendiente | Estado real |
