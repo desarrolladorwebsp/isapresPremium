@@ -6,7 +6,7 @@ export { SENDPULSE_TRIGGERS, sendpulseTriggerLabel } from "@/lib/sendpulse/trigg
 export type { SendpulseTriggerKey } from "@/lib/sendpulse/triggers";
 
 /** Destino de esta etapa. Se puede cambiar con SENDPULSE_NOTIFY_EMAIL. */
-export const DEFAULT_SENDPULSE_NOTIFY_EMAIL = "ahurtado@smartpro.cl";
+export const DEFAULT_SENDPULSE_NOTIFY_EMAIL = "premiumisapres@gmail.com";
 
 export const SENDPULSE_DEDUPE_WINDOW_MS = 10 * 60 * 1000;
 

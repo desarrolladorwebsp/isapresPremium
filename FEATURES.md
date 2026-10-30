@@ -146,7 +146,7 @@ Implementación en `lib/email/` (el mapa `docs/email-actions-map.md` todavía ci
 | Compartir planes desde el cotizador ejecutivo | `send-executive-share-plans.ts` |
 | Cotización comercial PDF | `send-client-quotation.ts` |
 | Consulta de convenio | `send-company-agreement-inquiry.ts` |
-| Disparador SendPulse | `send-sendpulse-trigger-notify.ts`. Aviso a `ahurtado@smartpro.cl` (o `SENDPULSE_NOTIFY_EMAIL`) |
+| Disparador SendPulse | `send-sendpulse-trigger-notify.ts`. Aviso a `premiumisapres@gmail.com` (o `SENDPULSE_NOTIFY_EMAIL`) |
 
 ## SendPulse
 
