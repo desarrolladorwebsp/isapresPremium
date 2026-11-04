@@ -101,7 +101,7 @@ Panel: sección `clientes`. Ficha Premium: `components/executive/client-premium-
 | Reportes de equipo (pipeline, primer contacto, Zoom, cotizaciones enviadas) | sección `reportes`, `lib/executive/admin-reports.ts`, `lib/executive/sent-quotation-kpi.ts` |
 | Prospectos (bandeja admin de leads) | sección `prospectos` |
 | Inicio con gestiones del día | `executive-dashboard-home.tsx`. El detalle de una tarjeta usa el mes y el ejecutivo ya elegidos en el dashboard, sin repetir esos filtros |
-| KPI de cotizaciones en Inicio | `executive-dashboard-home.tsx`, `GET /api/executive/sent-quotations`. Enviadas, recepcionadas, aceptadas y rechazadas. Usan el mes y, en admin, el ejecutivo del dashboard. El filtro de isapres (una, varias o todas) cambia las cuatro tarjetas. El detalle de una tarjeta no repite esos filtros ; el detalle de cada tarjeta se agrupa por Isapre. Un documento con varias Isapres aparece en cada grupo sin alterar los conteos |
+| KPI de cotizaciones en Inicio | `executive-dashboard-home.tsx`, `GET /api/executive/sent-quotations`. Enviadas, recepcionadas, aceptadas y rechazadas. Usan el mes y, en admin, el ejecutivo del dashboard. El filtro de isapres (una, varias o todas) cambia las cuatro tarjetas. El detalle de una tarjeta no repite esos filtros; el detalle de cada tarjeta se agrupa por Isapre. Un documento con varias Isapres aparece en cada grupo sin alterar los conteos |
 
 ## Cotización comercial (`ClientQuotation`)
 
