@@ -112,6 +112,12 @@ export type QuotationOutcomeStatus = "RECEIVED" | "ACCEPTED" | "REJECTED";
 const OUTCOME_DATE: Record<
   QuotationOutcomeStatus,
   "receivedAt" | "acceptedAt" | "rejectedAt"
+> = {
+  RECEIVED: "receivedAt",
+  ACCEPTED: "acceptedAt",
+  REJECTED: "rejectedAt",
+};
+
 export interface QuotationIsapreGroup {
   isapreId: string;
   isapreName: string;
@@ -150,12 +156,6 @@ export function groupQuotationsByIsapre(
     left.isapreName.localeCompare(right.isapreName, "es", { sensitivity: "base" }),
   );
 }
-
-> = {
-  RECEIVED: "receivedAt",
-  ACCEPTED: "acceptedAt",
-  REJECTED: "rejectedAt",
-};
 
 /** Estado actual en el período de ese cambio, con el mismo ejecutivo e isapre. */
 export function filterOutcomeQuotations(
