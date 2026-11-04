@@ -49,7 +49,8 @@
     "test-uf-service": "tsx scripts/test-uf-service.ts",
     "reset-admin-password": "node scripts/with-db-env.mjs --destructive -- npx tsx scripts/reset-admin-password.ts",
     "upsert-admin-account": "node scripts/with-db-env.mjs --destructive -- npx tsx scripts/upsert-admin-account.ts",
-    "seed-plan-reviews": "node scripts/with-db-env.mjs --destructive -- npx tsx scripts/seed-plan-reviews.ts"
+    "seed-plan-reviews": "node scripts/with-db-env.mjs --destructive -- npx tsx scripts/seed-plan-reviews.ts",
+    "test:client-pause": "node --import tsx scripts/test-client-pause.ts"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"

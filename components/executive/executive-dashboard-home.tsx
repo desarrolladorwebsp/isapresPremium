@@ -1,9 +1,12 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { Bell } from "lucide-react";
+import type { Dispatch, ReactNode, SetStateAction } from "react";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useStaffSession } from "@/hooks/use-auth-session";
+import { activeClientPortfolio, showActiveClientPortfolio } from "@/lib/executive/active-client-portfolio";
+import { ClientPipelineStatusBadge } from "@/components/executive/client-pipeline-status-badge";
 import { IsapreMultiFilter } from "@/components/executive/isapre-multi-filter";
 import { useExecutiveAccountsQuery } from "@/hooks/query/use-executive-accounts-query";
 import { useExecutiveClientsQuery } from "@/hooks/query/use-executive-clients-query";
@@ -34,9 +37,13 @@ import {
   groupNewClientItemsByIntake,
 } from "@/lib/executive/dashboard-kpi";
 import {
+  filterActiveQuotations,
   filterOutcomeQuotations,
   filterSentQuotations,
   groupQuotationsByIsapre,
+  groupActiveQuotationsByIsapre,
+  groupActiveQuotationsByClient,
+  type ActiveQuotationClient,
   sentQuotationIsapreOptions,
   type QuotationOutcomeStatus,
   type SentQuotationKpiRow,
@@ -55,9 +62,9 @@ import {
 import type { StaffAccountRecord } from "@/types/staff-account";
 import type { UserRecord } from "@/types/user";
 
-const MONTH_OPTIONS = buildAgendaMonthOptions(11);
+const MONTH_OPTIONS = [{ value: "", label: "Todos los meses" }, ...buildAgendaMonthOptions(11)];
 
-type QuotationKpiList = "sent" | QuotationOutcomeStatus;
+type QuotationKpiList = "sent" | "active" | QuotationOutcomeStatus;
 
 const QUOTATION_LIST_COPY: Record<
   QuotationKpiList,
@@ -68,6 +75,12 @@ const QUOTATION_LIST_COPY: Record<
     description:
       "Documentos enviados por email o WhatsApp. Cada uno cuenta una vez, aunque incluya varias isapres.",
     empty: "No hay cotizaciones enviadas con estos filtros.",
+    dateLabel: "Enviada",
+  },
+  active: {
+    title: "Cotizaciones activas",
+    description: "Clientes con alguna cotización enviada pendiente de aceptación o rechazo. Cada cliente aparece una vez con sus documentos agrupados. Respeta mes de envío, ejecutivo e isapres; Todos los meses incluye las pendientes anteriores.",
+    empty: "No hay cotizaciones activas con estos filtros.",
     dateLabel: "Enviada",
   },
   ACCEPTED: {
@@ -101,6 +114,7 @@ interface DashboardStats {
   gestionesAtrasadas: number;
   gestionesFuturas: number;
   clientesNuevos: number;
+  recordatoriosHoy: number;
   agendaItems: Record<AgendaStatBucket, ExecutiveAgendaStatItem[]>;
 }
 
@@ -157,18 +171,23 @@ const BUCKET_COPY: Record<
 > = {
   dueToday: {
     title: "Gestiones de hoy",
-    description: "Qué tienes que hacer hoy con cada cliente.",
+    description: "Llamados y confirmaciones de hoy, anualidades disponibles y clientes pendientes de revisión.",
     showDate: true,
   },
   overdue: {
     title: "Gestiones atrasadas",
     description:
-      "Zoom no confirmado o cliente nuevo de un día anterior sin gestión.",
+      "Zoom sin confirmar, clientes nuevos sin gestión o anualidades pendientes de meses anteriores.",
     showDate: true,
   },
   upcoming: {
     title: "Gestiones futuras",
     description: "Qué queda agendado para los próximos días.",
+    showDate: true,
+  },
+  remindersToday: {
+    title: "Recordatorios de hoy",
+    description: "Recordatorios libres agendados para hoy (hora de Chile) en el mes seleccionado. Muestran la nota y el responsable actual; los clientes En pausa o con proceso cerrado no cuentan.",
     showDate: true,
   },
   newClients: {
@@ -178,7 +197,35 @@ const BUCKET_COPY: Record<
   },
 };
 
-export function ExecutiveDashboardHome() {
+export interface DashboardHomeState {
+  adminExecutiveFilter: string;
+  selectedMonth: string;
+  selectedIsapreIds: string[];
+  openBucket: AgendaStatBucket | null;
+  quotationList: QuotationKpiList | null;
+  activeClientsOpen: boolean;
+  activeClientsPage: number;
+}
+
+export function createDashboardHomeState(): DashboardHomeState {
+  return {
+    adminExecutiveFilter: ADMIN_EXECUTIVE_FILTER_ALL,
+    selectedMonth: santiagoMonthKey(new Date()) ?? MONTH_OPTIONS[0]?.value ?? "",
+    selectedIsapreIds: [],
+    openBucket: null,
+    quotationList: null,
+    activeClientsOpen: false,
+    activeClientsPage: 1,
+  };
+}
+
+export function ExecutiveDashboardHome({
+  state,
+  onStateChange,
+}: {
+  state: DashboardHomeState;
+  onStateChange: Dispatch<SetStateAction<DashboardHomeState>>;
+}) {
   const router = useRouter();
   const { user, executiveKind, isAdmin } = useStaffSession();
   const isLimited =
@@ -196,19 +243,18 @@ export function ExecutiveDashboardHome() {
   );
   const sessionUserId = user?.id ?? null;
 
-  const [openBucket, setOpenBucket] = useState<AgendaStatBucket | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
-  /** Solo admin: `""` = todos, `__unassigned__` = sin ejecutivo. */
-  const [adminExecutiveFilter, setAdminExecutiveFilter] = useState(
-    ADMIN_EXECUTIVE_FILTER_ALL,
-  );
-  const [selectedMonth, setSelectedMonth] = useState(
-    () => santiagoMonthKey(new Date()) ?? MONTH_OPTIONS[0]?.value ?? "",
-  );
-  const [selectedIsapreIds, setSelectedIsapreIds] = useState<string[]>([]);
-  const [quotationList, setQuotationList] = useState<QuotationKpiList | null>(
-    null,
-  );
+  const { adminExecutiveFilter, selectedMonth, selectedIsapreIds, openBucket, quotationList, activeClientsOpen, activeClientsPage } = state;
+
+  function updateHomeState<K extends keyof DashboardHomeState>(
+    key: K,
+    value: DashboardHomeState[K],
+  ) {
+    onStateChange((current) => ({
+      ...current, [key]: value,
+      ...(key === "adminExecutiveFilter" ? { activeClientsPage: 1 } : {}),
+    }));
+  }
 
   const unfilteredAgenda = useMemo(() => {
     if (!clients) return null;
@@ -250,6 +296,10 @@ export function ExecutiveDashboardHome() {
       ? adminExecutiveFilter
       : ADMIN_EXECUTIVE_FILTER_ALL;
     const agendaItems = {
+      remindersToday: filterAgendaItemsByExecutive(
+        unfilteredAgenda.items.remindersToday,
+        agendaFilter,
+      ),
       dueToday: filterAgendaItemsByExecutive(
         unfilteredAgenda.items.dueToday,
         agendaFilter,
@@ -279,6 +329,7 @@ export function ExecutiveDashboardHome() {
       gestionesAtrasadas: agendaItems.overdue.length,
       gestionesFuturas: agendaItems.upcoming.length,
       clientesNuevos: agendaItems.newClients.length,
+      recordatoriosHoy: agendaItems.remindersToday.length,
       agendaItems,
     };
   }, [
@@ -288,6 +339,16 @@ export function ExecutiveDashboardHome() {
     adminExecutiveFilter,
     unfilteredAgenda,
   ]);
+
+  const activeClients = useMemo(() => activeClientPortfolio({
+    clients: clients ?? [], isAdmin, executiveId: sessionUserId, adminExecutiveFilter,
+  }), [clients, isAdmin, sessionUserId, adminExecutiveFilter]);
+  const showActiveClients = showActiveClientPortfolio(selectedMonth);
+  const activePageSize = 50;
+  const activePageCount = Math.max(1, Math.ceil(activeClients.length / activePageSize));
+  const currentActivePage = Math.max(1, Math.min(activeClientsPage, activePageCount));
+  const activePageStart = (currentActivePage - 1) * activePageSize;
+  const visibleActiveClients = activeClients.slice(activePageStart, activePageStart + activePageSize);
 
   const executiveFilterOptions = useMemo(() => {
     if (!isAdmin) return [];
@@ -338,7 +399,7 @@ export function ExecutiveDashboardHome() {
   const quotationFilter = useMemo(
     () => ({
       quotations: quotationsQuery.data ?? [],
-      period: { kind: "month" as const, monthKey: selectedMonth },
+      period: selectedMonth ? { kind: "month" as const, monthKey: selectedMonth } : undefined,
       selectedExecutiveIds: quotationExecutiveIds,
       selectedIsapreIds,
     }),
@@ -353,6 +414,18 @@ export function ExecutiveDashboardHome() {
     () => filterSentQuotations(quotationFilter),
     [quotationFilter],
   );
+  const activeQuotations = useMemo(
+    () => filterActiveQuotations(quotationFilter),
+    [quotationFilter],
+  );
+  const activeQuotationClients = useMemo(
+    () => groupActiveQuotationsByClient(activeQuotations),
+    [activeQuotations],
+  );
+  const activeQuotationIsapreGroups = useMemo(
+    () => groupActiveQuotationsByIsapre(activeQuotations),
+    [activeQuotations],
+  );
   const receivedQuotations = useMemo(
     () => filterOutcomeQuotations({ ...quotationFilter, status: "RECEIVED" }),
     [quotationFilter],
@@ -366,7 +439,9 @@ export function ExecutiveDashboardHome() {
     [quotationFilter],
   );
   const openQuotations =
-    quotationList === "RECEIVED"
+    quotationList === "active"
+      ? activeQuotations
+      : quotationList === "RECEIVED"
       ? receivedQuotations
       : quotationList === "ACCEPTED"
         ? acceptedQuotations
@@ -378,7 +453,10 @@ export function ExecutiveDashboardHome() {
     [quotationsQuery.data],
   );
   const quotationIsapreGroups = useMemo(
-    () => (quotationList ? groupQuotationsByIsapre(openQuotations) : []),
+    () =>
+      quotationList && quotationList !== "active"
+        ? groupQuotationsByIsapre(openQuotations)
+        : [],
     [quotationList, openQuotations],
   );
 
@@ -414,9 +492,17 @@ export function ExecutiveDashboardHome() {
     tone: "today" | "overdue" | "upcoming" | "new";
   }> = [
     {
+      bucket: "remindersToday",
+      label: "Recordatorios de hoy",
+      hint: "Notas agendadas para hoy, hora de Chile",
+      value: stats?.recordatoriosHoy,
+      icon: <Bell className="size-6" />,
+      tone: "today",
+    },
+    {
       bucket: "dueToday",
       label: "Gestiones hoy",
-      hint: "Llamados y confirmaciones para hoy",
+      hint: "Llamados, anualidades y clientes por revisar",
       value: stats?.gestionesHoy,
       icon: <IconClock className="size-6" />,
       tone: "today",
@@ -424,7 +510,7 @@ export function ExecutiveDashboardHome() {
     {
       bucket: "overdue",
       label: "Atrasadas",
-      hint: "Zoom no gestionado o nuevo sin contacto",
+      hint: "Gestiones y revisiones pendientes anteriores",
       value: stats?.gestionesAtrasadas,
       icon: <IconClipboard className="size-6" />,
       tone: "overdue",
@@ -446,6 +532,47 @@ export function ExecutiveDashboardHome() {
       tone: "new",
     },
   ];
+
+  function renderAgendaCard(item: (typeof gestionCards)[number]) {
+    return (
+            <button
+              key={item.label}
+              type="button"
+              disabled={loadingStats}
+              onClick={() => updateHomeState("openBucket", item.bucket)}
+              className={joinClasses(
+                "premium-dash-stat-card w-full text-left transition hover:brightness-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
+                item.tone === "today" && "ring-1 ring-amber-300/70",
+                item.tone === "overdue" && "ring-1 ring-danger/35",
+                item.tone === "upcoming" && "ring-1 ring-border",
+                item.tone === "new" && "ring-1 ring-sky-300/60",
+              )}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <p className="premium-dash-stat-label">{item.label}</p>
+                <span className="premium-dash-stat-icon shrink-0" aria-hidden>
+                  {item.icon}
+                </span>
+              </div>
+              <p
+                className={joinClasses(
+                  "premium-dash-stat-value mt-3 tabular-nums",
+                  item.tone === "today" && "text-amber-800",
+                  item.tone === "overdue" && "text-danger",
+                  item.tone === "new" && "text-sky-800",
+                )}
+              >
+                {loadingStats
+                  ? "—"
+                  : item.value === undefined
+                    ? "—"
+                    : item.value}
+              </p>
+              <p className="premium-dash-stat-hint mt-1.5">{item.hint}</p>
+            </button>
+
+    );
+  }
 
   const secondaryCards: Array<{
     label: string;
@@ -520,7 +647,7 @@ export function ExecutiveDashboardHome() {
         <Select
           value={selectedMonth}
           options={MONTH_OPTIONS}
-          onChange={(event) => setSelectedMonth(event.target.value)}
+          onChange={(event) => updateHomeState("selectedMonth", event.target.value)}
           className="h-9"
         />
       </label>
@@ -535,7 +662,7 @@ export function ExecutiveDashboardHome() {
         <Select
           value={adminExecutiveFilter}
           options={executiveFilterOptions}
-          onChange={(event) => setAdminExecutiveFilter(event.target.value)}
+          onChange={(event) => updateHomeState("adminExecutiveFilter", event.target.value)}
           className="h-9"
           aria-label="Filtrar por ejecutivo"
         />
@@ -555,6 +682,7 @@ export function ExecutiveDashboardHome() {
     return new Intl.DateTimeFormat("es-CL", {
       dateStyle: "short",
       timeStyle: "short",
+      timeZone: "America/Santiago",
     }).format(new Date(value));
   }
 
@@ -614,8 +742,38 @@ export function ExecutiveDashboardHome() {
     );
   }
 
+  function renderActiveQuotationClient(group: ActiveQuotationClient, index: number) {
+    return (
+      <li key={group.clientId} className={joinClasses(
+        "flex items-start gap-3 px-5 py-3.5 sm:px-6",
+        index % 2 === 1 ? "bg-bg-layout/55" : "bg-transparent",
+      )}>
+        <div className="min-w-0 flex-1 space-y-2">
+          <p className="text-sm font-semibold text-foreground">{group.clientName}</p>
+          <p className="text-xs text-muted">
+            {group.items.length} {group.items.length === 1 ? "cotización pendiente" : "cotizaciones pendientes"}
+          </p>
+          <ul className="space-y-2">
+            {group.items.map(row => (
+              <li key={row.id} className="rounded-lg border border-border/70 bg-white px-3 py-2 text-xs">
+                <p className="font-semibold text-primary-dark">{row.number}</p>
+                <p className="mt-1 text-muted">Enviada {formatSentAt(row.sentAt)}</p>
+                {row.isapres.length ? <p className="mt-1 break-words">{row.isapres.join(", ")}</p> : null}
+                <p className="mt-1 text-muted">Emitida por: {row.executiveName}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <Button type="button" size="sm" variant="primary"
+          aria-label={`Ver ficha de ${group.clientName}`} title="Ver ficha"
+          onClick={() => openClientFicha(group.clientId)} className="size-9 shrink-0 px-0">
+          <IconEye className="size-5 text-white" />
+        </Button>
+      </li>
+    );
+  }
+
   function openClientFicha(clientId: string) {
-    setOpenBucket(null);
     router.push(staffClientHref(clientId));
   }
 
@@ -729,7 +887,7 @@ export function ExecutiveDashboardHome() {
               </Button>
             </div>
             <p className="mt-0.5 text-xs text-muted">
-              Totales del mes seleccionado. Haz clic en una tarjeta para ver qué
+              {selectedMonth ? "Totales del mes seleccionado." : "Totales de todos los meses."} Haz clic en una tarjeta para ver qué
               gestión corresponde a cada cliente.
             </p>
           </div>
@@ -739,43 +897,7 @@ export function ExecutiveDashboardHome() {
           </div>
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 sm:gap-4">
-          {gestionCards.map((item) => (
-            <button
-              key={item.label}
-              type="button"
-              disabled={loadingStats}
-              onClick={() => setOpenBucket(item.bucket)}
-              className={joinClasses(
-                "premium-dash-stat-card w-full text-left transition hover:brightness-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
-                item.tone === "today" && "ring-1 ring-amber-300/70",
-                item.tone === "overdue" && "ring-1 ring-danger/35",
-                item.tone === "upcoming" && "ring-1 ring-border",
-                item.tone === "new" && "ring-1 ring-sky-300/60",
-              )}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <p className="premium-dash-stat-label">{item.label}</p>
-                <span className="premium-dash-stat-icon shrink-0" aria-hidden>
-                  {item.icon}
-                </span>
-              </div>
-              <p
-                className={joinClasses(
-                  "premium-dash-stat-value mt-3 tabular-nums",
-                  item.tone === "today" && "text-amber-800",
-                  item.tone === "overdue" && "text-danger",
-                  item.tone === "new" && "text-sky-800",
-                )}
-              >
-                {loadingStats
-                  ? "—"
-                  : item.value === undefined
-                    ? "—"
-                    : item.value}
-              </p>
-              <p className="premium-dash-stat-hint mt-1.5">{item.hint}</p>
-            </button>
-          ))}
+          {gestionCards.filter(item => item.bucket !== "newClients").map(renderAgendaCard)}
         </div>
       </section>
 
@@ -788,18 +910,18 @@ export function ExecutiveDashboardHome() {
             <p className="mt-0.5 text-xs text-muted">
               Usa el mes seleccionado arriba
               {isAdmin ? " y el ejecutivo de la vista general" : ""}. El filtro
-              de isapre cambia estas cuatro tarjetas.
+              de isapre aplica a todas. «Activas» cuenta clientes únicos. Elige «Todos los meses» para incluir pendientes anteriores.
             </p>
           </div>
           <div className="w-full sm:max-w-xs lg:w-72">
             <IsapreMultiFilter
               options={isapreOptions}
               selectedIds={selectedIsapreIds}
-              onChange={setSelectedIsapreIds}
+              onChange={(ids) => updateHomeState("selectedIsapreIds", ids)}
             />
           </div>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 sm:gap-4">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5 sm:gap-4">
           {(
             [
               {
@@ -812,6 +934,15 @@ export function ExecutiveDashboardHome() {
                 ring: "ring-sky-300/60",
                 valueClass: "text-sky-800",
                 icon: <IconClipboard className="size-6" />,
+              },
+              {
+                id: "active" as const,
+                label: "Cotizaciones activas",
+                value: activeQuotationClients.length,
+                hint: selectedMonth ? "Clientes sin respuesta del mes elegido" : "Clientes sin respuesta de todos los meses",
+                ring: "ring-amber-300/70",
+                valueClass: "text-amber-800",
+                icon: <IconClock className="size-6" />,
               },
               {
                 id: "ACCEPTED" as const,
@@ -846,7 +977,7 @@ export function ExecutiveDashboardHome() {
               key={item.id}
               type="button"
               disabled={loadingQuotations}
-              onClick={() => setQuotationList(item.id)}
+              onClick={() => updateHomeState("quotationList", item.id)}
               className={joinClasses(
                 "premium-dash-stat-card w-full text-left ring-1 transition hover:brightness-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
                 item.ring,
@@ -902,14 +1033,69 @@ export function ExecutiveDashboardHome() {
               <p className="premium-dash-stat-hint mt-1.5">{item.hint}</p>
             </div>
           ))}
+          {showActiveClients ? (
+            <button type="button" disabled={loadingStats || clientsQuery.isError}
+              onClick={() => onStateChange(current => ({ ...current, activeClientsOpen: true, activeClientsPage: 1 }))}
+              className="premium-dash-stat-card w-full text-left transition hover:brightness-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
+              <div className="flex items-start justify-between gap-3">
+                <p className="premium-dash-stat-label">Clientes activos</p>
+                <span className="premium-dash-stat-icon shrink-0" aria-hidden><IconUsers className="size-6" /></span>
+              </div>
+              <p className="premium-dash-stat-value mt-3 tabular-nums">
+                {loadingStats || clientsQuery.isError ? "—" : activeClients.length}
+              </p>
+              <p className="premium-dash-stat-hint mt-1.5">Cartera actual, sin perdidos ni pausados</p>
+            </button>
+          ) : null}
+          {gestionCards.filter(item => item.bucket === "newClients").map(renderAgendaCard)}
         </div>
       </section>
+
+      <AdminFormModal
+        open={activeClientsOpen && showActiveClients}
+        title="Clientes activos"
+        description="Cartera actual del ejecutivo seleccionado. Cada cliente cuenta una vez, sin limitar por fecha de registro. Incluye Cerrados y Recepcionados; excluye Perdidos y En pausa."
+        onClose={() => updateHomeState("activeClientsOpen", false)}
+        size="xl">
+        {activeClients.length ? (
+          <div className="space-y-3">
+            <nav aria-label="Paginación de clientes activos" className="flex flex-wrap items-center justify-between gap-2 text-xs">
+              <p>Mostrando {activePageStart + 1}–{Math.min(activePageStart + activePageSize, activeClients.length)} de {activeClients.length} clientes</p>
+              <div className="flex items-center gap-2">
+                <Button type="button" size="sm" variant="ghost" disabled={currentActivePage === 1}
+                  onClick={() => updateHomeState("activeClientsPage", currentActivePage - 1)}>Anterior</Button>
+                <span>Página {currentActivePage} de {activePageCount}</span>
+                <Button type="button" size="sm" variant="ghost" disabled={currentActivePage === activePageCount}
+                  onClick={() => updateHomeState("activeClientsPage", currentActivePage + 1)}>Siguiente</Button>
+              </div>
+            </nav>
+            <ul className="divide-y divide-border/70">
+              {visibleActiveClients.map(client => (
+                <li key={client.id} className="flex items-start justify-between gap-3 py-3">
+                  <div className="min-w-0 space-y-1.5">
+                    <p className="break-words text-sm font-semibold text-foreground">{client.fullName || "Cliente sin nombre"}</p>
+                    <ClientPipelineStatusBadge status={client.pipelineStatus} />
+                    <p className="text-xs text-muted">Responsable: {client.assignedExecutiveName?.trim() || "Sin asignar"}</p>
+                  </div>
+                  <Button type="button" size="sm" variant="primary" className="size-9 shrink-0 px-0"
+                    aria-label={`Ver ficha de ${client.fullName || "cliente sin nombre"}`} title="Ver ficha"
+                    onClick={() => openClientFicha(client.id)}><IconEye className="size-5 text-white" /></Button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : (
+          <p className="rounded-xl border border-dashed border-border px-3 py-6 text-center text-sm text-muted">
+            No hay clientes activos con este filtro de ejecutivo.
+          </p>
+        )}
+      </AdminFormModal>
 
       <AdminFormModal
         open={Boolean(openBucket && openCopy)}
         title={openCopy?.title ?? "Gestiones"}
         description={openCopy?.description}
-        onClose={() => setOpenBucket(null)}
+        onClose={() => updateHomeState("openBucket", null)}
         size="xl"
       >
         {openItems.length > 0 ? (
@@ -989,11 +1175,34 @@ export function ExecutiveDashboardHome() {
         open={quotationList !== null}
         title={QUOTATION_LIST_COPY[quotationList ?? "sent"].title}
         description={QUOTATION_LIST_COPY[quotationList ?? "sent"].description}
-        onClose={() => setQuotationList(null)}
+        onClose={() => updateHomeState("quotationList", null)}
         size="xl"
       >
         {openQuotations.length > 0 ? (
-          quotationIsapreGroups.length > 0 ? (
+          quotationList === "active" ? (
+            <div className="space-y-3 sm:space-y-4">
+              {activeQuotationIsapreGroups.map((group) => (
+                <section
+                  key={group.isapreId}
+                  className="overflow-hidden rounded-xl border border-border/80 bg-white"
+                >
+                  <header className="flex items-center justify-between gap-3 border-b border-border/80 bg-[color-mix(in_srgb,var(--dash-navy,#092558)_7%,white)] px-4 py-2.5 sm:px-5">
+                    <p className="truncate text-sm font-semibold text-[color:var(--dash-navy,#092558)]">
+                      {group.isapreName}
+                    </p>
+                    <span className="inline-flex shrink-0 items-center rounded-full bg-[color:var(--dash-navy,#092558)] px-2 py-0.5 text-xs font-bold tabular-nums text-white">
+                      {group.clients.length}
+                    </span>
+                  </header>
+                  <ul className="-mx-5 -my-4 divide-y divide-border/70 sm:-mx-6">
+                    {group.clients.map((client, index) =>
+                      renderActiveQuotationClient(client, index),
+                    )}
+                  </ul>
+                </section>
+              ))}
+            </div>
+          ) : quotationIsapreGroups.length > 0 ? (
             <div className="space-y-3 sm:space-y-4">
               {quotationIsapreGroups.map((group) => (
                 <section

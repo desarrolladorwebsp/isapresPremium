@@ -91,7 +91,7 @@ export function IsapreMultiFilter({
       <AdminFormModal
         open={open}
         title="Filtrar por isapre"
-        description="Una, varias o todas. Cambia enviadas, recepcionadas, aceptadas y rechazadas."
+        description="Una, varias o todas. Aplica a los indicadores de cotizaciones."
         onClose={close}
         size="md"
         overlayClassName="z-[60]"

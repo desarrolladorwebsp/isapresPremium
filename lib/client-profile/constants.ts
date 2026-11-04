@@ -1,3 +1,4 @@
+import { defaultAnnualityExpiry, isAnnualityMonth, resolveAnnualityExpiry } from "@/lib/client-profile/annuality";
 import type {
   ClientAdditionalTitularProfile,
   ClientCoverageArea,
@@ -233,6 +234,7 @@ export function buildEmptyClientProfile(): ClientExecutiveProfile {
     coverageRegionId: "",
     preferredClinics: "",
     anualidad: false,
+    anualidadExpiresMonth: "",
     anualidadComment: "",
     segurosComplementarios: "",
     preexistenciasMedicas: "",
@@ -343,7 +345,7 @@ function resolveCoverageRegionId(
 
 export function resolveClientProfile(
   raw: unknown,
-  fallback?: { fullName?: string | null },
+  fallback?: { fullName?: string | null; createdAt?: Date | string | null },
 ): ClientExecutiveProfile {
   const defaults = buildEmptyClientProfile();
   const fromName = splitFullName(fallback?.fullName);
@@ -426,6 +428,7 @@ export function resolveClientProfile(
         ? profile.preferredClinics
         : "",
     anualidad: profile.anualidad === true,
+    anualidadExpiresMonth: resolveAnnualityExpiry(profile, fallback?.createdAt),
     anualidadComment:
       typeof profile.anualidadComment === "string"
         ? profile.anualidadComment
@@ -583,6 +586,12 @@ export function normalizeClientProfileInput(
   const coverageArea: ClientCoverageArea = coverageRegionId ? "region" : "";
   const preferredClinics = (input.preferredClinics ?? "").trim();
   const anualidad = input.anualidad === true;
+  const anualidadExpiresMonth = anualidad
+    ? input.anualidadExpiresMonth ?? defaultAnnualityExpiry()
+    : "";
+  if (anualidad && !isAnnualityMonth(anualidadExpiresMonth)) {
+    throw new Error("Indica el vencimiento de la anualidad con mes y año válidos.");
+  }
   const anualidadComment = anualidad
     ? ""
     : (input.anualidadComment ?? "").trim();
@@ -688,6 +697,7 @@ export function normalizeClientProfileInput(
       coverageRegionId,
       preferredClinics,
       anualidad,
+      anualidadExpiresMonth,
       anualidadComment,
       segurosComplementarios,
       preexistenciasMedicas,

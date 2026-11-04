@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { CotizadorWorkspace } from "@/components/cotizador/cotizador-workspace";
@@ -17,7 +17,7 @@ import { ExecutiveAdminProspectsView } from "@/components/executive/admin/execut
 import { ExecutiveClientsPanel } from "@/components/executive/executive-clients-panel";
 import { ExecutiveCalendarPanel } from "@/components/executive/executive-calendar-panel";
 import { ExecutiveClinicsMapPanel } from "@/components/executive/executive-clinics-map-panel";
-import { ExecutiveDashboardHome } from "@/components/executive/executive-dashboard-home";
+import { createDashboardHomeState, ExecutiveDashboardHome } from "@/components/executive/executive-dashboard-home";
 import { ExecutiveProfilePanel } from "@/components/executive/executive-profile-panel";
 import { ExecutiveQuotesPanel } from "@/components/executive/executive-quotes-panel";
 import {
@@ -44,6 +44,8 @@ function ExecutiveDashboardContent() {
   const { allowedSections, loading: sessionLoading } = useStaffSession();
 
   const { toasts, notify, dismiss } = useExecutiveToast();
+  // Keep Inicio filters and its open list while another section is displayed.
+  const [homeState, setHomeState] = useState(createDashboardHomeState);
 
   const sectionSet = useMemo(
     () => new Set<StaffSection>(allowedSections),
@@ -162,7 +164,7 @@ function ExecutiveDashboardContent() {
         allowedSections={allowedSections}
       >
         {section === "inicio" && canAccessSection("inicio") ? (
-          <ExecutiveDashboardHome />
+          <ExecutiveDashboardHome state={homeState} onStateChange={setHomeState} />
         ) : null}
 
         {section === "calendario" && canAccessSection("calendario") ? (

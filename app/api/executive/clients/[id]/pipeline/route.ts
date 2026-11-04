@@ -19,6 +19,12 @@ function parsePipelinePayload(payload: unknown): UpdateClientPipelineInput {
 
   const data = payload as Record<string, unknown>;
   const input: UpdateClientPipelineInput = {};
+  for (const key of ["pauseUntilMonth", "pauseReason"] as const) {
+    if (data[key] !== undefined) {
+      if (typeof data[key] !== "string") throw new Error("Datos de pausa inválidos.");
+      input[key] = data[key];
+    }
+  }
 
   if (data.pipelineStatus !== undefined) {
     if (typeof data.pipelineStatus !== "string") {

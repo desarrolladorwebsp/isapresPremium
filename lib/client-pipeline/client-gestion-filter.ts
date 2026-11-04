@@ -54,13 +54,15 @@ export function clientGestionBuckets(
 ): Set<ClientGestionFilter> {
   const buckets = new Set<ClientGestionFilter>();
   const status = client.pipelineStatus ?? "NUEVO";
+  if (status === "PAUSADO") return buckets;
+  if (status === "PENDIENTE") buckets.add("hoy");
 
   if (status === "RECEPCIONADO" || status === "PERDIDO" || status === "CERRADO") {
     buckets.add("gestionadas");
     return buckets;
   }
 
-  let hasPending = false;
+  let hasPending = status === "PENDIENTE";
   if (addUrgencyBucket(buckets, client.confirmationCallAt)) hasPending = true;
   if (addUrgencyBucket(buckets, client.nextCallAt)) hasPending = true;
 

@@ -109,6 +109,11 @@ export interface UserRecord {
   trackingExecutiveId?: string | null;
   trackingExecutiveName?: string | null;
   pipelineStatus?: ClientPipelineStatus;
+  pauseUntilMonth?: string | null;
+  pauseReason?: string | null;
+  pausedAt?: string | null;
+  pausedById?: string | null;
+  pendingSince?: string | null;
   checklist?: ClientChecklist;
   closedRecord?: ClientClosedRecord | null;
   pipelineNotes?: string | null;

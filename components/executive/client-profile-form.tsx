@@ -1,5 +1,7 @@
 "use client";
 
+import { ClientAnnualityFields } from "@/components/executive/client-annuality-fields";
+
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -273,6 +275,7 @@ export interface ClientProfileFormValue {
   coverageRegionId: string;
   preferredClinics: string;
   anualidad: boolean;
+  anualidadExpiresMonth: string;
   anualidadComment: string;
   segurosComplementarios: string;
   preexistenciasMedicas: string;
@@ -308,6 +311,7 @@ export function buildEmptyClientProfileFormValue(): ClientProfileFormValue {
     coverageRegionId: "",
     preferredClinics: "",
     anualidad: false,
+    anualidadExpiresMonth: "",
     anualidadComment: "",
     segurosComplementarios: "",
     preexistenciasMedicas: "",
@@ -722,40 +726,7 @@ export function ClientProfileForm({
                 updateField("voluntaryAdditionalCurrency", next)
               }
             />
-            <div className="flex flex-col gap-3 sm:col-span-2 sm:flex-row sm:items-end">
-              <label className="flex h-10 shrink-0 cursor-pointer items-center gap-2 text-sm sm:pb-0">
-                <input
-                  type="checkbox"
-                  checked={value.anualidad}
-                  onChange={(event) =>
-                    onChange({
-                      ...value,
-                      anualidad: event.target.checked,
-                      anualidadComment: event.target.checked
-                        ? ""
-                        : value.anualidadComment,
-                    })
-                  }
-                />
-                <span className="font-medium text-[color:var(--dash-navy,#092558)]">
-                  Anualidad
-                </span>
-              </label>
-              {!value.anualidad ? (
-                <label className="min-w-0 flex-1 space-y-1.5">
-                  <span className={FORM_LABEL_CLASS}>
-                    Comentario (sin anualidad)
-                  </span>
-                  <Input
-                    value={value.anualidadComment}
-                    onChange={(event) =>
-                      updateField("anualidadComment", event.target.value)
-                    }
-                    placeholder="Agregar comentario…"
-                  />
-                </label>
-              ) : null}
-            </div>
+            <ClientAnnualityFields value={value} onChange={(patch) => onChange({ ...value, ...patch })} />
           </div>
         </div>
       ) : null}
@@ -1072,40 +1043,7 @@ export function ClientProfileForm({
                   />
                 </label>
 
-                <div className="flex flex-col gap-3 sm:col-span-2 sm:flex-row sm:items-end">
-                  <label className="flex h-10 shrink-0 cursor-pointer items-center gap-2 text-sm sm:pb-0">
-                    <input
-                      type="checkbox"
-                      checked={value.anualidad}
-                      onChange={(event) =>
-                        onChange({
-                          ...value,
-                          anualidad: event.target.checked,
-                          anualidadComment: event.target.checked
-                            ? ""
-                            : value.anualidadComment,
-                        })
-                      }
-                    />
-                    <span className="font-medium text-[color:var(--dash-navy,#092558)]">
-                      Anualidad
-                    </span>
-                  </label>
-                  {!value.anualidad ? (
-                    <label className="min-w-0 flex-1 space-y-1.5">
-                      <span className={FORM_LABEL_CLASS}>
-                        Comentario (sin anualidad)
-                      </span>
-                      <Input
-                        value={value.anualidadComment}
-                        onChange={(event) =>
-                          updateField("anualidadComment", event.target.value)
-                        }
-                        placeholder="Agregar comentario…"
-                      />
-                    </label>
-                  ) : null}
-                </div>
+                <ClientAnnualityFields value={value} onChange={(patch) => onChange({ ...value, ...patch })} />
 
                 <label className="block space-y-1.5 sm:col-span-2">
                   <span className={FORM_LABEL_CLASS}>Preexistencias</span>
@@ -1768,6 +1706,7 @@ export function userRecordToProfileFormValue(
       coverageRegionId?: string;
       preferredClinics?: string;
       anualidad?: boolean;
+      anualidadExpiresMonth?: string;
       anualidadComment?: string;
       segurosComplementarios?: string;
       preexistenciasMedicas?: string;
@@ -1820,6 +1759,7 @@ export function userRecordToProfileFormValue(
     coverageRegionId: profile?.coverageRegionId ?? "",
     preferredClinics: profile?.preferredClinics ?? "",
     anualidad: profile?.anualidad === true,
+    anualidadExpiresMonth: profile?.anualidadExpiresMonth ?? "",
     anualidadComment: profile?.anualidadComment ?? "",
     segurosComplementarios: profile?.segurosComplementarios ?? "",
     preexistenciasMedicas: profile?.preexistenciasMedicas ?? "",

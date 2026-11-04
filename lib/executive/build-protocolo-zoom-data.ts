@@ -1,3 +1,4 @@
+import { formatAnnualityMonth } from "@/lib/client-profile/annuality";
 import {
   CLIENT_MOTIVO_COTIZACION_OPTIONS,
   PRINCIPAL_TITULAR_ID,
@@ -37,6 +38,7 @@ export interface ProtocoloZoomTitularDatos {
   costoUf: string;
   anualidadSi: boolean;
   anualidadNo: boolean;
+  anualidadExpiresLabel: string;
   seguroComplSi: boolean;
   seguroComplNo: boolean;
   motivoBajarCostos: boolean;
@@ -251,6 +253,7 @@ function buildAdditionalTitularBlock(
     ),
     anualidadSi: false,
     anualidadNo: false,
+    anualidadExpiresLabel: "",
     seguroComplSi: false,
     seguroComplNo: false,
     ...buildMotivoFields(
@@ -291,6 +294,7 @@ function buildPrincipalTitularBlock(
     ),
     anualidadSi: profile?.anualidad === true,
     anualidadNo: profile?.anualidad === false,
+    anualidadExpiresLabel: profile?.anualidad ? formatAnnualityMonth(profile.anualidadExpiresMonth) : "",
     seguroComplSi: hasSeguro,
     seguroComplNo: !hasSeguro && seguros.toLowerCase() === "no",
     ...buildMotivoFields(
@@ -515,6 +519,7 @@ function renderTitularBlock(titular: ProtocoloZoomTitularDatos): string {
       <div class="inline-opts">
         ${check("SI", titular.anualidadSi)}
         ${check("NO", titular.anualidadNo)}
+        ${titular.anualidadExpiresLabel ? ` · Vence: ${escapeHtml(titular.anualidadExpiresLabel)}` : ""}
       </div>
     </div>
     <div class="row">

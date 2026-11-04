@@ -1,3 +1,4 @@
+import { annualityAvailable, resolveAnnualityExpiry, formatAnnualityMonth } from "@/lib/client-profile/annuality";
 import {
   agendaUrgencyFromIso,
   santiagoDateKey,
@@ -9,7 +10,8 @@ export type AgendaStatBucket =
   | "dueToday"
   | "overdue"
   | "upcoming"
-  | "newClients";
+  | "newClients"
+  | "remindersToday";
 
 export type NewClientIntakeSource = "web" | "self_registered" | "assigned";
 
@@ -20,7 +22,7 @@ export interface ExecutiveAgendaStatItem {
   responsibleId: string | null;
   responsibleName: string | null;
   responsibleRole: string | null;
-  kind: "meeting" | "confirmation" | "new_client";
+  kind: "meeting" | "confirmation" | "new_client" | "annuality" | "pending_client" | "reminder";
   title: string;
   /** Acción concreta que el ejecutivo debe hacer. */
   action: string;
@@ -35,6 +37,7 @@ export interface ExecutiveAgendaStats {
   overdue: number;
   upcoming: number;
   newClients: number;
+  remindersToday: number;
   items: Record<AgendaStatBucket, ExecutiveAgendaStatItem[]>;
 }
 
@@ -177,6 +180,7 @@ function emptyItems(): Record<AgendaStatBucket, ExecutiveAgendaStatItem[]> {
     overdue: [],
     upcoming: [],
     newClients: [],
+    remindersToday: [],
   };
 }
 
@@ -258,15 +262,63 @@ export function countExecutiveAgendaStats(input: {
   isAdmin: boolean;
   /** Mes calendario Chile (`YYYY-MM`). Sin valor = sin filtro de mes. */
   monthKey?: string | null;
+  /** Reloj opcional para validar límites de mes de anualidad. */
+  now?: Date;
 }): ExecutiveAgendaStats {
   const { clients, executiveId, isAdmin, monthKey } = input;
   const items = emptyItems();
+  const now = input.now ?? new Date();
+  const todayMonth = santiagoMonthKey(now);
+  const todayDay = santiagoDateKey(now);
 
   for (const client of clients) {
-    if (!isActivePipeline(client)) continue;
-
+    if (client.pipelineStatus === "PAUSADO") continue;
     const assigned = isAssignedTo(client, executiveId, isAdmin);
     const clientName = client.fullName?.trim() || "Cliente sin nombre";
+    if (assigned && client.pipelineStatus === "PENDIENTE") {
+      const since = client.pendingSince || client.createdAt;
+      const sinceMonth = santiagoMonthKey(since);
+      if (!monthKey || (sinceMonth && sinceMonth <= monthKey)) {
+        const responsible = assignedResponsible(client);
+        const overdue = (santiagoDateKey(since) ?? "") < (santiagoDateKey(now) ?? "");
+        pushByUrgency(items, {
+          id: `${client.id}:pending`, clientId: client.id, clientName,
+          responsibleId: responsible.id, responsibleName: responsible.name, responsibleRole: responsible.role,
+          kind: "pending_client", title: "Cliente pendiente de revisión",
+          action: "Revisar la ficha y registrar la siguiente gestión del cliente.",
+          whenIso: since, whenLabel: formatAgendaDay(since),
+        }, overdue ? "overdue" : "due_today");
+      }
+    }
+    const annualityMonth = resolveAnnualityExpiry(client.clientProfile, client.createdAt);
+    if (client.pipelineStatus !== "PENDIENTE" && assigned && annualityAvailable(annualityMonth, now) && (!monthKey || annualityMonth <= monthKey)) {
+      const responsible = assignedResponsible(client);
+      pushByUrgency(items, {
+        id: `${client.id}:annuality`, clientId: client.id, clientName,
+        responsibleId: responsible.id, responsibleName: responsible.name, responsibleRole: responsible.role,
+        kind: "annuality", title: "Anualidad disponible para gestionar",
+        action: "Contactar al cliente para revisar su cambio de Isapre. Al terminar, desmarca Anualidad en su previsión.",
+        whenIso: `${annualityMonth}-01T12:00:00Z`,
+        whenLabel: `Anualidad: ${formatAnnualityMonth(annualityMonth)}`,
+      }, annualityMonth === todayMonth ? "due_today" : "overdue");
+    }
+
+    if (!isActivePipeline(client)) continue;
+
+    // Free-form reminders have their own card; existing management totals stay unchanged.
+    if (assigned && todayDay && client.reminderAt && belongsToMonth(client.reminderAt, monthKey) &&
+        santiagoDateKey(client.reminderAt) === todayDay) {
+      const responsible = assignedResponsible(client);
+      items.remindersToday.push({
+        id: `${client.id}:reminder`, clientId: client.id, clientName,
+        responsibleId: responsible.id, responsibleName: responsible.name, responsibleRole: responsible.role,
+        kind: "reminder", title: "Recordatorio de hoy",
+        action: client.reminderNote?.trim() || "Revisar el pendiente y registrar su resolución en la ficha.",
+        whenIso: client.reminderAt, whenLabel: formatAgendaWhen(client.reminderAt),
+        bucket: "remindersToday",
+      });
+    }
+
 
     if (client.confirmationCallAt && ownsConfirmation(client, executiveId, isAdmin)) {
       if (belongsToMonth(client.confirmationCallAt, monthKey)) {
@@ -379,6 +431,7 @@ export function countExecutiveAgendaStats(input: {
   items.dueToday.sort(sortByWhen);
   items.overdue.sort(sortByWhen);
   items.upcoming.sort(sortByWhen);
+  items.remindersToday.sort(sortByWhen);
   items.newClients.sort((a, b) => a.clientName.localeCompare(b.clientName, "es"));
 
   return {
@@ -386,6 +439,7 @@ export function countExecutiveAgendaStats(input: {
     overdue: items.overdue.length,
     upcoming: items.upcoming.length,
     newClients: items.newClients.length,
+    remindersToday: items.remindersToday.length,
     items,
   };
 }

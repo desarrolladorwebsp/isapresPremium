@@ -1,3 +1,4 @@
+import { resumeDuePausedClients } from "@/lib/api/client-pause-store";
 import { NextResponse } from "next/server";
 import {
   createManualClient,
@@ -76,6 +77,7 @@ export async function GET(request: Request) {
         ? (user as ExecutiveSessionUser).executiveKind
         : null;
 
+    await resumeDuePausedClients();
     const clients =
       realm === AUTH_REALM.admin
         ? await readClientRecords()

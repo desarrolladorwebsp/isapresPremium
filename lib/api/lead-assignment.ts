@@ -1,3 +1,5 @@
+import { AUTOMATIC_CLIENT_ASSIGNMENT_ENABLED, MANUAL_ASSIGNMENT_MESSAGE } from "@/lib/client-pipeline/assignment-policy";
+import { ApiError } from "@/lib/api/api-error";
 import { prisma } from "@/lib/prisma";
 import { isExecutiveSubscriptionAllowingAccess } from "@/lib/auth/subscription";
 import {
@@ -41,6 +43,7 @@ export interface ListEligibleExecutivesOptions {
 export async function listEligibleExecutivesForAssignment(
   options?: ListEligibleExecutivesOptions,
 ): Promise<EligibleExecutiveRow[]> {
+  if (!AUTOMATIC_CLIENT_ASSIGNMENT_ENABLED && (options?.automatic || options?.inboundPool)) return [];
   if (
     options?.executiveKind &&
     !isClientAssignableExecutiveKind(options.executiveKind)
@@ -145,6 +148,7 @@ function mapEligibleRow(
 export async function pickExecutiveRoundRobin(
   options?: Pick<ListEligibleExecutivesOptions, "executiveKind" | "inboundPool">,
 ): Promise<string | null> {
+  if (!AUTOMATIC_CLIENT_ASSIGNMENT_ENABLED) return null;
   const executives = await listEligibleExecutivesForAssignment({
     ...options,
     automatic: true,
@@ -218,6 +222,7 @@ export async function autoAssignClientExecutive(
 
   if (!client || client.role !== "CLIENT") return null;
   if (client.assignedExecutiveId) return client.assignedExecutiveId;
+  if (!AUTOMATIC_CLIENT_ASSIGNMENT_ENABLED) return null;
 
   const executiveId = await pickExecutiveRoundRobin(options);
   if (!executiveId) return null;
@@ -271,6 +276,7 @@ export async function distributeUnassignedClients(): Promise<{
   assigned: number;
   remaining: number;
 }> {
+  if (!AUTOMATIC_CLIENT_ASSIGNMENT_ENABLED) throw new ApiError(MANUAL_ASSIGNMENT_MESSAGE, 409, "AUTOMATIC_ASSIGNMENT_PAUSED");
   const unassigned = await prisma.user.findMany({
     where: { role: "CLIENT", assignedExecutiveId: null },
     orderBy: { createdAt: "asc" },

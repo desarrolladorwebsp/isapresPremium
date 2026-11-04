@@ -101,6 +101,8 @@ export interface ClientExecutiveProfile {
   preferredClinics: string;
   /** Si el beneficiario tiene anualidad. */
   anualidad: boolean;
+  /** Vencimiento calendario YYYY-MM, sin día. */
+  anualidadExpiresMonth: string;
   /** Comentario cuando no tiene anualidad. */
   anualidadComment: string;
   /** Seguros complementarios (texto libre por ahora). */
@@ -139,6 +141,7 @@ export interface ClientProfileInput {
   coverageRegionId?: string | null;
   preferredClinics?: string | null;
   anualidad?: boolean | null;
+  anualidadExpiresMonth?: string | null;
   anualidadComment?: string | null;
   segurosComplementarios?: string | null;
   preexistenciasMedicas?: string | null;

@@ -77,7 +77,7 @@ export function sentQuotationIsapreOptions(
 
 interface QuotationKpiFilter {
   quotations: readonly SentQuotationKpiRow[];
-  period: AdminReportPeriod;
+  period?: AdminReportPeriod;
   /** Vacío = todos los ejecutivos. */
   selectedExecutiveIds: readonly string[];
   /** Vacío = todas las isapres. El documento cuenta si incluye al menos una. */
@@ -86,7 +86,7 @@ interface QuotationKpiFilter {
 
 function matchesQuotationScope(
   row: SentQuotationKpiRow,
-  input: QuotationKpiFilter,
+  input: Pick<QuotationKpiFilter, "selectedExecutiveIds" | "selectedIsapreIds">,
 ): boolean {
   if (
     input.selectedExecutiveIds.length > 0 &&
@@ -100,28 +100,43 @@ function matchesQuotationScope(
 }
 
 export function filterSentQuotations(input: QuotationKpiFilter): SentQuotationKpiRow[] {
-  if (!isValidReportPeriod(input.period)) return [];
+  if (input.period && !isValidReportPeriod(input.period)) return [];
   return input.quotations.filter((row) => {
-    if (!isoInPeriod(row.sentAt, input.period)) return false;
+    if (input.period && !isoInPeriod(row.sentAt, input.period)) return false;
     return matchesQuotationScope(row, input);
   });
 }
 
-export type QuotationOutcomeStatus = "RECEIVED" | "ACCEPTED" | "REJECTED";
+/** Currently awaiting a client response. By default includes all sending months.
+ * Optional period supports an explicit monthly view without changing sent/outcome KPIs.
+ */
+export function filterActiveQuotations(
+  input: Omit<QuotationKpiFilter, "period"> & { period?: AdminReportPeriod },
+): SentQuotationKpiRow[] {
+  if (input.period && !isValidReportPeriod(input.period)) return [];
+  return input.quotations.filter(row => {
+    if (row.status !== "SENT" || !Number.isFinite(Date.parse(row.sentAt))) return false;
+    if (input.period && !isoInPeriod(row.sentAt, input.period)) return false;
+    return matchesQuotationScope(row, input);
+  });
+}
 
-const OUTCOME_DATE: Record<
-  QuotationOutcomeStatus,
-  "receivedAt" | "acceptedAt" | "rejectedAt"
-> = {
-  RECEIVED: "receivedAt",
-  ACCEPTED: "acceptedAt",
-  REJECTED: "rejectedAt",
-};
+export interface ActiveQuotationClient {
+  clientId: string;
+  clientName: string;
+  items: SentQuotationKpiRow[];
+}
 
 export interface QuotationIsapreGroup {
   isapreId: string;
   isapreName: string;
   items: SentQuotationKpiRow[];
+}
+
+export interface ActiveQuotationIsapreGroup {
+  isapreId: string;
+  isapreName: string;
+  clients: ActiveQuotationClient[];
 }
 
 function quotationIsapreKeys(row: SentQuotationKpiRow): Array<{ id: string; name: string }> {
@@ -140,7 +155,7 @@ function quotationIsapreKeys(row: SentQuotationKpiRow): Array<{ id: string; name
   return [...entries.entries()].map(([id, name]) => ({ id, name }));
 }
 
-/** Organiza documentos por Isapre; si uno incluye varias, aparece en cada grupo. */
+/** Organiza documentos por Isapre; un documento con varias Isapres aparece en cada grupo correspondiente. */
 export function groupQuotationsByIsapre(
   quotations: readonly SentQuotationKpiRow[],
 ): QuotationIsapreGroup[] {
@@ -157,16 +172,76 @@ export function groupQuotationsByIsapre(
   );
 }
 
+/** Unique clients, after applying status, sending month, issuer and insurer filters. */
+export function groupActiveQuotationsByClient(
+  quotations: readonly SentQuotationKpiRow[],
+): ActiveQuotationClient[] {
+  const groups = new Map<string, ActiveQuotationClient>();
+  for (const row of quotations) {
+    if (!row.clientId) continue;
+    const existing = groups.get(row.clientId);
+    if (existing) existing.items.push(row);
+    else groups.set(row.clientId, { clientId: row.clientId, clientName: row.clientName, items: [row] });
+  }
+  return [...groups.values()].sort((a, b) =>
+    a.clientName.localeCompare(b.clientName, "es", { sensitivity: "base" }),
+  );
+}
+
+/** Agrupa los clientes pendientes por Isapre, conservando documentos y clientes únicos dentro de cada grupo. */
+export function groupActiveQuotationsByIsapre(
+  quotations: readonly SentQuotationKpiRow[],
+): ActiveQuotationIsapreGroup[] {
+  const groups = new Map<string, ActiveQuotationIsapreGroup>();
+  for (const row of quotations) {
+    if (!row.clientId) continue;
+    for (const isapre of quotationIsapreKeys(row)) {
+      let group = groups.get(isapre.id);
+      if (!group) {
+        group = { isapreId: isapre.id, isapreName: isapre.name, clients: [] };
+        groups.set(isapre.id, group);
+      }
+      let client = group.clients.find((item) => item.clientId === row.clientId);
+      if (!client) {
+        client = { clientId: row.clientId, clientName: row.clientName, items: [] };
+        group.clients.push(client);
+      }
+      client.items.push(row);
+    }
+  }
+  return [...groups.values()]
+    .map((group) => ({
+      ...group,
+      clients: group.clients.sort((left, right) =>
+        left.clientName.localeCompare(right.clientName, "es", { sensitivity: "base" }),
+      ),
+    }))
+    .sort((left, right) =>
+      left.isapreName.localeCompare(right.isapreName, "es", { sensitivity: "base" }),
+    );
+}
+
+export type QuotationOutcomeStatus = "RECEIVED" | "ACCEPTED" | "REJECTED";
+
+const OUTCOME_DATE: Record<
+  QuotationOutcomeStatus,
+  "receivedAt" | "acceptedAt" | "rejectedAt"
+> = {
+  RECEIVED: "receivedAt",
+  ACCEPTED: "acceptedAt",
+  REJECTED: "rejectedAt",
+};
+
 /** Estado actual en el período de ese cambio, con el mismo ejecutivo e isapre. */
 export function filterOutcomeQuotations(
   input: QuotationKpiFilter & { status: QuotationOutcomeStatus },
 ): SentQuotationKpiRow[] {
-  if (!isValidReportPeriod(input.period)) return [];
+  if (input.period && !isValidReportPeriod(input.period)) return [];
   const dateKey = OUTCOME_DATE[input.status];
   return input.quotations.filter((row) => {
     const at = row[dateKey];
     if (row.status !== input.status || !at) return false;
-    if (!isoInPeriod(at, input.period)) return false;
+    if (input.period && !isoInPeriod(at, input.period)) return false;
     return matchesQuotationScope(row, input);
   });
 }

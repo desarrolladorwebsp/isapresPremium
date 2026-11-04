@@ -1,5 +1,7 @@
 "use client";
 
+import { AUTOMATIC_CLIENT_ASSIGNMENT_ENABLED } from "@/lib/client-pipeline/assignment-policy";
+
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -341,7 +343,7 @@ function UsersDirectoryTable({
               Clientes
             </AdminTableHeaderCell>
           ) : null}
-          <AdminTableHeaderCell>Asignación automática</AdminTableHeaderCell>
+          <AdminTableHeaderCell>Asignación automática{!AUTOMATIC_CLIENT_ASSIGNMENT_ENABLED ? " (en pausa)" : ""}</AdminTableHeaderCell>
           <AdminTableHeaderCell {...sortProps("estado")}>
             Estado
           </AdminTableHeaderCell>
@@ -460,12 +462,12 @@ function UsersDirectoryTable({
                     <input
                       type="checkbox"
                       checked={account.autoAssignmentEnabled === true}
-                      disabled={!canManage || assignmentSaving}
+                      disabled={!AUTOMATIC_CLIENT_ASSIGNMENT_ENABLED || !canManage || assignmentSaving}
                       onChange={() => onToggleAutoAssignments(account)}
                       aria-label={`Asignación automática de clientes para ${account.fullName}`}
                       className="h-4 w-4 accent-primary"
                     />
-                    {account.autoAssignmentEnabled ? "Activada" : "Desactivada"}
+                    {!AUTOMATIC_CLIENT_ASSIGNMENT_ENABLED ? "En pausa" : account.autoAssignmentEnabled ? "Activada" : "Desactivada"}
                   </label>
                 )}
                 {account.autoAssignmentEnabled &&

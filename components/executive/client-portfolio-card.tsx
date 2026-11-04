@@ -1,5 +1,7 @@
 "use client";
 
+import { formatAnnualityMonth } from "@/lib/client-profile/annuality";
+
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { ClientOriginBadge } from "@/components/executive/client-origin-badge";
@@ -204,6 +206,10 @@ export function ClientPortfolioCard({
         </div>
       </header>
 
+      {pipelineStatus === "PAUSADO" ? <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
+        <p className="font-semibold">Retomar en {formatAnnualityMonth(client.pauseUntilMonth ?? "")}</p>
+        <p>{client.pauseReason}</p>
+      </div> : (
       <div className="overflow-hidden rounded-xl border border-border/80 bg-bg-layout/30">
         <div className="grid grid-cols-1 divide-y divide-border/80 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
           <ScheduleCell
@@ -231,6 +237,7 @@ export function ClientPortfolioCard({
           />
         </div>
       </div>
+      )}
 
       <section className="space-y-2">
         <p className="flex items-center gap-1.5 text-sm font-bold text-primary-dark">

@@ -1,5 +1,7 @@
 "use client";
 
+import { ClientAnnualityFields } from "@/components/executive/client-annuality-fields";
+
 import { useState, type FormEvent, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -246,6 +248,7 @@ export function CreateClientModal({
         coverageRegionId: null,
         preferredClinics: profile.preferredClinics.trim() || null,
         anualidad: profile.anualidad,
+        anualidadExpiresMonth: profile.anualidadExpiresMonth,
         anualidadComment: null,
         segurosComplementarios: profile.segurosComplementarios.trim() || null,
         preexistenciasMedicas: profile.preexistenciasMedicas.trim() || null,
@@ -483,13 +486,7 @@ export function CreateClientModal({
                 }))
               }
             />
-            <YesNoRow
-              label="Anualidad"
-              value={profile.anualidad}
-              onChange={(next) =>
-                setProfile((current) => ({ ...current, anualidad: next }))
-              }
-            />
+            <ClientAnnualityFields value={profile} onChange={(patch) => setProfile((current) => ({ ...current, ...patch }))} />
             <div className="sm:col-span-2">
               <YesNoRow
                 label="Preexistencias"

@@ -1,5 +1,7 @@
 "use client";
 
+import { AUTOMATIC_CLIENT_ASSIGNMENT_ENABLED } from "@/lib/client-pipeline/assignment-policy";
+
 import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
@@ -220,6 +222,7 @@ export function ExecutiveAdminProspectsView({
   }
 
   async function handleDistribute() {
+    if (!AUTOMATIC_CLIENT_ASSIGNMENT_ENABLED) return;
     setDistributing(true);
     try {
       const result = await distributeUnassignedQuotes();
@@ -250,7 +253,7 @@ export function ExecutiveAdminProspectsView({
             description="Asignación, reasignación, estados e historial de seguimiento."
           actions={
             <>
-              <Button
+              {AUTOMATIC_CLIENT_ASSIGNMENT_ENABLED ? (<Button
                 type="button"
                 size="sm"
                 variant="ghost"
@@ -260,7 +263,7 @@ export function ExecutiveAdminProspectsView({
                 {distributing
                   ? "Distribuyendo…"
                   : `Distribuir sin asignar (${stats.unassigned})`}
-              </Button>
+              </Button>) : null}
               <AdminRefreshButton
                 loading={isFetching && !loading}
                 onClick={() => void handleRefresh()}

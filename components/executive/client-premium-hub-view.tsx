@@ -1,5 +1,7 @@
 "use client";
 
+import { annualityLabel } from "@/lib/client-profile/annuality";
+
 import { useEffect, useMemo, useState } from "react";
 import { ClientFichaCapsule } from "@/components/executive/client-ficha-capsule";
 import { ClientQuotationManager } from "@/components/executive/client-quotation-manager";
@@ -516,7 +518,7 @@ export function ClientPremiumExecutiveCapsules({
         { label: "Adicional", value: voluntarioLabel },
         {
           label: "Anualidad",
-          value: profileForm.anualidad ? "Con anualidad" : "Sin anualidad",
+          value: annualityLabel(profileForm),
         },
       ],
       plan: [

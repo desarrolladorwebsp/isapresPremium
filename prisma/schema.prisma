@@ -80,6 +80,8 @@ enum SubscriptionStatus {
 }
 
 enum ClientPipelineStatus {
+  PAUSADO
+  PENDIENTE
   NUEVO
   CONTACTADO
   NO_CONTESTA
@@ -331,6 +333,11 @@ model User {
   /// Ejecutivo que hizo el handoff y sigue el cliente hasta RECEPCIONADO/PERDIDO (sin ser el assignee).
   trackingExecutiveId    String?              @map("tracking_executive_id")
   pipelineStatus         ClientPipelineStatus @default(NUEVO) @map("pipeline_status")
+  pauseUntilMonth        String?              @map("pause_until_month")
+  pauseReason            String?              @map("pause_reason")
+  pausedAt               DateTime?            @map("paused_at")
+  pausedById             String?              @map("paused_by_id")
+  pendingSince           DateTime?            @map("pending_since")
   pipelineChecklist      Json?                @map("pipeline_checklist")
   pipelineClosedRecord   Json?                @map("pipeline_closed_record")
   pipelineNotes          String?              @map("pipeline_notes")
@@ -382,6 +389,7 @@ model User {
   @@index([nextCallAt])
   @@index([confirmationCallAt])
   @@index([reminderAt])
+  @@index([pipelineStatus, pauseUntilMonth])
   @@map("users")
 }
 

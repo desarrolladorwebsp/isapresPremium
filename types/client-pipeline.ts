@@ -1,4 +1,6 @@
 export type ClientPipelineStatus =
+  | "PAUSADO"
+  | "PENDIENTE"
   | "NUEVO"
   | "CONTACTADO"
   | "NO_CONTESTA"
@@ -34,6 +36,8 @@ export interface ClientClosedRecord {
 
 export interface UpdateClientPipelineInput {
   pipelineStatus?: ClientPipelineStatus;
+  pauseUntilMonth?: string;
+  pauseReason?: string;
   /**
    * Cambio manual desde el select de estatus.
    * Exige `statusChangeNote` y deja registro en el historial.

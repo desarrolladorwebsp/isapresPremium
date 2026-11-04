@@ -1,5 +1,8 @@
 "use client";
 
+import { ClientPauseDialog } from "@/components/executive/client-pause-dialog";
+import { santiagoMonthKey } from "@/lib/client-pipeline/agenda-urgency";
+
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -58,6 +61,7 @@ import {
 import {
   CONFIRMATION_CALL_LEAD_MINUTES,
   canEditClientDataAsExecutive,
+  canViewClientAsExecutive,
   isTrackingOnlyForExecutive,
 } from "@/lib/client-pipeline/tracking";
 import {
@@ -726,6 +730,9 @@ function buildFichaProfileHistoryNotes(
     );
   }
 
+  if (profileForm.anualidad && original.anualidadExpiresMonth !== profileForm.anualidadExpiresMonth) {
+    notes.push(`Vencimiento de anualidad cambiado a ${profileForm.anualidadExpiresMonth}.`);
+  }
   if (original.anualidad !== profileForm.anualidad) {
     notes.push(
       profileForm.anualidad
@@ -1077,6 +1084,7 @@ function profileSnapshot(value: ClientProfileFormValue): string {
     coverageRegionId: value.coverageRegionId || "",
     preferredClinics: value.preferredClinics || "",
     anualidad: value.anualidad === true,
+    anualidadExpiresMonth: value.anualidadExpiresMonth || "",
     anualidadComment: value.anualidadComment || "",
     segurosComplementarios: value.segurosComplementarios || "",
     preexistenciasMedicas: value.preexistenciasMedicas || "",
@@ -1142,6 +1150,7 @@ export function ClientPipelineDrawer({
     executiveKind,
   });
 
+  const [annualityPauseOpen, setAnnualityPauseOpen] = useState(false);
   const [pipelineStatus, setPipelineStatus] = useState<ClientPipelineStatus>("NUEVO");
   const [checklist, setChecklist] = useState<ClientChecklist>(buildDefaultClientChecklist());
   const [closedRecord, setClosedRecord] = useState<ClientClosedRecord>(
@@ -1870,6 +1879,7 @@ export function ClientPipelineDrawer({
       coverageRegionId: profileForm.coverageRegionId || null,
       preferredClinics: profileForm.preferredClinics.trim() || null,
       anualidad: profileForm.anualidad,
+      anualidadExpiresMonth: profileForm.anualidadExpiresMonth,
       anualidadComment: profileForm.anualidad
         ? null
         : profileForm.anualidadComment.trim() || null,
@@ -2245,8 +2255,13 @@ export function ClientPipelineDrawer({
     }
   }
 
-  async function handleSaveFichaModal(options?: { closeModal?: boolean }) {
-    if (!client || !canEditClientData) return;
+  async function handleSaveFichaModal(options?: { closeModal?: boolean; annualityDecision?: boolean; pause?: { month: string; reason: string } }) {
+    if (!client || !canEditClientData) return false;
+    const annualityChanged = profileForm.anualidad && (!client.clientProfile?.anualidad || profileForm.anualidadExpiresMonth !== client.clientProfile?.anualidadExpiresMonth);
+    if (fichaModal === "prevision" && annualityChanged && client.pipelineStatus !== "PAUSADO" && profileForm.anualidadExpiresMonth > (santiagoMonthKey(new Date()) ?? "") && options?.annualityDecision === undefined) {
+      setAnnualityPauseOpen(true);
+      return false;
+    }
     setSaving(true);
     try {
       const historyBodies = buildFichaProfileHistoryNotes(client, profileForm);
@@ -2284,6 +2299,10 @@ export function ClientPipelineDrawer({
       }
 
       const updated = await updateClientPipeline(client.id, {
+        ...(options?.pause ? {
+          pipelineStatus: "PAUSADO" as const, manualStatusChange: true,
+          statusChangeNote: options.pause.reason, pauseUntilMonth: options.pause.month, pauseReason: options.pause.reason,
+        } : {}),
         checklist,
         clientProfile: buildProfilePayload(),
         ...(historyBodies.length > 0
@@ -2306,11 +2325,13 @@ export function ClientPipelineDrawer({
       if (options?.closeModal !== false) {
         onFichaModalChange?.(null);
       }
+      return true;
     } catch (error) {
       onNotify(
         error instanceof Error ? error.message : "No se pudo guardar.",
         "error",
       );
+      return false;
     } finally {
       setSaving(false);
     }
@@ -4396,7 +4417,8 @@ export function ClientPipelineDrawer({
               profileForm={profileForm}
               onProfileChange={setProfileForm}
               pipelineStatus={pipelineStatus}
-              onManualStatusChange={async (nextStatus, note) => {
+              canPause={Boolean(client && sessionUser?.id && canViewClientAsExecutive(client, sessionUser.id, isAdmin, executiveKind))}
+              onManualStatusChange={async (nextStatus, note, pause) => {
                 if (!client || saving || actionBusy) return;
                 setActionBusy(true);
                 try {
@@ -4404,6 +4426,7 @@ export function ClientPipelineDrawer({
                     pipelineStatus: nextStatus,
                     manualStatusChange: true,
                     statusChangeNote: note,
+                    ...(pause ? { pauseUntilMonth: pause.month, pauseReason: pause.reason } : {}),
                   });
                   setPipelineStatus(updated.pipelineStatus ?? nextStatus);
                   if (canViewInternalNotes) {
@@ -4833,8 +4856,16 @@ export function ClientPipelineDrawer({
         </div>
       </AdminFormModal>
 
+      {annualityPauseOpen ? <ClientPauseDialog annuality initialMonth={profileForm.anualidadExpiresMonth} initialReason="Anualidad"
+        onClose={() => setAnnualityPauseOpen(false)}
+        onDecline={() => { setAnnualityPauseOpen(false); void handleSaveFichaModal({ annualityDecision: false }); }}
+        onConfirm={async (month, reason) => {
+          const saved = await handleSaveFichaModal({ annualityDecision: true, pause: { month, reason } });
+          if (!saved) throw new Error("No se pudieron guardar los cambios. Revisa los datos de la ficha.");
+          setAnnualityPauseOpen(false);
+        }} /> : null}
       <AdminFormModal
-        open={Boolean(client && fichaModal === "prevision")}
+        open={Boolean(client && fichaModal === "prevision" && !annualityPauseOpen)}
         title="Previsión actual"
         description="Isapre, Fonasa o sin previsión, precio del plan y anualidad."
         onClose={() => onFichaModalChange?.(null)}

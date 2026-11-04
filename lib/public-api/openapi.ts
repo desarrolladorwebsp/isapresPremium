@@ -130,7 +130,7 @@ export function buildPublicApiAgentGuide(request: Request) {
               "object — pares clave/valor adicionales (región, renta, etc.)",
             executiveKind:
               "ISAPRES_PREMIUM | ISAPRES | ZOOM — default ISAPRES_PREMIUM",
-            autoAssign: "boolean — default false; round-robin al ejecutivo si true",
+            autoAssign: "boolean — default false; reparto automático temporalmente pausado; conserva responsables existentes",
             notifyAdmin:
               "boolean — default false; envía aviso interno Resend con CC a premiumisapres@gmail.com",
           },

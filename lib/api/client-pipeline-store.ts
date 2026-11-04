@@ -1,3 +1,6 @@
+import { AUTOMATIC_CLIENT_ASSIGNMENT_ENABLED, MANUAL_ASSIGNMENT_MESSAGE } from "@/lib/client-pipeline/assignment-policy";
+import { isPauseOnlyChange, validatePause } from "@/lib/client-pipeline/pause";
+import { resolveAnnualityExpiry } from "@/lib/client-profile/annuality";
 import { prisma } from "@/lib/prisma";
 import { ApiError } from "@/lib/api/api-error";
 import {
@@ -190,7 +193,14 @@ export async function updateClientPipeline(
   },
 ): Promise<UserRecord> {
   const existing = await readClientOrThrow(userId);
-  assertCanEditClientData(existing, actor);
+  if (isPauseOnlyChange(input, existing.pipelineStatus)) {
+    assertExecutiveCanView(existing, actor.executiveAccountId, actor.isAdmin, actor.executiveKind);
+  } else {
+    assertCanEditClientData(existing, actor);
+  }
+  if (existing.pipelineStatus === "PAUSADO" && input.pipelineStatus && input.pipelineStatus !== "PAUSADO" && !input.manualStatusChange) {
+    throw new ApiError("Reactiva el cliente antes de cambiar su estado mediante una gestión.", 409, "CLIENT_PAUSED");
+  }
 
   const canNotes = canAccessInternalPipelineNotes({
     isAdmin: actor.isAdmin,
@@ -203,6 +213,23 @@ export async function updateClientPipeline(
     input.pipelineStatus as string | undefined,
   );
 
+  if (input.pipelineStatus === "PAUSADO" && (existing.pipelineStatus !== "PAUSADO" || input.manualStatusChange || input.pauseUntilMonth !== undefined || input.pauseReason !== undefined)) {
+    if (!input.manualStatusChange) throw new ApiError("La pausa debe ser confirmada manualmente.", 400, "MANUAL_PAUSE_REQUIRED");
+    try {
+      const pause = validatePause(input.pauseUntilMonth, input.pauseReason);
+      data.pauseUntilMonth = pause.month;
+      data.pauseReason = pause.reason;
+      data.pausedAt = new Date();
+      data.pausedById = actor.executiveAccountId;
+    } catch (error) {
+      throw new ApiError(error instanceof Error ? error.message : "Pausa inválida.", 400, "INVALID_PAUSE");
+    }
+  } else if (input.pauseUntilMonth !== undefined || input.pauseReason !== undefined) {
+    throw new ApiError("Los datos de pausa requieren el estado En pausa.", 400, "INVALID_PAUSE");
+  }
+  if (normalizedStatus && normalizedStatus !== existing.pipelineStatus) {
+    data.pendingSince = normalizedStatus === "PENDIENTE" ? new Date() : null;
+  }
   if (input.manualStatusChange) {
     if (input.pipelineStatus === undefined) {
       throw new ApiError(
@@ -231,13 +258,13 @@ export async function updateClientPipeline(
         ] ?? previousStatus
       : "—";
     const nextLabel = CLIENT_PIPELINE_STATUS_LABELS[normalizedStatus];
-    if (normalizedStatus !== existing.pipelineStatus) {
+    if (normalizedStatus !== existing.pipelineStatus || normalizedStatus === "PAUSADO") {
       data.pipelineStatus = normalizedStatus;
       const actorName = await resolveActorDisplayName(
         actor.executiveAccountId,
         actor.isAdmin,
       );
-      const noteBody = `Estatus cambiado manualmente de "${previousLabel}" a "${nextLabel}". Motivo: ${reason}`;
+      const noteBody = `Estatus cambiado manualmente de "${previousLabel}" a "${nextLabel}". Motivo: ${reason}${normalizedStatus === "PAUSADO" ? `. Retomar: ${data.pauseUntilMonth}. Motivo de pausa: ${data.pauseReason}` : ""}`;
       const notesBase =
         input.pipelineNotes !== undefined
           ? input.pipelineNotes
@@ -273,7 +300,7 @@ export async function updateClientPipeline(
         "FORBIDDEN",
       );
     }
-    data.pipelineNotes = input.pipelineNotes?.trim() || null;
+    if (!input.manualStatusChange) data.pipelineNotes = input.pipelineNotes?.trim() || null;
   }
 
   if (input.nextCallAt !== undefined) {
@@ -340,7 +367,14 @@ export async function updateClientPipeline(
 
   if (input.clientProfile !== undefined) {
     try {
-      const normalized = normalizeClientProfileInput(input.clientProfile, {
+      const normalized = normalizeClientProfileInput({
+        ...input.clientProfile,
+        anualidadExpiresMonth: input.clientProfile.anualidadExpiresMonth ?? (
+          input.clientProfile.anualidad && (existing.clientProfile as { anualidad?: boolean } | null)?.anualidad
+            ? resolveAnnualityExpiry(existing.clientProfile as { anualidad?: boolean; anualidadExpiresMonth?: string }, existing.createdAt)
+            : undefined
+        ),
+      }, {
         requireTitularRut: false,
       });
       if (normalized.email !== existing.email) {
@@ -397,13 +431,19 @@ export async function updateClientPipeline(
     Object.assign(data, clearTrackingFields());
   }
 
-  const user = await prisma.user.update({
-    where: { id: userId },
-    data,
-    include: clientRecordInclude,
-  });
-
-  return mapDbClientRecord(user);
+  try {
+    const user = await prisma.user.update({
+      where: { id: userId, updatedAt: existing.updatedAt },
+      data,
+      include: clientRecordInclude,
+    });
+    return mapDbClientRecord(user);
+  } catch (error) {
+    if (error && typeof error === "object" && "code" in error && error.code === "P2025") {
+      throw new ApiError("El cliente cambió mientras guardabas. Actualiza la ficha e inténtalo nuevamente.", 409, "CLIENT_CHANGED");
+    }
+    throw error;
+  }
 }
 
 /**
@@ -547,11 +587,13 @@ export async function redirectClientToIsapresPremium(
   }
 
   const existing = await readClientOrThrow(userId);
+  if (existing.pipelineStatus === "PAUSADO") throw new ApiError("Reactiva el cliente antes de derivarlo.", 409, "CLIENT_PAUSED");
   assertExecutiveAccess(existing, actor.executiveAccountId, actor.isAdmin);
 
   let targetId = input.executiveAccountId?.trim() || null;
 
   if (input.autoAssign) {
+    if (!AUTOMATIC_CLIENT_ASSIGNMENT_ENABLED) throw new ApiError(MANUAL_ASSIGNMENT_MESSAGE, 409, "AUTOMATIC_ASSIGNMENT_PAUSED");
     targetId = await pickExecutiveRoundRobin({
       executiveKind: "ISAPRES_PREMIUM",
     });
@@ -785,6 +827,7 @@ export async function redirectClientFromIsapresPremium(
   }
 
   const existing = await readClientOrThrow(userId);
+  if (existing.pipelineStatus === "PAUSADO") throw new ApiError("Reactiva el cliente antes de derivarlo.", 409, "CLIENT_PAUSED");
   assertExecutiveAccess(existing, actor.executiveAccountId, actor.isAdmin);
 
   const kindLabel =
@@ -794,6 +837,7 @@ export async function redirectClientFromIsapresPremium(
   let targetId = input.executiveAccountId?.trim() || null;
 
   if (input.autoAssign) {
+    if (!AUTOMATIC_CLIENT_ASSIGNMENT_ENABLED) throw new ApiError(MANUAL_ASSIGNMENT_MESSAGE, 409, "AUTOMATIC_ASSIGNMENT_PAUSED");
     targetId = await pickExecutiveRoundRobin({ executiveKind: targetKind });
     if (!targetId) {
       throw new ApiError(

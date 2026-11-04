@@ -1,5 +1,11 @@
 "use client";
 
+import { ClientPauseDialog } from "@/components/executive/client-pause-dialog";
+import { defaultPauseMonth } from "@/lib/client-pipeline/pause";
+import { formatAnnualityMonth } from "@/lib/client-profile/annuality";
+
+import { ClientAnnualityFields } from "@/components/executive/client-annuality-fields";
+
 import {
   useState,
   type Dispatch,
@@ -312,7 +318,9 @@ export interface ClientProtocoloFlowViewProps {
   onManualStatusChange: (
     status: ClientPipelineStatus,
     note: string,
+    pause?: { month: string; reason: string },
   ) => Promise<void>;
+  canPause: boolean;
   meetingNote: string;
   onMeetingNoteChange: (value: string) => void;
   canEdit: boolean;
@@ -354,6 +362,7 @@ export function ClientProtocoloFlowView({
   onProfileChange,
   pipelineStatus,
   onManualStatusChange,
+  canPause,
   meetingNote,
   onMeetingNoteChange,
   canEdit,
@@ -418,6 +427,7 @@ export function ClientProtocoloFlowView({
   const [fichaPdfOpen, setFichaPdfOpen] = useState(false);
   const [pendingStatusChange, setPendingStatusChange] =
     useState<ClientPipelineStatus | null>(null);
+  const [pauseOpen, setPauseOpen] = useState(false);
   const [statusChangeNote, setStatusChangeNote] = useState("");
   const [statusChangeBusy, setStatusChangeBusy] = useState(false);
 
@@ -652,8 +662,6 @@ export function ClientProtocoloFlowView({
       : (selectedAdditional?.voluntaryAdditionalCurrency ?? "UF");
   const activePreferredClinics =
     memberMode === "principal" ? profileForm.preferredClinics : "";
-  const activeAnualidad =
-    memberMode === "principal" ? profileForm.anualidad : false;
   const activeSeguro =
     memberMode === "principal" ? profileForm.segurosComplementarios : "";
   const activePreexistencia =
@@ -958,6 +966,17 @@ export function ClientProtocoloFlowView({
 
   return (
     <div className="-mx-3 -mb-5 -mt-5 flex flex-col sm:-mx-4 sm:-mb-7 sm:-mt-7 lg:-mx-5 lg:-mb-8 lg:-mt-8 lg:h-[calc(100dvh-5rem)] lg:max-h-[calc(100dvh-5rem)] lg:overflow-hidden">
+      {pauseOpen ? <ClientPauseDialog initialMonth={defaultPauseMonth(client)}
+        initialReason={client.pipelineStatus === "PAUSADO" ? client.pauseReason ?? "" : profileForm.anualidad ? "Anualidad" : ""}
+        onClose={() => setPauseOpen(false)}
+        onConfirm={async (month, reason) => {
+          await onManualStatusChange("PAUSADO", reason, { month, reason });
+          setPauseOpen(false);
+        }} /> : null}
+      {pipelineStatus === "PAUSADO" ? <div role="status" className="border-b border-amber-200 bg-amber-50 px-5 py-3 text-sm text-amber-950">
+        <strong>En pausa hasta {formatAnnualityMonth(client.pauseUntilMonth ?? "")}.</strong> {client.pauseReason}
+        {canPause ? <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={() => { setPendingStatusChange("PENDIENTE"); setStatusChangeNote(""); }}>Reactivar a Pendiente</Button> : null}
+      </div> : null}
       <AdminFormModal
         open={Boolean(pendingStatusChange)}
         title="Cambiar estatus"
@@ -1067,6 +1086,7 @@ export function ClientProtocoloFlowView({
             coverageRegionId: profileForm.coverageRegionId,
             preferredClinics: profileForm.preferredClinics,
             anualidad: profileForm.anualidad,
+            anualidadExpiresMonth: profileForm.anualidadExpiresMonth,
             anualidadComment: profileForm.anualidadComment,
             segurosComplementarios: profileForm.segurosComplementarios,
             preexistenciasMedicas: profileForm.preexistenciasMedicas,
@@ -1109,6 +1129,7 @@ export function ClientProtocoloFlowView({
                     onChange={(event) => {
                       const next = event.target.value as ClientPipelineStatus;
                       if (next === pipelineStatus) return;
+                      if (next === "PAUSADO") { setPauseOpen(true); return; }
                       setPendingStatusChange(next);
                       setStatusChangeNote("");
                     }}
@@ -1392,6 +1413,9 @@ export function ClientProtocoloFlowView({
             )}
 
             <SidebarActionGroup title="Gestión">
+              {canPause ? <SidebarAction tone="slate" disabled={busy}
+                onClick={() => setPauseOpen(true)} icon={<IconBell className="size-3.5" />}
+                label={pipelineStatus === "PAUSADO" ? "Editar pausa" : "Pausar cliente"} /> : null}
               {isExecutiveHub ? (
                 <SidebarAction
                   tone="navy"
@@ -1827,12 +1851,8 @@ export function ClientProtocoloFlowView({
                         }
                       />
                     </label>
-                    <YesNoRow
-                      label="Anualidad"
-                      value={activeAnualidad}
-                      disabled={!canEdit}
-                      onChange={(next) => updateField("anualidad", next)}
-                    />
+                    <ClientAnnualityFields value={profileForm} disabled={!canEdit}
+                      onChange={(patch) => onProfileChange((current) => ({ ...current, ...patch }))} />
                   </>
                 ) : null}
                 <YesNoRow

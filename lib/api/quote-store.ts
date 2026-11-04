@@ -1,3 +1,5 @@
+import { ApiError } from "@/lib/api/api-error";
+import { AUTOMATIC_CLIENT_ASSIGNMENT_ENABLED, MANUAL_ASSIGNMENT_MESSAGE } from "@/lib/client-pipeline/assignment-policy";
 import { prisma } from "@/lib/prisma";
 import {
   autoAssignClientExecutive,
@@ -317,6 +319,7 @@ export async function distributeUnassignedQuotes(
   assigned: number;
   remaining: number;
 }> {
+  if (!AUTOMATIC_CLIENT_ASSIGNMENT_ENABLED) throw new ApiError(MANUAL_ASSIGNMENT_MESSAGE, 409, "AUTOMATIC_ASSIGNMENT_PAUSED");
   const unassigned = await prisma.quote.findMany({
     where: { executiveAccountId: null },
     orderBy: { createdAt: "asc" },

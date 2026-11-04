@@ -254,10 +254,26 @@ export function ExecutiveShell({
               size="lg"
               className="premium-executive-logo"
             />
-            <p className="truncate text-xs font-semibold text-white/80 lg:hidden">
+            <p className={joinClasses(
+              "truncate text-xs font-semibold text-white/80 lg:hidden",
+              activeSection === "clientes" && "hidden sm:block",
+            )}>
               {activeSectionLabel}
             </p>
           </div>
+
+          {activeSection === "clientes" && allowedSections.includes("inicio") ? (
+            <button
+              type="button"
+              onClick={() => onSectionChange("inicio")}
+              className="inline-flex min-h-11 shrink-0 lg:order-1 items-center gap-1.5 rounded-lg border border-white/25 px-2 text-xs font-semibold text-white transition-colors hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:px-3 sm:text-sm"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="size-4" aria-hidden="true">
+                <path d="m12 5-7 7 7 7M5 12h14" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Volver a Inicio
+            </button>
+          ) : null}
 
           <nav
             className="premium-executive-tabs hidden min-w-0 flex-1 lg:block"
@@ -320,7 +336,7 @@ export function ExecutiveShell({
             </div>
           </nav>
 
-          <div className="ml-auto flex shrink-0 items-center gap-2 lg:ml-0">
+          <div className="ml-auto flex shrink-0 items-center gap-2 lg:order-2 lg:ml-0">
             <div className="hidden items-center lg:flex">
               {staffUser ? (
                 <UserMenu

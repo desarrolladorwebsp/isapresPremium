@@ -7,6 +7,8 @@ import type {
 
 export const CLIENT_PIPELINE_STATUS_LABELS: Record<ClientPipelineStatus, string> =
   {
+    PAUSADO: "En pausa",
+    PENDIENTE: "Pendiente",
     NUEVO: "Nuevo",
     CONTACTADO: "Contactado",
     NO_CONTESTA: "No contesta",
@@ -21,6 +23,8 @@ export const CLIENT_PIPELINE_STATUS_DISPLAY_LABELS: Record<
   ClientPipelineStatus,
   string
 > = {
+  PAUSADO: "En pausa",
+  PENDIENTE: "Pendiente",
   NUEVO: "Nuevo",
   CONTACTADO: "Contactado",
   NO_CONTESTA: "No contesta",
@@ -35,6 +39,8 @@ export const CLIENT_PIPELINE_STATUS_DESCRIPTIONS: Record<
   ClientPipelineStatus,
   string
 > = {
+  PAUSADO: "Contacto diferido hasta el mes elegido",
+  PENDIENTE: "Revisar el cliente y definir su próxima gestión",
   NUEVO: "Cliente asignado, sin primer contacto",
   CONTACTADO: "Primer contacto realizado",
   NO_CONTESTA: "Se intentó contactar y no respondió",
@@ -49,6 +55,8 @@ export const CLIENT_PIPELINE_STATUS_TONES: Record<
   ClientPipelineStatus,
   "warning" | "info" | "success" | "neutral" | "danger"
 > = {
+  PAUSADO: "neutral",
+  PENDIENTE: "warning",
   NUEVO: "warning",
   CONTACTADO: "info",
   NO_CONTESTA: "warning",
@@ -61,6 +69,8 @@ export const CLIENT_PIPELINE_STATUS_TONES: Record<
 
 export const CLIENT_PIPELINE_STATUS_OPTIONS: ClientPipelineStatus[] = [
   "NUEVO",
+  "PENDIENTE",
+  "PAUSADO",
   "CONTACTADO",
   "NO_CONTESTA",
   "EN_SEGUIMIENTO",
@@ -72,6 +82,8 @@ export const CLIENT_PIPELINE_STATUS_OPTIONS: ClientPipelineStatus[] = [
 
 const PIPELINE_STATUS_ALIASES: Record<string, ClientPipelineStatus> = {
   nuevo: "NUEVO",
+  pausado: "PAUSADO",
+  pendiente: "PENDIENTE",
   contactado: "CONTACTADO",
   no_contesta: "NO_CONTESTA",
   en_seguimiento: "EN_SEGUIMIENTO",
@@ -108,6 +120,8 @@ export const ZOOM_PIPELINE_STATUS_OPTIONS: ClientPipelineStatus[] = [
 
 /** Orden del embudo comercial (ramas laterales con rango bajo para poder reingresar). */
 const PIPELINE_FUNNEL_RANK: Record<ClientPipelineStatus, number> = {
+  PAUSADO: 0,
+  PENDIENTE: 0,
   NUEVO: 0,
   NO_CONTESTA: 1,
   CONTACTADO: 2,
@@ -127,7 +141,7 @@ export function advancePipelineStatus(
   target: ClientPipelineStatus,
 ): ClientPipelineStatus {
   const from = current ?? "NUEVO";
-  if (from === "RECEPCIONADO" || from === "PERDIDO") return from;
+  if (from === "PAUSADO" || from === "RECEPCIONADO" || from === "PERDIDO") return from;
   if (
     target === "PERDIDO" ||
     target === "NO_CONTESTA" ||

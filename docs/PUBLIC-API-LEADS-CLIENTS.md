@@ -57,7 +57,7 @@ Campos **obligatorios**: `fullName`, `email`, `phone`.
 | `preferenciaContacto` | string | — | `whatsapp` \| `telefono` \| `email` \| `video-llamada` |
 | `metadata` | object | — | Máx. 20 claves; valores string/number/boolean/null |
 | `executiveKind` | string | `ISAPRES_PREMIUM` | `ISAPRES_PREMIUM` \| `ISAPRES` \| `ZOOM` |
-| `autoAssign` | boolean | `false` | Round-robin 1×1 al pool inbound (Javiera, Isidora, Catalina) si `true` |
+| `autoAssign` | boolean | `false` | Solicita reparto automático; actualmente pausado globalmente (se conserva el responsable existente) |
 | `notifyAdmin` | boolean | `false` | Aviso interno Resend (TO cotizaciones + CC `premiumisapres@gmail.com`) |
 
 ### Ejemplo curl
@@ -95,7 +95,7 @@ curl -sS -X POST "https://isaprespremium.cl/api/public/v1/clients" \
     "clientId": "cuid…",
     "email": "ana@correo.cl",
     "created": true,
-    "assigned": true
+    "assigned": false
   },
   "meta": { "version": "v1" }
 }
@@ -115,6 +115,10 @@ curl -sS -X POST "https://isaprespremium.cl/api/public/v1/clients" \
 | 409 | `EMAIL_UNAVAILABLE` | Email ya usado por cuenta no-CLIENT |
 | 503 | `PUBLIC_API_NOT_CONFIGURED` | Falta env `PUBLIC_API_SECRET` |
 
+## Modo de asignación manual temporal (2026-11-02)
+
+El reparto automático está pausado globalmente en `lib/client-pipeline/assignment-policy.ts`. Incluso con `autoAssign: true`, un cliente nuevo se registra sin ejecutivo. Los contactos existentes conservan su responsable; no se modifican preferencias de Usuarios. La asignación explícita desde el panel sigue funcionando. Las rutas de distribución responden 409 `AUTOMATIC_ASSIGNMENT_PAUSED`, sin escrituras. Esta pausa no afecta la recepción de leads ni sus avisos existentes.
+
 ## Comportamiento CRM
 
 - Origen del cliente: `FORMULARIO_WEB`
@@ -122,7 +126,7 @@ curl -sS -X POST "https://isaprespremium.cl/api/public/v1/clients" \
 - Si el cliente ya existe con origen `COTIZADOR` / `MANUAL` / `CAMPANA_LEAD_WHATSAPP`, **no se pisa el origen**; se enriquecen teléfono/nombre/notas
 - Notas van a `pipelineNotes` (sanitizadas y con tope de tamaño)
 - `preferenciaContacto=whatsapp` → `preferredContactMethod=WHATSAPP`; `video-llamada` → `ZOOM`
-- Con `autoAssign: true` se asigna ejecutivo elegible del `executiveKind` (round-robin)
+- `autoAssign: true` solicita round-robin; mientras rige el modo manual temporal no asigna clientes nuevos y conserva los responsables existentes
 - Con `notifyAdmin: true` se envía correo interno (Resend) al buzón de cotizaciones con **CC fijo** a `premiumisapres@gmail.com`
 
 ## Formulario Isapres Premium (interno)

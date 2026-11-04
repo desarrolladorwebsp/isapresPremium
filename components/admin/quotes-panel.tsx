@@ -1,5 +1,7 @@
 "use client";
 
+import { AUTOMATIC_CLIENT_ASSIGNMENT_ENABLED } from "@/lib/client-pipeline/assignment-policy";
+
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -156,6 +158,7 @@ export function QuotesPanel({
   }
 
   async function handleDistribute() {
+    if (!AUTOMATIC_CLIENT_ASSIGNMENT_ENABLED) return;
     setDistributing(true);
     try {
       const result = await distributeUnassignedQuotes();
@@ -255,10 +258,10 @@ export function QuotesPanel({
     <AdminPanel>
       <AdminPanelHeader
         title="Cotizaciones"
-        description="Leads del cotizador. Asígnalos manualmente o usa «Distribuir» para repartir los pendientes entre ejecutivos."
+        description="Leads del cotizador. Asigna los pendientes manualmente a un ejecutivo."
         actions={
           <>
-            <Button
+            {AUTOMATIC_CLIENT_ASSIGNMENT_ENABLED ? (<Button
               type="button"
               size="sm"
               variant="ghost"
@@ -268,7 +271,7 @@ export function QuotesPanel({
               {distributing
                 ? "Distribuyendo…"
                 : `Distribuir sin asignar (${stats.unassigned})`}
-            </Button>
+            </Button>) : null}
             <AdminRefreshButton onClick={() => void onRefresh()} />
           </>
         }

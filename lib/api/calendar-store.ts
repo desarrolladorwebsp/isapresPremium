@@ -95,6 +95,7 @@ export async function readCalendarCallEvents(input: {
   const clients = await prisma.user.findMany({
     where: {
       role: "CLIENT",
+      pipelineStatus: { not: "PAUSADO" },
       AND: [
         ...(input.executiveAccountId
           ? [

@@ -93,6 +93,7 @@ const db = {
   quote: { updateMany: async () => { quoteUpdates++; return { count: 1 }; } },
 };
 const mocks = {
+  "@/lib/client-pipeline/assignment-policy": { AUTOMATIC_CLIENT_ASSIGNMENT_ENABLED: true },
   "@/lib/prisma": { prisma: db },
   "@/lib/email/notify-executive-client-assignment": { queueExecutiveClientAssignmentEmail: (input: unknown) => emails.push(input) },
 };
@@ -217,7 +218,7 @@ async function main() {
     reset(account("admin", { role: "ADMIN", executiveKind: null, autoAssignmentEnabled: false }), account("exec"),
       account("member", { executiveKind: "MEMBRESIA_ISAPRES_PREMIUM", autoAssignmentEnabled: false }));
     const { UsersDirectoryTable } = load<{ UsersDirectoryTable: ComponentType<Record<string, unknown>> }>(
-      "components/admin/users-panel.tsx", {}, "\nexport { UsersDirectoryTable };\n");
+      "components/admin/users-panel.tsx", mocks, "\nexport { UsersDirectoryTable };\n");
     const records = await store.listStaffAccounts();
     const props = {
       rows: records.map((record) => ({ kind: "account", account: record, sortAt: record.createdAt })),

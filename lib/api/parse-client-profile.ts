@@ -37,6 +37,9 @@ export function parseClientProfilePayload(payload: unknown): ClientProfileInput 
   }
 
   const data = payload as Record<string, unknown>;
+  if (data.anualidad === true && data.anualidadExpiresMonth != null && typeof data.anualidadExpiresMonth !== "string") {
+    throw new Error("Indica el vencimiento de la anualidad con mes y año válidos.");
+  }
 
   if (typeof data.firstNames !== "string" || !data.firstNames.trim()) {
     throw new Error("El nombre del titular es obligatorio.");
@@ -179,6 +182,7 @@ export function parseClientProfilePayload(payload: unknown): ClientProfileInput 
     preferredClinics:
       typeof data.preferredClinics === "string" ? data.preferredClinics : "",
     anualidad: data.anualidad === true,
+    anualidadExpiresMonth: typeof data.anualidadExpiresMonth === "string" ? data.anualidadExpiresMonth : undefined,
     anualidadComment:
       typeof data.anualidadComment === "string" ? data.anualidadComment : "",
     segurosComplementarios:

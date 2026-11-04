@@ -41,6 +41,8 @@ export interface AdminReportsResult {
 
 function emptyStatusCounts(): PipelineStatusCounts {
   return {
+    PAUSADO: 0,
+    PENDIENTE: 0,
     NUEVO: 0,
     CONTACTADO: 0,
     NO_CONTESTA: 0,
@@ -214,14 +216,19 @@ export function buildAdminReports(input: {
       const status = client.pipelineStatus ?? "NUEVO";
       target.pipeline[status] += 1;
       target.pipelineTotal += 1;
-      target.firstContactTotal += 1;
-      if (isNewWithoutGestion(client)) {
-        target.firstContactPending += 1;
-        target.newWithoutGestion += 1;
-      } else {
-        target.firstContactDone += 1;
+      // Deferred/review stages do not prove that a first contact actually happened.
+      if (status !== "PAUSADO" && status !== "PENDIENTE") {
+        target.firstContactTotal += 1;
+        if (isNewWithoutGestion(client)) {
+          target.firstContactPending += 1;
+          target.newWithoutGestion += 1;
+        } else {
+          target.firstContactDone += 1;
+        }
       }
     }
+
+    if (client.pipelineStatus === "PAUSADO") continue;
 
     if (client.nextCallAt && isoInPeriod(client.nextCallAt, input.period)) {
       const urgency = agendaUrgencyFromIso(client.nextCallAt);

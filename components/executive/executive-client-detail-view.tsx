@@ -1,5 +1,9 @@
 "use client";
 
+import { ClientPauseControls } from "@/components/executive/client-pause-controls";
+
+import { annualityLabel } from "@/lib/client-profile/annuality";
+
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -23,6 +27,7 @@ import { isValidRut } from "@/lib/auth/rut";
 import { resolveClientChecklist } from "@/lib/client-pipeline/constants";
 import {
   canEditClientDataAsExecutive,
+  canViewClientAsExecutive,
   isTrackingOnlyForExecutive,
 } from "@/lib/client-pipeline/tracking";
 import {
@@ -201,7 +206,7 @@ function buildCapsuleBullets(
       previsionLabel,
       planPriceLabel,
       voluntarioLabel,
-      profile?.anualidad ? "Con anualidad" : "Sin anualidad",
+      annualityLabel(profile),
     ],
     family: [
       `${titulares} titular${titulares === 1 ? "" : "es"}`,
@@ -557,6 +562,10 @@ export function ExecutiveClientDetailView({
             </div>
           </div>
           )}
+
+          {!protocolFlowActive && user?.id && canViewClientAsExecutive(client, user.id, isAdmin, executiveKind) ? (
+            <ClientPauseControls client={client} onUpdated={handleUpdated} onNotify={onNotify} />
+          ) : null}
 
           {/* Cápsulas de ficha: ocultas temporalmente (no borrar). */}
           {SHOW_FICHA_CAPSULES && !protocolFlowActive ? (
