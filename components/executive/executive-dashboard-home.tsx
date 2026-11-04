@@ -36,7 +36,7 @@ import {
 import {
   filterOutcomeQuotations,
   filterSentQuotations,
-  groupSentQuotationsByExecutive,
+  groupQuotationsByIsapre,
   sentQuotationIsapreOptions,
   type QuotationOutcomeStatus,
   type SentQuotationKpiRow,
@@ -377,12 +377,9 @@ export function ExecutiveDashboardHome() {
     () => sentQuotationIsapreOptions(quotationsQuery.data ?? []),
     [quotationsQuery.data],
   );
-  const sentQuotationGroups = useMemo(
-    () =>
-      quotationList && isAdmin && !adminExecutiveFilter
-        ? groupSentQuotationsByExecutive(openQuotations)
-        : [],
-    [quotationList, isAdmin, adminExecutiveFilter, openQuotations],
+  const quotationIsapreGroups = useMemo(
+    () => (quotationList ? groupQuotationsByIsapre(openQuotations) : []),
+    [quotationList, openQuotations],
   );
 
   const loadingStats = clientsQuery.isLoading && !clientsQuery.data;
@@ -996,16 +993,16 @@ export function ExecutiveDashboardHome() {
         size="xl"
       >
         {openQuotations.length > 0 ? (
-          sentQuotationGroups.length > 0 ? (
+          quotationIsapreGroups.length > 0 ? (
             <div className="space-y-3 sm:space-y-4">
-              {sentQuotationGroups.map((group) => (
+              {quotationIsapreGroups.map((group) => (
                 <section
-                  key={group.executiveId}
+                  key={group.isapreId}
                   className="overflow-hidden rounded-xl border border-border/80 bg-white"
                 >
                   <header className="flex items-center justify-between gap-3 border-b border-border/80 bg-[color-mix(in_srgb,var(--dash-navy,#092558)_7%,white)] px-4 py-2.5 sm:px-5">
                     <p className="truncate text-sm font-semibold text-[color:var(--dash-navy,#092558)]">
-                      {group.executiveName}
+                      {group.isapreName}
                     </p>
                     <span className="inline-flex shrink-0 items-center rounded-full bg-[color:var(--dash-navy,#092558)] px-2 py-0.5 text-xs font-bold tabular-nums text-white">
                       {group.items.length}
