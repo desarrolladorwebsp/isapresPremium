@@ -112,6 +112,45 @@ export type QuotationOutcomeStatus = "RECEIVED" | "ACCEPTED" | "REJECTED";
 const OUTCOME_DATE: Record<
   QuotationOutcomeStatus,
   "receivedAt" | "acceptedAt" | "rejectedAt"
+export interface QuotationIsapreGroup {
+  isapreId: string;
+  isapreName: string;
+  items: SentQuotationKpiRow[];
+}
+
+function quotationIsapreKeys(row: SentQuotationKpiRow): Array<{ id: string; name: string }> {
+  const entries = new Map<string, string>();
+  for (const rawName of row.isapres) {
+    const name = rawName.trim();
+    if (!name) continue;
+    const id = resolveIsapreIdFromName(name);
+    const catalogName = id
+      ? ISAPRE_CATALOG.find((item) => item.id === id)?.name
+      : undefined;
+    const key = id || name.toLocaleLowerCase("es");
+    if (!entries.has(key)) entries.set(key, catalogName || name);
+  }
+  if (entries.size === 0) entries.set("__unknown__", "Sin Isapre indicada");
+  return [...entries.entries()].map(([id, name]) => ({ id, name }));
+}
+
+/** Organiza documentos por Isapre; si uno incluye varias, aparece en cada grupo. */
+export function groupQuotationsByIsapre(
+  quotations: readonly SentQuotationKpiRow[],
+): QuotationIsapreGroup[] {
+  const groups = new Map<string, QuotationIsapreGroup>();
+  for (const row of quotations) {
+    for (const isapre of quotationIsapreKeys(row)) {
+      const group = groups.get(isapre.id);
+      if (group) group.items.push(row);
+      else groups.set(isapre.id, { isapreId: isapre.id, isapreName: isapre.name, items: [row] });
+    }
+  }
+  return [...groups.values()].sort((left, right) =>
+    left.isapreName.localeCompare(right.isapreName, "es", { sensitivity: "base" }),
+  );
+}
+
 > = {
   RECEIVED: "receivedAt",
   ACCEPTED: "acceptedAt",
