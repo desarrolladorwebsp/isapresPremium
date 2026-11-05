@@ -57,7 +57,7 @@ export function clientGestionBuckets(
   if (status === "PAUSADO") return buckets;
   if (status === "PENDIENTE") buckets.add("hoy");
 
-  if (status === "RECEPCIONADO" || status === "PERDIDO" || status === "CERRADO") {
+  if (status === "RECEPCIONADO" || status === "PERDIDO") {
     buckets.add("gestionadas");
     return buckets;
   }

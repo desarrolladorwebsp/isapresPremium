@@ -82,7 +82,7 @@ async function main() {
     assert.equal(action.title, "Definir próxima gestión"); assert.equal(action.at, null); assert.equal(action.responsible, "Sin responsable asignado");
   });
   await test("Terminal stages do not resurrect old appointments; Isapre processing remains open", () => {
-    for (const pipelineStatus of ["CERRADO", "RECEPCIONADO", "PERDIDO"] as const) assert.equal(nextFollowUpActions({ ...client, pipelineStatus, nextCallAt: "2026-10-19T12:00:00Z" }, now)[0].urgency, "finished");
+    for (const pipelineStatus of ["RECEPCIONADO", "PERDIDO"] as const) assert.equal(nextFollowUpActions({ ...client, pipelineStatus, nextCallAt: "2026-10-19T12:00:00Z" }, now)[0].urgency, "finished");
     assert.equal(nextFollowUpActions({ ...client, pipelineStatus: "ENVIADO_ISAPRE" }, now)[0].urgency, "unscheduled");
   });
 

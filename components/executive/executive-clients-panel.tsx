@@ -239,10 +239,7 @@ function scheduleUrgencyForClient(
   iso: string | null | undefined,
   pipelineStatus: UserRecord["pipelineStatus"],
 ): AgendaUrgency {
-  const closed =
-    pipelineStatus === "RECEPCIONADO" ||
-    pipelineStatus === "PERDIDO" ||
-    pipelineStatus === "CERRADO";
+  const closed = pipelineStatus === "RECEPCIONADO" || pipelineStatus === "PERDIDO";
   return agendaUrgencyFromIso(iso, closed);
 }
 

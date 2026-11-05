@@ -30,7 +30,7 @@ export function ClientAnnualityFields({ value, onChange, disabled = false }: {
             anualidadExpiresMonth: event.target.checked ? value.anualidadExpiresMonth || defaultAnnualityExpiry() : "",
             anualidadComment: event.target.checked ? "" : value.anualidadComment ?? "",
           })} />
-        Anualidad
+        Sin anualidad
       </label>
       {value.anualidad ? (
         <div className="space-y-1.5">

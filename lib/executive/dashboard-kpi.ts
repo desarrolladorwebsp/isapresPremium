@@ -6,11 +6,11 @@ import type {
 export const DASHBOARD_KPI_HELP = [
   {
     label: "Clientes activos",
-    measure: "Cartera actual: cada cliente cuenta una vez, excluyendo únicamente Perdido y En pausa. Incluye Cerrados y Recepcionados y clientes registrados en meses anteriores. Respeta el ejecutivo seleccionado; no depende de isapres. Se muestra con el mes actual de Chile o Todos los meses y se oculta en períodos históricos. Al abrirla muestra la lista y el acceso a cada ficha.",
+    measure: "Cartera actual: cada cliente cuenta una vez, excluyendo únicamente Perdido y En pausa. Incluye Enviados a Isapre y Recepcionados y clientes registrados en meses anteriores. Respeta el ejecutivo seleccionado; no depende de isapres. Se muestra con el mes actual de Chile o Todos los meses y se oculta en períodos históricos. Al abrirla muestra la lista y el acceso a cada ficha.",
   },
   {
     label: "Recordatorios de hoy",
-    measure: "Notas libres de la ficha agendadas para el día actual en Chile y dentro del mes elegido. Cada recordatorio cuenta una vez para el responsable actual del cliente, sin repetirlo en Gestiones hoy. Excluye En pausa, Perdido, Cerrado y Recepcionado. Al abrir la tarjeta puedes ver la nota, la hora y la ficha.",
+    measure: "Notas libres de la ficha agendadas para el día actual en Chile y dentro del mes elegido. Cada recordatorio cuenta una vez para el responsable actual del cliente, sin repetirlo en Gestiones hoy. Excluye En pausa, Perdido y Recepcionado. Al abrir la tarjeta puedes ver la nota, la hora y la ficha.",
   },
   {
     label: "Gestiones hoy",

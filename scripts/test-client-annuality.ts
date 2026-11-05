@@ -46,7 +46,7 @@ assert.equal(stats().items.dueToday[0].whenLabel, "Anualidad: noviembre de 2027"
 assert.equal(stats({}, "2027-12-01T15:00:00Z").items.overdue.filter(row => row.kind === "annuality").length, 1);
 assert.equal(stats({}, "2027-11-01T03:00:00Z", "other").dueToday, 0);
 assert.equal(stats({}, "2027-11-01T03:00:00Z", "admin", true).dueToday, 1);
-assert.equal(stats({ pipelineStatus: "CERRADO" }).dueToday, 1);
+assert.equal(stats({ pipelineStatus: "ENVIADO_ISAPRE" }).dueToday, 1);
 assert.equal(stats({ clientProfile: { ...valid, anualidad: false } }).dueToday, 0);
 assert.equal(stats({ clientProfile: oldProfile }, "2026-09-01T15:00:00Z").dueToday, 1);
 assert.equal(stats({ clientProfile: { ...valid, anualidadExpiresMonth: "2028-03" } }).dueToday, 0);

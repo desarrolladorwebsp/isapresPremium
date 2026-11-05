@@ -50,7 +50,9 @@
     "reset-admin-password": "node scripts/with-db-env.mjs --destructive -- npx tsx scripts/reset-admin-password.ts",
     "upsert-admin-account": "node scripts/with-db-env.mjs --destructive -- npx tsx scripts/upsert-admin-account.ts",
     "seed-plan-reviews": "node scripts/with-db-env.mjs --destructive -- npx tsx scripts/seed-plan-reviews.ts",
-    "test:client-pause": "node --import tsx scripts/test-client-pause.ts"
+    "test:client-pause": "node --import tsx scripts/test-client-pause.ts",
+    "test:pipeline-status": "node --import tsx scripts/test-pipeline-status-removal.ts && node --import tsx scripts/test-pipeline-state-transitions.ts",
+    "test:pipeline-migration": "node --import tsx scripts/test-closed-status-migration.ts"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"

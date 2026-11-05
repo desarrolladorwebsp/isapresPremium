@@ -48,7 +48,6 @@ function emptyStatusCounts(): PipelineStatusCounts {
     NO_CONTESTA: 0,
     EN_SEGUIMIENTO: 0,
     ENVIADO_ISAPRE: 0,
-    CERRADO: 0,
     RECEPCIONADO: 0,
     PERDIDO: 0,
   };

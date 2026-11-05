@@ -15,6 +15,7 @@ import {
   CLIENT_PIPELINE_STATUS_OPTIONS,
   normalizeClientPipelineStatus,
   parseClientClosedRecord,
+  premiumHandoffPipelineStatus,
 } from "@/lib/client-pipeline/constants";
 import { normalizeClientProfileInput } from "@/lib/client-profile/constants";
 import {
@@ -806,7 +807,7 @@ async function assertEligibleExecutiveOfKind(
  *
  * Estados destino (documentados):
  * - ZOOM → `NO_CONTESTA` (motivo: sin contacto; reinicia el ciclo en Zoom).
- * - ISAPRES → `ENVIADO_ISAPRE` (listo para cierre/contratación).
+ * - ISAPRES → `RECEPCIONADO` (requiere recepción registrada en la ficha).
  *
  * Solo Premium (asignado) o Admin.
  */
@@ -872,25 +873,36 @@ export async function redirectClientFromIsapresPremium(
 
   await assertEligibleExecutiveOfKind(targetId, targetKind, kindLabel);
 
+  if (targetKind === "ISAPRES") {
+    const receipt = validateClosedRecord(parseClientClosedRecord(existing.pipelineClosedRecord));
+    if (!receipt) {
+      throw new ApiError(
+        "Completa el registro de Recepcionado con Isapre y fecha efectiva en la ficha antes de derivar a Isapres.",
+        400,
+        "INVALID_CLOSED_RECORD",
+      );
+    }
+  }
+
   const actorName = await resolveActorDisplayName(
     actor.executiveAccountId,
     actor.isAdmin,
   );
 
-  // ZOOM: sin contacto → NO_CONTESTA (devolución). ISAPRES: aceptó → CERRADO.
-  const nextStatus = targetKind === "ZOOM" ? "NO_CONTESTA" : "CERRADO";
+  // ZOOM: sin contacto → NO_CONTESTA (devolución). ISAPRES: aceptó → RECEPCIONADO.
+  const nextStatus = premiumHandoffPipelineStatus(targetKind);
   const reasonNote =
     targetKind === "ZOOM"
       ? "Sin contacto con el cliente."
-      : "Derivado a Isapres para cierre.";
+      : "Recepción registrada en la ficha; derivado al ejecutivo Isapres.";
   const handoffNote =
     targetKind === "ZOOM"
       ? `Devuelto a ${kindLabel}. ${reasonNote}`
-      : `Enviado a ${kindLabel}. ${reasonNote}`;
+      : `Recepcionado por ${kindLabel}. ${reasonNote}`;
   const handoffOutcome =
     targetKind === "ZOOM"
       ? `Devuelto a Zoom · ${reasonNote}`
-      : `Enviado a ${kindLabelShort} · ${reasonNote}`;
+      : `Recepcionado por ${kindLabelShort} · ${reasonNote}`;
 
   const nextNotes = appendPipelineNoteLine(
     existing.pipelineNotes,
@@ -899,38 +911,21 @@ export async function redirectClientFromIsapresPremium(
   );
 
   const previousAssignedId = existing.assignedExecutiveId;
-  /** Si vuelve a Zoom, el assignee recupera la cartera activa (sin tracking). */
-  const clearTracking = targetKind === "ZOOM";
-  /**
-   * Si va a Isapres: conserva el tracker Zoom existente; si no hay, deja a
-   * Premium en seguimiento hasta el cierre.
-   */
-  const trackerId = !clearTracking
-    ? existing.trackingExecutiveId &&
-      existing.trackingExecutiveId !== targetId
-      ? existing.trackingExecutiveId
-      : previousAssignedId && previousAssignedId !== targetId
-        ? previousAssignedId
-        : null
-    : null;
-
   const user = await prisma.user.update({
-    where: { id: userId },
+    where: { id: userId, updatedAt: existing.updatedAt },
     data: {
       assignedExecutive: { connect: { id: targetId } },
       pipelineStatus: nextStatus,
       pipelineNotes: nextNotes,
       lastCallOutcome: handoffOutcome,
-      ...(clearTracking
-        ? clearTrackingFields()
-        : trackerId
-          ? {
-              trackingExecutive: { connect: { id: trackerId } },
-              confirmationCallAt: null,
-            }
-          : { confirmationCallAt: null }),
+      ...clearTrackingFields(),
     },
     include: clientRecordInclude,
+  }).catch((error: unknown) => {
+    if (error && typeof error === "object" && "code" in error && error.code === "P2025") {
+      throw new ApiError("El cliente cambió mientras guardabas. Actualiza la ficha e inténtalo nuevamente.", 409, "CLIENT_CHANGED");
+    }
+    throw error;
   });
 
   await prisma.quote.updateMany({

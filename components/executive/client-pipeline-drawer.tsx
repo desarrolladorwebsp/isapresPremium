@@ -1717,7 +1717,7 @@ export function ClientPipelineDrawer({
         return {
           title: "Recepcionado",
           description: `¿Confirmas marcar como recepcionado a ${client.fullName} con ${isapreLabel}?`,
-          changes: ["Estado → Cerrado (recepcionado)", ...closeBits],
+          changes: ["Estado → Recepcionado", ...closeBits],
         };
       }
       case "redirect":
@@ -5855,7 +5855,7 @@ export function ClientPipelineDrawer({
             ) : isTrackingOnly ? (
               <p className="text-[11px] text-amber-900/70">
                 Sin confirmación pendiente. El cliente sigue visible hasta
-                Cerrado o Perdido.
+                Recepcionado o Perdido.
               </p>
             ) : null}
           </div>

@@ -1055,7 +1055,7 @@ export function ExecutiveDashboardHome({
       <AdminFormModal
         open={activeClientsOpen && showActiveClients}
         title="Clientes activos"
-        description="Cartera actual del ejecutivo seleccionado. Cada cliente cuenta una vez, sin limitar por fecha de registro. Incluye Cerrados y Recepcionados; excluye Perdidos y En pausa."
+        description="Cartera actual del ejecutivo seleccionado. Cada cliente cuenta una vez, sin limitar por fecha de registro. Incluye Enviados a Isapre y Recepcionados; excluye Perdidos y En pausa."
         onClose={() => updateHomeState("activeClientsOpen", false)}
         size="xl">
         {activeClients.length ? (

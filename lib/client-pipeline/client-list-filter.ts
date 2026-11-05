@@ -3,7 +3,7 @@ import type { ClientPipelineStatus } from "@/types/client-pipeline";
 import { clientMatchesGestionFilters, type ClientGestionFilter } from "./client-gestion-filter";
 
 const GESTION_INDEPENDENT_STATUSES = new Set<ClientPipelineStatus>([
-  "PAUSADO", "PENDIENTE", "PERDIDO", "RECEPCIONADO", "CERRADO",
+  "PAUSADO", "PENDIENTE", "PERDIDO", "RECEPCIONADO",
 ]);
 
 /** OR within a filter; AND between filters. Never mutates records or ownership. */

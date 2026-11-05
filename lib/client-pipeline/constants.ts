@@ -15,7 +15,6 @@ export const CLIENT_PIPELINE_STATUS_LABELS: Record<ClientPipelineStatus, string>
     NO_CONTESTA: "No contesta",
     EN_SEGUIMIENTO: "En seguimiento",
     ENVIADO_ISAPRE: "Enviado a Isapre",
-    CERRADO: "Cerrado",
     RECEPCIONADO: "Recepcionado",
     PERDIDO: "Perdido",
   };
@@ -30,8 +29,7 @@ export const CLIENT_PIPELINE_STATUS_DISPLAY_LABELS: Record<
   CONTACTADO: "Contactado",
   NO_CONTESTA: "No contesta",
   EN_SEGUIMIENTO: "En seguimiento",
-  ENVIADO_ISAPRE: "Cerrado",
-  CERRADO: "Cerrado",
+  ENVIADO_ISAPRE: "Enviado a Isapre",
   RECEPCIONADO: "Recepcionado",
   PERDIDO: "Perdido",
 };
@@ -47,7 +45,6 @@ export const CLIENT_PIPELINE_STATUS_DESCRIPTIONS: Record<
   NO_CONTESTA: "Se intentó contactar y no respondió",
   EN_SEGUIMIENTO: "Conversación activa con el cliente",
   ENVIADO_ISAPRE: "Expediente enviado / en gestión Isapre",
-  CERRADO: "Derivado a Isapre y cerrado en gestión",
   RECEPCIONADO: "Negocio recepcionado en Isapre",
   PERDIDO: "No prosperó la contratación",
 };
@@ -63,7 +60,6 @@ export const CLIENT_PIPELINE_STATUS_TONES: Record<
   NO_CONTESTA: "warning",
   EN_SEGUIMIENTO: "info",
   ENVIADO_ISAPRE: "info",
-  CERRADO: "info",
   RECEPCIONADO: "success",
   PERDIDO: "danger",
 };
@@ -76,7 +72,6 @@ export const CLIENT_PIPELINE_STATUS_OPTIONS: ClientPipelineStatus[] = [
   "NO_CONTESTA",
   "EN_SEGUIMIENTO",
   "ENVIADO_ISAPRE",
-  "CERRADO",
   "RECEPCIONADO",
   "PERDIDO",
 ];
@@ -89,7 +84,6 @@ const PIPELINE_STATUS_ALIASES: Record<string, ClientPipelineStatus> = {
   no_contesta: "NO_CONTESTA",
   en_seguimiento: "EN_SEGUIMIENTO",
   enviado_isapre: "ENVIADO_ISAPRE",
-  cerrado: "CERRADO",
   recepcionado: "RECEPCIONADO",
   perdido: "PERDIDO",
 };
@@ -110,6 +104,13 @@ export function normalizeClientPipelineStatus(
   return PIPELINE_STATUS_ALIASES[alias] ?? null;
 }
 
+/** Destination status after a Premium handoff to another team. */
+export function premiumHandoffPipelineStatus(
+  targetKind: "ZOOM" | "ISAPRES",
+): ClientPipelineStatus {
+  return targetKind === "ZOOM" ? "NO_CONTESTA" : "RECEPCIONADO";
+}
+
 /** Estados relevantes en la gestión simplificada de Ejecutivo Zoom. */
 export const ZOOM_PIPELINE_STATUS_OPTIONS: ClientPipelineStatus[] = [
   "NUEVO",
@@ -128,8 +129,7 @@ const PIPELINE_FUNNEL_RANK: Record<ClientPipelineStatus, number> = {
   CONTACTADO: 2,
   EN_SEGUIMIENTO: 3,
   ENVIADO_ISAPRE: 4,
-  CERRADO: 5,
-  RECEPCIONADO: 6,
+  RECEPCIONADO: 5,
   PERDIDO: -1,
 };
 
@@ -146,8 +146,7 @@ export function advancePipelineStatus(
   if (
     target === "PERDIDO" ||
     target === "NO_CONTESTA" ||
-    target === "RECEPCIONADO" ||
-    target === "CERRADO"
+    target === "RECEPCIONADO"
   ) {
     return target;
   }

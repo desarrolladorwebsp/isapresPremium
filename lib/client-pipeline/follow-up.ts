@@ -112,7 +112,7 @@ export interface FollowUpAction {
 export function nextFollowUpActions(client: UserRecord, now = new Date()): FollowUpAction[] {
   const responsible = client.assignedExecutiveName?.trim() || "Sin responsable asignado";
   if (client.pipelineStatus === "PAUSADO") return [];
-  if (["RECEPCIONADO", "PERDIDO", "CERRADO"].includes(client.pipelineStatus ?? "")) {
+  if (["RECEPCIONADO", "PERDIDO"].includes(client.pipelineStatus ?? "")) {
     return [{ kind: "finished", title: "Seguimiento finalizado", detail: "Sin próxima gestión pendiente para esta etapa.", at: null, responsible, urgency: "finished" }];
   }
   const today = santiagoDateKey(now)!;
