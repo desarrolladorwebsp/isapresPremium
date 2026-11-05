@@ -73,7 +73,7 @@ export const CLIENT_QUOTATION_STATUS_HELP: Record<ClientQuotationStatus, string>
   DRAFT: "Documento creado y todavía no enviado al cliente.",
   SENT: "Cotización compartida por correo o WhatsApp, sin respuesta del cliente.",
   ACCEPTED: "El cliente aceptó la propuesta. El caso sigue con el ejecutivo de Isapres.",
-  RECEIVED: "La Isapre aceptó y el proceso con el cliente terminó.",
+  RECEIVED: "La Isapre aceptó al cliente y la contratación terminó. Los KPI usan la fecha efectiva de recepción por la Isapre.",
   REJECTED: "El cliente rechazó las propuestas incluidas.",
   VOIDED: "Cotización invalidada por error, reemplazo o cambio de condiciones.",
 };

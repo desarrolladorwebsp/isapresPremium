@@ -1,6 +1,8 @@
 import "server-only";
 
 import { randomBytes } from "node:crypto";
+import { parseReceptionDate } from "@/lib/client-quotation/reception-date";
+import { santiagoDateKey } from "@/lib/client-pipeline/agenda-urgency";
 import { prisma } from "@/lib/prisma";
 import { ApiError } from "@/lib/api/api-error";
 import { logClientActivity } from "@/lib/api/client-activity-store";
@@ -292,6 +294,7 @@ export async function updateClientQuotationStatus(input: {
   quotationId: string;
   status: ClientQuotationStatus;
   reason?: string | null;
+  receivedOn?: unknown;
   actorId: string;
   actorName: string;
 }) {
@@ -305,9 +308,29 @@ export async function updateClientQuotationStatus(input: {
   }
 
   const now = new Date();
+  if (input.receivedOn !== undefined && input.status !== "RECEIVED") {
+    throw new ApiError("La fecha de recepción requiere el estado Recepcionada.", 400);
+  }
+  let receivedAt = current.receivedAt;
+  if (input.status === "RECEIVED") {
+    try {
+      receivedAt = input.receivedOn === undefined && previous === "RECEIVED" && current.receivedAt
+        ? current.receivedAt
+        : parseReceptionDate(input.receivedOn, now);
+    } catch (error) {
+      throw new ApiError(error instanceof Error ? error.message : "Fecha de recepción inválida.", 400, "INVALID_RECEPTION_DATE");
+    }
+  }
+  const receiptChanged = input.status === "RECEIVED" &&
+    (receivedAt ? santiagoDateKey(receivedAt) : null) !== (current.receivedAt ? santiagoDateKey(current.receivedAt) : null);
+  if (input.status === "RECEIVED" && !receiptChanged) receivedAt = current.receivedAt;
+  const changed = previous !== input.status || receiptChanged;
+  const description = input.status === "RECEIVED"
+    ? `${previous === "RECEIVED" ? "Fecha de recepción corregida" : "Recepcionada por la Isapre"}: ${santiagoDateKey(receivedAt!)}.${previous === "RECEIVED" && current.receivedAt ? ` Fecha anterior: ${santiagoDateKey(current.receivedAt)}.` : ""}`
+    : input.reason?.trim() || `Estado actualizado de ${previous} a ${input.status}.`;
   const timestamp =
     input.status === "SENT" ? { sentAt: current.sentAt ?? now } :
-    input.status === "RECEIVED" ? { receivedAt: current.receivedAt ?? now } :
+    input.status === "RECEIVED" ? { receivedAt } :
     input.status === "ACCEPTED" ? { acceptedAt: current.acceptedAt ?? now } :
     input.status === "REJECTED" ? { rejectedAt: current.rejectedAt ?? now } :
     input.status === "VOIDED" ? { voidedAt: current.voidedAt ?? now } : {};
@@ -318,27 +341,28 @@ export async function updateClientQuotationStatus(input: {
       status: input.status,
       outcomeReason: input.reason?.trim() || current.outcomeReason,
       ...timestamp,
-      activities: previous === input.status ? undefined : {
+      activities: !changed ? undefined : {
         create: {
           activityType: "STATUS_CHANGED",
           actorId: input.actorId,
           actorName: input.actorName,
           previousValue: previous,
           newValue: input.status,
-          description: input.reason?.trim() || `Estado actualizado de ${previous} a ${input.status}.`,
+          description,
+          metadata: input.status === "RECEIVED" ? jsonValue({ receivedOn: santiagoDateKey(receivedAt!), previousReceivedOn: current.receivedAt ? santiagoDateKey(current.receivedAt) : null }) : undefined,
         },
       },
     },
     include: quotationInclude,
   });
-  if (previous !== input.status) {
+  if (changed) {
     await logClientActivity({
       userId: input.clientId,
       activityType: "QUOTATION_STATUS_CHANGED",
       previousValue: previous,
       newValue: input.status,
       actor: { realm: "executive", id: input.actorId, name: input.actorName },
-      description: `Cotización ${current.number}: ${previous} → ${input.status}.`,
+      description: `Cotización ${current.number}: ${description}`,
     });
   }
   return mapQuotation(row);

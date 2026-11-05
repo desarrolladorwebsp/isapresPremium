@@ -1,4 +1,5 @@
 "use client";
+import { formatReceptionDate } from "@/lib/client-quotation/reception-date";
 
 import { Bell } from "lucide-react";
 import type { Dispatch, ReactNode, SetStateAction } from "react";
@@ -91,7 +92,7 @@ const QUOTATION_LIST_COPY: Record<
   },
   RECEIVED: {
     title: "Cotizaciones recepcionadas",
-    description: "La Isapre aceptó y el proceso con el cliente terminó.",
+    description: "La Isapre aceptó y la contratación terminó. El período corresponde a la fecha efectiva de recepción, aunque se registre después.",
     empty: "No hay cotizaciones recepcionadas con estos filtros.",
     dateLabel: "Recepcionada",
   },
@@ -709,7 +710,7 @@ export function ExecutiveDashboardHome({
           <p className="text-xs text-muted">
             {QUOTATION_LIST_COPY[quotationList ?? "sent"].dateLabel}{" "}
             <span className="font-medium tabular-nums text-foreground/90">
-              {formatSentAt(
+              {quotationList === "RECEIVED" && row.receivedAt ? formatReceptionDate(row.receivedAt) : formatSentAt(
                 (quotationList === "RECEIVED"
                   ? row.receivedAt
                   : quotationList === "ACCEPTED"

@@ -1,3 +1,4 @@
+import { santiagoDateKey } from "@/lib/client-pipeline/agenda-urgency";
 import type {
   ClientChecklist,
   ClientChecklistItem,
@@ -254,7 +255,7 @@ export function buildEmptyClosedRecord(): ClientClosedRecord {
     isapre: "",
     planCode: "",
     planName: "",
-    closedAt: new Date().toISOString().slice(0, 10),
+    closedAt: santiagoDateKey(new Date())!,
     finalPriceUf: "",
     finalPriceClp: "",
     isapreReference: "",

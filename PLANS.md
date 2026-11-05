@@ -13,6 +13,8 @@ Si un ítem de aquí pasa a código, márcalo cerrado y agrega la fila en `FEATU
 
 ## Cerrado (no reabrir)
 
+- 2026-11-05: fecha efectiva de recepción por la Isapre en cotizaciones (día, mes y año), editable al recepcionar y corregible después con historial. KPI de Recepcionadas usa el período efectivo, sin alterar documentos anteriores automáticamente. Fecha de ficha validada y selector manual pasa por su formulario. Release de producción solicitado el 2026-11-05, sin migraciones ni correcciones automáticas de registros históricos.
+
 - 2026-11-04: publicación conjunta de mejoras CRM de noviembre. Incluye todos los ítems locales siguientes, migración de pausas y vencimientos históricos. Auditoría: el release anterior contenía solo la agrupación por Isapre; el resto no había llegado a main. Validación: TypeScript, build, pruebas funcionales y de BD desarrollo; sin nuevos errores ESLint respecto de main. El aviso SendPulse conserva premiumisapres@gmail.com. Evidencia productiva en Store/2026-11-04/auditoria-publicacion.
 
 - 2026-11-03: modales de las cinco tarjetas KPI de cotizaciones agrupados por Isapre. Activas mantiene clientes únicos por tarjeta y documentos/clientes agrupados en cada Isapre; documentos con varias Isapres se muestran en cada grupo sin alterar los conteos. Implementado en desarrollo.

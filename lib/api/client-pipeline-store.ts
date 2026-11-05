@@ -1,6 +1,7 @@
 import { AUTOMATIC_CLIENT_ASSIGNMENT_ENABLED, MANUAL_ASSIGNMENT_MESSAGE } from "@/lib/client-pipeline/assignment-policy";
 import { isPauseOnlyChange, validatePause } from "@/lib/client-pipeline/pause";
 import { resolveAnnualityExpiry } from "@/lib/client-profile/annuality";
+import { parseReceptionDate } from "@/lib/client-quotation/reception-date";
 import { prisma } from "@/lib/prisma";
 import { ApiError } from "@/lib/api/api-error";
 import {
@@ -155,6 +156,11 @@ function validateClosedRecord(
       400,
       "INVALID_CLOSED_RECORD",
     );
+  }
+  try {
+    parseReceptionDate(record.closedAt.trim());
+  } catch (error) {
+    throw new ApiError(error instanceof Error ? error.message : "Fecha de recepción inválida.", 400, "INVALID_CLOSED_RECORD");
   }
   return {
     isapre: record.isapre.trim(),
@@ -412,7 +418,7 @@ export async function updateClientPipeline(
   }
 
   const nextStatus = normalizedStatus ?? existing.pipelineStatus;
-  if (nextStatus === "RECEPCIONADO" && !input.manualStatusChange) {
+  if (nextStatus === "RECEPCIONADO") {
     const closed =
       input.closedRecord !== undefined
         ? validateClosedRecord(input.closedRecord)

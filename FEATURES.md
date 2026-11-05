@@ -116,11 +116,11 @@ Cápsula «Cotización» en la ficha. No reemplaza a `Quote`.
 | Función | Dónde |
 |---------|--------|
 | Crear documento con 1 a 3 planes ya agregados a la propuesta | `POST …/quotations`, `lib/api/client-quotation-store.ts` |
-| Estados borrador, enviada, aceptada, recepcionada, rechazada, anulada | `ClientQuotationStatus`. Aceptada: el cliente aceptó. Recepcionada: la Isapre aceptó y el proceso terminó. Rechazo y anulación piden motivo |
+| Estados borrador, enviada, aceptada, recepcionada, rechazada, anulada | `ClientQuotationStatus`. Aceptada: el cliente aceptó. Recepcionada: la Isapre aceptó y la contratación terminó. Al recepcionar se exige fecha efectiva editable (día, mes y año; por defecto hoy en Chile). Admite meses anteriores; rechaza fechas imposibles/futuras. `receivedAt` usa ese día y los KPI/reportes lo cuentan en ese período. Corrección explícita desde Gestionar cotizaciones; el historial registra fecha anterior/nueva, autor y momento real del registro. Registros previos no cambian automáticamente. La fecha de recepción de ficha (`closedRecord.closedAt`) es independiente: su formulario y API validan el mismo calendario y el selector manual abre el formulario de recepción. No se sincronizan estados de documentos y ficha. `lib/client-quotation/reception-date.ts`, pruebas `test-reception-date.ts`. Rechazo y anulación piden motivo |
 | PDF formal | `GET …/quotations/[quotationId]/pdf`, `lib/client-quotation/pdf.ts`. Al final incluye una nota discreta: los planes pueden cambiar y el equipo mantiene el catálogo al día |
 | Envío por email (Resend) o WhatsApp (`wa.me` + descarga del PDF) | `POST …/quotations/[quotationId]/send`, `lib/email/send-client-quotation.ts` |
 | Historial auditable | `ClientQuotationActivity` |
-| KPI de enviadas, recepcionadas, aceptadas y rechazadas | Inicio y Reportes. Enviadas por `sentAt` (siguen contando si cambian de estado). Las otras tres cuentan el estado actual y la fecha de ese cambio. Borrador y anulada no entran. Una cotización cuenta una vez si incluye al menos una isapre del filtro. No mide `Quote` |
+| KPI de enviadas, recepcionadas, aceptadas y rechazadas | Inicio y Reportes. Enviadas por `sentAt` (siguen contando si cambian de estado). Recepcionadas usa la fecha efectiva de recepción por la Isapre (`receivedAt`); aceptadas y rechazadas usan la fecha de respuesta. Borrador y anulada no entran. Una cotización cuenta una vez si incluye al menos una isapre del filtro. No mide `Quote` |
 | Acceso según la misma cartera que la ficha | `lib/api/client-quotation-access.ts` |
 | UI | `components/executive/client-quotation-manager.tsx` |
 

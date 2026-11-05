@@ -1,7 +1,7 @@
 "use client";
 
 import { ClientPauseDialog } from "@/components/executive/client-pause-dialog";
-import { santiagoMonthKey } from "@/lib/client-pipeline/agenda-urgency";
+import { santiagoMonthKey, santiagoDateKey } from "@/lib/client-pipeline/agenda-urgency";
 
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -2166,7 +2166,7 @@ export function ClientPipelineDrawer({
     }
 
     if (closing) {
-      const closeBody = `Recepcionado. Isapre: ${closedRecord.isapre.trim()}.${
+      const closeBody = `Recepcionado. Fecha efectiva de recepción: ${closedRecord.closedAt}. Isapre: ${closedRecord.isapre.trim()}.${
         closedRecord.planName?.trim() || closedRecord.planCode?.trim()
           ? ` Plan: ${closedRecord.planName?.trim() || closedRecord.planCode?.trim()}.`
           : ""
@@ -3088,7 +3088,7 @@ export function ClientPipelineDrawer({
         ? current
         : {
             ...current,
-            closedAt: new Date().toISOString().slice(0, 10),
+            closedAt: santiagoDateKey(new Date())!,
           },
     );
     openFlowActionModal("recepcionado");
@@ -3850,10 +3850,12 @@ export function ClientPipelineDrawer({
           />
         </label>
         <label className="block space-y-1.5">
-          <span className="text-xs font-medium">Fecha *</span>
+          <span className="text-xs font-medium">Fecha efectiva de recepción por la Isapre *</span>
           <Input
             type="date"
             value={closedRecord.closedAt}
+            required
+            max={santiagoDateKey(new Date()) ?? undefined}
             onChange={(event) =>
               setClosedRecord((current) => ({
                 ...current,
@@ -3861,6 +3863,7 @@ export function ClientPipelineDrawer({
               }))
             }
           />
+          <p className="text-xs text-muted">Día, mes y año en que la Isapre aceptó al cliente, aunque lo informe después.</p>
         </label>
         <label className="block space-y-1.5">
           <span className="text-xs font-medium">Nº solicitud Isapre</span>
@@ -4420,6 +4423,10 @@ export function ClientPipelineDrawer({
               canPause={Boolean(client && sessionUser?.id && canViewClientAsExecutive(client, sessionUser.id, isAdmin, executiveKind))}
               onManualStatusChange={async (nextStatus, note, pause) => {
                 if (!client || saving || actionBusy) return;
+                if (nextStatus === "RECEPCIONADO") {
+                  openRecepcionadoAction();
+                  return;
+                }
                 setActionBusy(true);
                 try {
                   const updated = await updateClientPipeline(client.id, {

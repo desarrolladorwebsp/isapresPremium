@@ -1,9 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { executiveKeys } from "@/lib/query/executive-keys";
 import { AdminFormModal } from "@/components/admin/admin-data-table";
 import { ClientFichaCapsule } from "@/components/executive/client-ficha-capsule";
 import { Button } from "@/components/ui/button";
+import { santiagoDateKey } from "@/lib/client-pipeline/agenda-urgency";
+import { parseReceptionDate, formatReceptionDate } from "@/lib/client-quotation/reception-date";
 import type { UserRecord } from "@/types/user";
 import {
   CLIENT_QUOTATION_STATUS_HELP,
@@ -30,6 +34,7 @@ function formatDate(value: string | null) {
 }
 
 export function ClientQuotationManager({ client, canEdit }: { client: UserRecord; canEdit: boolean }) {
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [quotations, setQuotations] = useState<ClientQuotationRecord[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -40,6 +45,7 @@ export function ClientQuotationManager({ client, canEdit }: { client: UserRecord
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [reception, setReception] = useState<{ quotationId: string; day: string } | null>(null);
   const endpoint = `/api/executive/clients/${encodeURIComponent(client.id)}/quotations`;
 
   useEffect(() => {
@@ -86,6 +92,11 @@ export function ClientQuotationManager({ client, canEdit }: { client: UserRecord
 
   async function changeStatus(status: ClientQuotationStatus) {
     if (!selected || status === selected.status) return;
+    if (status === "RECEIVED") {
+      setError(null);
+      setReception({ quotationId: selected.id, day: santiagoDateKey(new Date())! });
+      return;
+    }
     const requiresReason = status === "REJECTED" || status === "VOIDED";
     const reason = requiresReason ? window.prompt(status === "REJECTED" ? "Motivo del rechazo:" : "Motivo de la anulación:") : null;
     if (requiresReason && !reason?.trim()) return;
@@ -95,7 +106,25 @@ export function ClientQuotationManager({ client, canEdit }: { client: UserRecord
         method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status, reason }),
       }));
       setQuotations((rows) => rows.map((row) => row.id === updated.id ? updated : row));
+      void queryClient.invalidateQueries({ queryKey: executiveKeys.sentQuotations() });
     } catch (actionError) { setError(actionError instanceof Error ? actionError.message : "No se pudo actualizar el estado."); }
+    finally { setBusy(false); }
+  }
+
+  async function saveReception() {
+    if (!reception || !canEdit || busy) return;
+    setError(null);
+    try {
+      parseReceptionDate(reception.day);
+      setBusy(true);
+      const updated = await readJson<ClientQuotationRecord>(await fetch(`${endpoint}/${encodeURIComponent(reception.quotationId)}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "RECEIVED", receivedOn: reception.day }),
+      }));
+      setQuotations((rows) => rows.map((row) => row.id === updated.id ? updated : row));
+      void queryClient.invalidateQueries({ queryKey: executiveKeys.sentQuotations() });
+      setReception(null);
+    } catch (actionError) { setError(actionError instanceof Error ? actionError.message : "No se pudo registrar la recepción."); }
     finally { setBusy(false); }
   }
 
@@ -170,10 +199,27 @@ export function ClientQuotationManager({ client, canEdit }: { client: UserRecord
               <Button type="button" variant="ghost" disabled={!canEdit || busy || selected.status === "VOIDED"} onClick={() => void send("WHATSAPP")}>WhatsApp + PDF</Button>
               <select aria-label="Estado de cotización" value={selected.status} disabled={!canEdit || busy} onChange={(event) => void changeStatus(event.target.value as ClientQuotationStatus)} className="min-h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold">{CLIENT_QUOTATION_STATUS_OPTIONS.map((status) => <option key={status} value={status}>{CLIENT_QUOTATION_STATUS_LABELS[status]}</option>)}</select>
             </div>
+            {selected.status === "RECEIVED" || selected.receivedAt ? <div className="mt-4 rounded-xl bg-cyan-50 p-3 text-sm">
+              <p>Recepción por la Isapre: <strong>{selected.receivedAt ? formatReceptionDate(selected.receivedAt) : "Sin fecha registrada"}</strong></p>
+              {canEdit && selected.status === "RECEIVED" ? <Button type="button" variant="ghost" disabled={busy} onClick={() => { setError(null); setReception({ quotationId: selected.id, day: santiagoDateKey(selected.receivedAt ?? new Date())! }); }}>Corregir fecha de recepción</Button> : null}
+            </div> : null}
             <details className="mt-4 rounded-xl bg-slate-50 p-3"><summary className="cursor-pointer text-sm font-semibold">¿Qué significa cada estado?</summary><dl className="mt-3 space-y-2">{CLIENT_QUOTATION_STATUS_OPTIONS.map((status) => <div key={status}><dt className="text-sm font-bold">{CLIENT_QUOTATION_STATUS_LABELS[status]}</dt><dd className="text-xs text-muted">{CLIENT_QUOTATION_STATUS_HELP[status]}</dd></div>)}</dl></details>
             <div className="mt-4"><h5 className="text-sm font-bold">Historial</h5><ol className="mt-2 space-y-2">{selected.activities.map((activity) => <li key={activity.id} className="border-l-2 border-cyan-500 pl-3 text-xs"><span className="font-semibold">{activity.description}</span><span className="ml-2 text-muted">{formatDate(activity.createdAt)}</span></li>)}</ol></div>
           </div> : null}
         </section>
+      </div>
+    </AdminFormModal>
+    <AdminFormModal open={reception !== null} title="Recepción por la Isapre" description="Confirma que la Isapre aceptó al cliente y la contratación terminó." onClose={() => { if (!busy) setReception(null); }} size="lg" headerTone="navy">
+      <div className="space-y-4">
+        <label className="block space-y-1 text-sm font-semibold">Fecha efectiva de recepción por la Isapre
+          <input type="date" required max={santiagoDateKey(new Date()) ?? undefined} value={reception?.day ?? ""} disabled={busy} onChange={(event) => setReception((current) => current ? { ...current, day: event.target.value } : null)} className="block min-h-10 w-full rounded-lg border border-slate-300 px-3" />
+        </label>
+        <p className="text-sm text-muted">Selecciona día, mes y año. Puedes registrar una recepción de un mes anterior aunque te la hayan informado hoy. Los KPI usarán esta fecha; el historial conservará cuándo y quién la registró.</p>
+        {error ? <p role="alert" className="text-sm text-red-700">{error}</p> : null}
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="ghost" disabled={busy} onClick={() => setReception(null)}>Cancelar</Button>
+          <Button type="button" disabled={!canEdit || busy || !reception?.day} onClick={() => void saveReception()}>{busy ? "Guardando…" : "Confirmar recepción"}</Button>
+        </div>
       </div>
     </AdminFormModal>
   </>;

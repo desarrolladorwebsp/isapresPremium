@@ -43,7 +43,7 @@ export const DASHBOARD_KPI_HELP = [
   {
     label: "Recepcionadas",
     measure:
-      "Documentos en estado recepcionada: la Isapre aceptó y el proceso con el cliente terminó. La fecha es el día en que se marcó ese cierre.",
+      "Documentos en estado recepcionada: la Isapre aceptó y la contratación terminó. Se cuentan en el mes de la fecha efectiva de recepción registrada por el ejecutivo, aunque se ingrese después. El historial conserva el día real del registro.",
   },
   {
     label: "Aceptadas",

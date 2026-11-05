@@ -17,6 +17,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     return NextResponse.json(await updateClientQuotationStatus({
       clientId: id, quotationId, status: payload.status as ClientQuotationStatus,
       reason: typeof payload.reason === "string" ? payload.reason : null,
+      receivedOn: payload.receivedOn,
       actorId: session.user.id, actorName: session.user.fullName,
     }));
   } catch (error) {
