@@ -225,6 +225,47 @@ function StageFunnel({ status }: { status: ClientPipelineStatus }) {
   );
 }
 
+function SendpulseChatSection({ client }: { client: UserRecord }) {
+  const [result, setResult] = useState<{ chat: string | null; added: number } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const chat = result ? result.chat : client.sendpulseChat;
+
+  async function refresh() {
+    setBusy(true);
+    setError("");
+    try {
+      const response = await fetch(`/api/executive/clients/${encodeURIComponent(client.id)}/sendpulse-chat`, { method: "POST" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "No se pudo actualizar la conversación.");
+      setResult(data);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "No se pudo actualizar la conversación.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Section title="Chat de SendPulse" description="Historial de WhatsApp de esta ficha.">
+      <Button type="button" disabled={busy} onClick={refresh}>
+        {busy ? "Actualizando…" : "Actualizar conversación"}
+      </Button>
+      {error ? <p role="alert" className="mt-2 text-sm text-red-700">{error}</p> : null}
+      {result && !error ? (
+        <p role="status" className="mt-2 text-sm">
+          {result.added ? `Mensajes agregados: ${result.added}.` : "La conversación está al día."}
+        </p>
+      ) : null}
+      {chat?.trim() ? (
+        <pre className="mt-3 max-h-80 overflow-auto whitespace-pre-wrap rounded-xl border border-border bg-bg-layout/40 p-3 text-sm leading-relaxed text-foreground">
+          {chat.trim()}
+        </pre>
+      ) : <p className="mt-3 text-sm text-muted">Aún no hay mensajes guardados.</p>}
+    </Section>
+  );
+}
+
 export interface ClientSeguimientoFlowViewProps {
   client: UserRecord;
   pipelineStatus: ClientPipelineStatus;
@@ -466,16 +507,7 @@ export function ClientSeguimientoFlowView({
           </Section>
         ) : null}
 
-        {client.sendpulseChat?.trim() ? (
-          <Section
-            title="Chat de SendPulse"
-            description="Conversación de WhatsApp. Se actualiza cuando el chatbot vuelve a disparar y hay mensajes."
-          >
-            <pre className="max-h-80 overflow-auto whitespace-pre-wrap rounded-xl border border-border bg-bg-layout/40 px-3 py-3 text-sm leading-relaxed text-foreground">
-              {client.sendpulseChat.trim()}
-            </pre>
-          </Section>
-        ) : null}
+        <SendpulseChatSection key={client.id} client={client} />
 
 
       </div>

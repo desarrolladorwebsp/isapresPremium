@@ -15,9 +15,11 @@ export type SendpulseRemoteSnapshot = {
   chat: string | null;
   /** El GET del contacto respondió bien. Un chat vacío no cuenta como fallo. */
   contactRead: boolean;
+  legacyLines?: Map<string, string>;
 };
 
 type MessageRow = {
+  id?: unknown;
   direction?: unknown;
   type?: unknown;
   created_at?: unknown;
@@ -113,7 +115,7 @@ function nestedText(value: unknown): string | null {
   );
 }
 
-function messageBody(row: MessageRow): string | null {
+function messageBody(row: MessageRow, full = false): string | null {
   const data = asRecord(row.data);
   const text = asRecord(data?.text);
   const interactive = asRecord(data?.interactive);
@@ -123,7 +125,7 @@ function messageBody(row: MessageRow): string | null {
     nestedText(interactive?.button_reply) ??
     nestedText(interactive?.list_reply) ??
     nestedText(interactive?.body);
-  if (body) return body.slice(0, 500);
+  if (body) return full ? body : body.slice(0, 500);
 
   const type = typeof row.type === "string" ? row.type : "";
   if (type === "image") return "[imagen]";
@@ -145,14 +147,18 @@ function formatStamp(value: unknown): string {
   }).format(date);
 }
 
-function formatMessages(rows: MessageRow[], total: number | null): string | null {
+function formatMessages(rows: MessageRow[], total: number | null, full = false, legacyLines?: Map<string, string>): string | null {
   const lines: string[] = [];
   for (const row of rows) {
-    const body = messageBody(row);
+    const body = messageBody(row, Boolean(legacyLines));
     if (!body) continue;
     const stamp = formatStamp(row.created_at);
     const prefix = stamp ? `${stamp} · ` : "";
-    lines.push(`${prefix}${speaker(row.direction)}: ${body.replace(/\s+/g, " ")}`);
+    const label = `${prefix}${speaker(row.direction)}: `;
+    const line = label + body.replace(/\s+/g, " ");
+    lines.push(line);
+    const legacy = messageBody(row);
+    if (legacy && legacy !== body) legacyLines?.set(line, label + legacy.replace(/\s+/g, " "));
   }
   if (lines.length === 0) return null;
 
@@ -162,23 +168,30 @@ function formatMessages(rows: MessageRow[], total: number | null): string | null
       ? `Chat de SendPulse · últimos ${shown} de ${total} mensajes`
       : "Chat de SendPulse";
   let text = `${header}\n${lines.join("\n")}`;
-  if (text.length > MAX_CHAT_CHARS) {
+  if (!full && text.length > MAX_CHAT_CHARS) {
     text = `…[mensajes anteriores omitidos]\n${text.slice(-MAX_CHAT_CHARS)}`;
   }
   return text;
 }
 
-async function fetchMessages(contactId: string, apiKey: string): Promise<string | null> {
+async function fetchMessages(contactId: string, apiKey: string, full = false, legacyLines?: Map<string, string>): Promise<string | null> {
   const firstUrl = `${SENDPULSE_API}/whatsapp/chats/messages?contact_id=${encodeURIComponent(contactId)}&size=${PAGE_SIZE}&order=desc`;
   const collected: MessageRow[] = [];
   let nextUrl: string | null = firstUrl;
   let total: number | null = null;
   let pages = 0;
 
-  while (nextUrl && pages < MAX_PAGES) {
+  const visited = new Set<string>();
+  const messageIds = new Set<string>();
+  while (nextUrl && (full || pages < MAX_PAGES)) {
+    if (visited.has(nextUrl)) throw new Error("Paginación repetida de SendPulse.");
+    visited.add(nextUrl);
     const payload = await sendpulseGet(nextUrl, apiKey);
     const root = asRecord(payload.body);
     const data = root?.data;
+    if (full && (!payload.ok || !Array.isArray(data))) {
+      throw new Error("No se pudo leer una página de SendPulse.");
+    }
     if (!Array.isArray(data) || data.length === 0) break;
 
     const meta = asRecord(root?.meta);
@@ -186,17 +199,28 @@ async function fetchMessages(contactId: string, apiKey: string): Promise<string 
 
     for (const row of data) {
       const record = asRecord(row);
-      if (record) collected.push(record);
+      if (!record) continue;
+      const id = textValue(record.id);
+      if (full && id && messageIds.has(id)) continue;
+      if (id) messageIds.add(id);
+      collected.push(record);
     }
 
     pages += 1;
     const links = asRecord(root?.links);
     const next = textValue(links?.next);
+    if (full && next && !isSendpulseUrl(next)) throw new Error("Página inválida de SendPulse.");
     nextUrl = next && isSendpulseUrl(next) ? next : null;
   }
 
   collected.reverse();
-  return formatMessages(collected, total);
+  return formatMessages(collected, total, full, legacyLines);
+}
+
+export async function fetchFullSendpulseChat(contactId: string, apiKey: string) {
+  const legacyLines = new Map<string, string>();
+  const chat = await fetchMessages(contactId, apiKey, true, legacyLines);
+  return { chat, legacyLines };
 }
 
 /** Lee contacto y chat. Si SendPulse falla o no hay clave, devuelve vacío y no lanza. */
@@ -209,18 +233,20 @@ export async function fetchSendpulseSnapshot(
     return { contact: null, chat: null, contactRead: false };
   }
 
+  const legacyLines = new Map<string, string>();
   const [contactResponse, chat] = await Promise.all([
     sendpulseGet(
       `${SENDPULSE_API}/whatsapp/contacts/get?id=${encodeURIComponent(contactId)}`,
       key,
     ),
-    fetchMessages(contactId, key),
+    fetchMessages(contactId, key, false, legacyLines),
   ]);
 
   return {
     contact: contactFromPayload(contactResponse.body),
     chat,
     contactRead: contactResponse.ok,
+    legacyLines,
   };
 }
 

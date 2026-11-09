@@ -3,6 +3,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { appendPipelineNoteLine } from "@/lib/client-pipeline/note-stamp";
 import { normalizeSendpulseContactPhone } from "@/lib/sendpulse/contract";
+import { mergeSendpulseChat } from "@/lib/sendpulse/chat-merge";
 import { buildSendpulseClientPatch } from "@/lib/sendpulse/client-update";
 import { sendpulseOriginLabel } from "@/lib/sendpulse/origin-label";
 import {
@@ -183,7 +184,7 @@ export async function syncSendpulseClient(
         botPhone: input.botPhone,
         fullName,
         phone,
-        chat,
+        chat: mergeSendpulseChat(existing.sendpulseChat, chat, remote.legacyLines).chat,
       },
     );
 
@@ -197,7 +198,7 @@ export async function syncSendpulseClient(
     }
 
     const updated = await prisma.user.update({
-      where: { id: existing.id },
+      where: { id: existing.id, sendpulseChat: existing.sendpulseChat },
       data,
       select: {
         id: true,
