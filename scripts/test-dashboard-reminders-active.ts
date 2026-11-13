@@ -71,11 +71,48 @@ vm.runInNewContext(compiled,{module:loaded,exports:loaded.exports,console,proces
 const home=loaded.exports as typeof Home;
 const state=()=>({...home.createDashboardHomeState(),selectedMonth:santiagoMonthKey(new Date())!});
 function render(extra:Partial<Home.DashboardHomeState>={}){return renderToStaticMarkup(createElement(home.ExecutiveDashboardHome,{state:{...state(),...extra},onStateChange:()=>{}}));}
-test("real dashboard renders both new cards",()=>{const html=render();assert.match(html,/Recordatorios de hoy/);assert.match(html,/Cotizaciones activas/);assert.match(html,/Clientes sin respuesta del mes elegido/);});
+test("dashboard shows distinct total and monthly counts", () => {
+  const html = render({ selectedMonth: "2026-11" });
+  assert.match(html, /Recordatorios de hoy/);
+  assert.match(html, /Activas totales<\/p>[\s\S]*?premium-dash-stat-value[^>]*>3<\/p>/);
+  assert.match(html, /Activas mes<\/p>[\s\S]*?premium-dash-stat-value[^>]*>2<\/p>/);
+  assert.match(html, /Enviadas en Noviembre 2026 y aún sin respuesta/);
+});
+test("all months shows only the total active card", () => {
+  const html = render({ selectedMonth: "" });
+  assert.match(html, /Activas totales/);
+  assert.doesNotMatch(html, /Activas mes/);
+});
 test("reminder detail has note, responsibility and client navigation",()=>{const html=render({openBucket:"remindersToday"});assert.match(html,/QA Nota del recordatorio/);assert.match(html,/Ana/);assert.match(html,/Ver ficha de QA render-reminder/);});
-test("active detail includes older SENT and excludes answered documents",()=>{const html=render({quotationList:"active",selectedMonth:""});assert.match(html,/QA-older/);assert.match(html,/QA-new/);assert(!html.includes("QA-accepted"));assert(!html.includes("QA-rejected"));});
-test("active follows sending month, including empty historical results",()=>{const october=render({quotationList:"active",selectedMonth:"2026-10"});assert(!october.includes("QA-older"));assert.match(october,/No hay cotizaciones activas/);assert.match(render({quotationList:"active",selectedMonth:"2026-01"}),/QA-older/);});
-test("real card counts each client once and detail groups documents",()=>{const html=render({quotationList:"active"});assert.match(html,/Cotizaciones activas<\/p>[\s\S]*?premium-dash-stat-value[^>]*>2<\/p>/);assert.match(html,/2 cotizaciones pendientes/);assert.match(html,/QA-second/);assert.equal((html.match(/aria-label="Ver ficha de QA new"/g)??[]).length,1);});
-test("detail applies executive and isapre selection",()=>{const html=render({quotationList:"active",adminExecutiveFilter:"b",selectedIsapreIds:["colmena"]});assert.match(html,/QA-other-owner/);assert(!html.includes("QA-older"));});
+test("total detail includes older pending documents even with a month selected", () => {
+  const html = render({ quotationList: "active", selectedMonth: "2026-11" });
+  assert.match(html, /QA-older/);
+  assert.match(html, /QA-new/);
+  assert.doesNotMatch(html, /QA-accepted|QA-rejected|QA-received/);
+});
+test("monthly detail includes only pending documents from the selected month", () => {
+  const november = render({ quotationList: "active-month", selectedMonth: "2026-11" });
+  assert.match(november, /QA-new/);
+  assert.doesNotMatch(november, /QA-older|QA-accepted|QA-rejected/);
+  const january = render({ quotationList: "active-month", selectedMonth: "2026-01" });
+  assert.match(january, /QA-older/);
+  assert.doesNotMatch(january, /QA-new/);
+  assert.match(render({ quotationList: "active-month", selectedMonth: "2026-10" }), /No hay cotizaciones activas/);
+});
+test("both details group multiple documents under one client", () => {
+  for (const quotationList of ["active", "active-month"] as const) {
+    const html = render({ quotationList, selectedMonth: "2026-11" });
+    assert.match(html, /2 cotizaciones pendientes/);
+    assert.match(html, /QA-second/);
+    assert.equal((html.match(/aria-label="Ver ficha de QA new"/g) ?? []).length, 1);
+  }
+});
+test("both details apply executive and isapre selection", () => {
+  for (const quotationList of ["active", "active-month"] as const) {
+    const html = render({ quotationList, selectedMonth: "2026-11", adminExecutiveFilter: "b", selectedIsapreIds: ["colmena"] });
+    assert.match(html, /QA-other-owner/);
+    assert.doesNotMatch(html, /QA-older|QA-new/);
+  }
+});
 test("non-admin reminder uses session owner without admin controls",()=>{admin=false;const html=render({openBucket:"remindersToday"});assert.match(html,/QA Nota del recordatorio/);assert(!html.includes('aria-label="Filtrar por ejecutivo"'));});
 console.log(`${cases} reminder/active-quotation scenarios passed. No real data writes or messages.`);

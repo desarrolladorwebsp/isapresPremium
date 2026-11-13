@@ -65,7 +65,7 @@ import type { UserRecord } from "@/types/user";
 
 const MONTH_OPTIONS = [{ value: "", label: "Todos los meses" }, ...buildAgendaMonthOptions(11)];
 
-type QuotationKpiList = "sent" | "active" | QuotationOutcomeStatus;
+type QuotationKpiList = "sent" | "active" | "active-month" | QuotationOutcomeStatus;
 
 const QUOTATION_LIST_COPY: Record<
   QuotationKpiList,
@@ -79,9 +79,15 @@ const QUOTATION_LIST_COPY: Record<
     dateLabel: "Enviada",
   },
   active: {
-    title: "Cotizaciones activas",
-    description: "Clientes con alguna cotización enviada pendiente de aceptación o rechazo. Cada cliente aparece una vez con sus documentos agrupados. Respeta mes de envío, ejecutivo e isapres; Todos los meses incluye las pendientes anteriores.",
+    title: "Cotizaciones activas totales",
+    description: "Clientes con cotizaciones pendientes de respuesta de todos los meses, según los filtros de ejecutivo e Isapre.",
     empty: "No hay cotizaciones activas con estos filtros.",
+    dateLabel: "Enviada",
+  },
+  "active-month": {
+    title: "Cotizaciones activas del mes",
+    description: "Clientes con cotizaciones enviadas en el mes seleccionado que siguen pendientes de respuesta.",
+    empty: "No hay cotizaciones activas para el mes y los filtros seleccionados.",
     dateLabel: "Enviada",
   },
   ACCEPTED: {
@@ -397,35 +403,45 @@ export function ExecutiveDashboardHome({
     return [adminExecutiveFilter];
   }, [isAdmin, adminExecutiveFilter]);
 
-  const quotationFilter = useMemo(
+  const quotationScope = useMemo(
     () => ({
       quotations: quotationsQuery.data ?? [],
-      period: selectedMonth ? { kind: "month" as const, monthKey: selectedMonth } : undefined,
       selectedExecutiveIds: quotationExecutiveIds,
       selectedIsapreIds,
     }),
     [
       quotationsQuery.data,
-      selectedMonth,
       quotationExecutiveIds,
       selectedIsapreIds,
     ],
   );
+  const quotationFilter = useMemo(
+    () => ({
+      ...quotationScope,
+      period: selectedMonth ? { kind: "month" as const, monthKey: selectedMonth } : undefined,
+    }),
+    [quotationScope, selectedMonth],
+  );
+  const selectedMonthLabel = MONTH_OPTIONS.find((option) => option.value === selectedMonth)?.label ?? selectedMonth;
   const sentQuotations = useMemo(
     () => filterSentQuotations(quotationFilter),
     [quotationFilter],
   );
   const activeQuotations = useMemo(
-    () => filterActiveQuotations(quotationFilter),
-    [quotationFilter],
+    () => filterActiveQuotations(quotationScope),
+    [quotationScope],
   );
-  const activeQuotationClients = useMemo(
-    () => groupActiveQuotationsByClient(activeQuotations),
+  const monthlyActiveQuotations = useMemo(
+    () => selectedMonth ? filterActiveQuotations(quotationFilter) : [],
+    [quotationFilter, selectedMonth],
+  );
+  const activeClientCount = useMemo(
+    () => groupActiveQuotationsByClient(activeQuotations).length,
     [activeQuotations],
   );
-  const activeQuotationIsapreGroups = useMemo(
-    () => groupActiveQuotationsByIsapre(activeQuotations),
-    [activeQuotations],
+  const monthlyActiveClientCount = useMemo(
+    () => groupActiveQuotationsByClient(monthlyActiveQuotations).length,
+    [monthlyActiveQuotations],
   );
   const receivedQuotations = useMemo(
     () => filterOutcomeQuotations({ ...quotationFilter, status: "RECEIVED" }),
@@ -439,26 +455,29 @@ export function ExecutiveDashboardHome({
     () => filterOutcomeQuotations({ ...quotationFilter, status: "REJECTED" }),
     [quotationFilter],
   );
-  const openQuotations =
-    quotationList === "active"
-      ? activeQuotations
-      : quotationList === "RECEIVED"
-      ? receivedQuotations
-      : quotationList === "ACCEPTED"
-        ? acceptedQuotations
-        : quotationList === "REJECTED"
-          ? rejectedQuotations
-          : sentQuotations;
+  const isActiveQuotationList = quotationList === "active" || quotationList === "active-month";
+  const openQuotations = {
+    sent: sentQuotations,
+    active: activeQuotations,
+    "active-month": monthlyActiveQuotations,
+    RECEIVED: receivedQuotations,
+    ACCEPTED: acceptedQuotations,
+    REJECTED: rejectedQuotations,
+  }[quotationList ?? "sent"];
+  const activeQuotationIsapreGroups = useMemo(
+    () => isActiveQuotationList ? groupActiveQuotationsByIsapre(openQuotations) : [],
+    [isActiveQuotationList, openQuotations],
+  );
   const isapreOptions = useMemo(
     () => sentQuotationIsapreOptions(quotationsQuery.data ?? []),
     [quotationsQuery.data],
   );
   const quotationIsapreGroups = useMemo(
     () =>
-      quotationList && quotationList !== "active"
+      quotationList && !isActiveQuotationList
         ? groupQuotationsByIsapre(openQuotations)
         : [],
-    [quotationList, openQuotations],
+    [quotationList, isActiveQuotationList, openQuotations],
   );
 
   const loadingStats = clientsQuery.isLoading && !clientsQuery.data;
@@ -909,9 +928,9 @@ export function ExecutiveDashboardHome({
               Cotizaciones
             </h2>
             <p className="mt-0.5 text-xs text-muted">
-              Usa el mes seleccionado arriba
-              {isAdmin ? " y el ejecutivo de la vista general" : ""}. El filtro
-              de isapre aplica a todas. «Activas» cuenta clientes únicos. Elige «Todos los meses» para incluir pendientes anteriores.
+              El mes seleccionado aplica a todas salvo a «Activas totales».
+              {isAdmin ? " El filtro de ejecutivo aplica a todas." : ""} El filtro
+              de Isapre aplica a todas. Las tarjetas de activas cuentan clientes únicos.
             </p>
           </div>
           <div className="w-full sm:max-w-xs lg:w-72">
@@ -922,12 +941,22 @@ export function ExecutiveDashboardHome({
             />
           </div>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5 sm:gap-4">
+        <div className={joinClasses("grid gap-3 sm:grid-cols-2 sm:gap-4",
+          selectedMonth ? "lg:grid-cols-3 2xl:grid-cols-6" : "lg:grid-cols-5")}>
           {(
             [
               {
+                id: "active" as const,
+                label: "Activas totales",
+                value: activeClientCount,
+                hint: "Clientes sin respuesta de todos los meses",
+                ring: "ring-amber-300/70",
+                valueClass: "text-amber-800",
+                icon: <IconClock className="size-6" />,
+              },
+              {
                 id: "sent" as const,
-                label: "Cotizaciones enviadas",
+                label: "Enviadas",
                 value: sentQuotations.length,
                 hint: selectedIsapreIds.length
                   ? "Con al menos una isapre elegida"
@@ -936,15 +965,15 @@ export function ExecutiveDashboardHome({
                 valueClass: "text-sky-800",
                 icon: <IconClipboard className="size-6" />,
               },
-              {
-                id: "active" as const,
-                label: "Cotizaciones activas",
-                value: activeQuotationClients.length,
-                hint: selectedMonth ? "Clientes sin respuesta del mes elegido" : "Clientes sin respuesta de todos los meses",
+              ...(selectedMonth ? [{
+                id: "active-month" as const,
+                label: "Activas mes",
+                value: monthlyActiveClientCount,
+                hint: `Enviadas en ${selectedMonthLabel} y aún sin respuesta`,
                 ring: "ring-amber-300/70",
                 valueClass: "text-amber-800",
                 icon: <IconClock className="size-6" />,
-              },
+              }] : []),
               {
                 id: "ACCEPTED" as const,
                 label: "Aceptadas",
@@ -1174,13 +1203,15 @@ export function ExecutiveDashboardHome({
 
       <AdminFormModal
         open={quotationList !== null}
-        title={QUOTATION_LIST_COPY[quotationList ?? "sent"].title}
+        title={quotationList === "active-month"
+          ? `${QUOTATION_LIST_COPY["active-month"].title} · ${selectedMonthLabel}`
+          : QUOTATION_LIST_COPY[quotationList ?? "sent"].title}
         description={QUOTATION_LIST_COPY[quotationList ?? "sent"].description}
         onClose={() => updateHomeState("quotationList", null)}
         size="xl"
       >
         {openQuotations.length > 0 ? (
-          quotationList === "active" ? (
+          isActiveQuotationList ? (
             <div className="space-y-3 sm:space-y-4">
               {activeQuotationIsapreGroups.map((group) => (
                 <section
