@@ -238,7 +238,7 @@ export function ClinicPickerModal({
               placeholder="Buscar prestador…"
               disabled={loading}
               autoComplete="off"
-              className="h-11 w-full rounded-lg border border-white/15 bg-white/12 pl-10 pr-4 text-sm text-white placeholder:text-white/50 focus:border-white/30 focus:outline-none focus:ring-2 focus:ring-white/25"
+              className="h-11 w-full min-w-0 rounded-lg border border-white/15 bg-white/12 pl-10 pr-4 text-base text-white placeholder:text-white/50 focus:border-white/30 focus:outline-none focus:ring-2 focus:ring-white/25 lg:text-sm"
             />
           </div>
         </div>

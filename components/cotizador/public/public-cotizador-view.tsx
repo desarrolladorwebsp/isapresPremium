@@ -899,6 +899,7 @@ function PublicCotizadorViewInner({ embedMode }: { embedMode: boolean }) {
   return (
     <div
       ref={rootRef}
+      data-public-cotizador
       data-brand={brandKey}
       data-partner={isBranded ? entity!.slug : undefined}
       data-embed={isEmbedded ? "true" : undefined}
@@ -1062,6 +1063,7 @@ function PublicCotizadorViewInner({ embedMode }: { embedMode: boolean }) {
           <section
             id="resultados"
             ref={resultsRef}
+            tabIndex={-1}
             className={joinClasses(
               isEmbedded ? "scroll-mt-4" : "scroll-mt-24",
               isEmbedded ? "space-y-4 max-md:space-y-2" : "space-y-4",
@@ -1111,6 +1113,18 @@ function PublicCotizadorViewInner({ embedMode }: { embedMode: boolean }) {
                 <PublicFiltersSidebar
                   open={dashboard.sidebarOpen}
                   onClose={() => dashboard.setSidebarOpen(false)}
+                  onRestore={({ filters, priceMin, priceMax }) => {
+                    dashboard.setDashboardFilters(filters);
+                    dashboard.setPriceMin(priceMin);
+                    dashboard.setPriceMax(priceMax);
+                  }}
+                  onApply={() => {
+                    dashboard.setSidebarOpen(false);
+                    window.requestAnimationFrame(() => {
+                      resultsRef.current?.focus({ preventScroll: true });
+                      scrollElementIntoAppShell(resultsRef.current, { block: "start" });
+                    });
+                  }}
                   priceMin={dashboard.priceMin}
                   priceMax={dashboard.priceMax}
                   ufToClp={dashboard.ufToClp}

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { useScrollLock } from "@/hooks/use-scroll-lock";
 import { AnimatePresence, motion } from "framer-motion";
 import { DashboardFiltersPanel } from "@/components/filters/dashboard-filters-panel";
@@ -9,9 +10,13 @@ import { touchTarget, filtersSidebarDesktopShell, filtersSidebarScrollBody } fro
 import { joinClasses } from "@/lib/utils";
 import type { DashboardFiltersState } from "@/domain";
 
+type FilterSelection = { filters: DashboardFiltersState; priceMin: number; priceMax: number };
+
 export interface PublicFiltersSidebarProps {
   open: boolean;
   onClose: () => void;
+  onApply: () => void;
+  onRestore: (selection: FilterSelection) => void;
   priceMin: number;
   priceMax: number;
   ufToClp: number;
@@ -44,6 +49,8 @@ function CloseIcon() {
 export function PublicFiltersSidebar({
   open,
   onClose,
+  onApply,
+  onRestore,
   priceMin,
   priceMax,
   ufToClp,
@@ -66,6 +73,26 @@ export function PublicFiltersSidebar({
   } = usePlanClinicOptions(showClinicFilter);
 
   useScrollLock(open && !isLargeScreen);
+  const initialSelection = useRef<FilterSelection | null>(null);
+
+  useEffect(() => {
+    return () => { initialSelection.current = null; };
+  }, [open, isLargeScreen]);
+
+  function rememberSelection() {
+    initialSelection.current ??= { filters, priceMin, priceMax };
+  }
+
+  function cancel() {
+    if (initialSelection.current) onRestore(initialSelection.current);
+    initialSelection.current = null;
+    onClose();
+  }
+
+  function apply() {
+    initialSelection.current = null;
+    onApply();
+  }
 
   return (
     <>
@@ -79,7 +106,7 @@ export function PublicFiltersSidebar({
             exit={{ opacity: 0 }}
             aria-label="Cerrar filtros"
             className="fixed inset-0 z-40 bg-primary-dark/20 backdrop-blur-[2px] lg:hidden"
-            onClick={onClose}
+            onClick={cancel}
           />
         ) : null}
       </AnimatePresence>
@@ -124,15 +151,24 @@ export function PublicFiltersSidebar({
             >
               Filtros
             </p>
-            <button
-              type="button"
-              onClick={onClose}
-              data-filters-close
-              className={joinClasses("rounded-lg lg:hidden", touchTarget)}
-              aria-label="Cerrar"
-            >
-              <CloseIcon />
-            </button>
+            <div className="flex shrink-0 items-center gap-2">
+              <button
+                type="button"
+                onClick={apply}
+                className="min-h-11 rounded-lg bg-primary px-3 text-sm font-bold text-primary-foreground"
+              >
+                Aplicar
+              </button>
+              <button
+                type="button"
+                onClick={cancel}
+                data-filters-close
+                className={joinClasses("rounded-lg lg:hidden", touchTarget)}
+                aria-label="Cerrar"
+              >
+                <CloseIcon />
+              </button>
+            </div>
           </div>
 
           <div
@@ -144,7 +180,7 @@ export function PublicFiltersSidebar({
           >
             <DashboardFiltersPanel
               value={filters}
-              onChange={onFiltersChange}
+              onChange={(next) => { rememberSelection(); onFiltersChange(next); }}
               hideCoverageFilter={hideCoverageFilter}
               hidePlanTypeFilter={hidePlanTypeFilter}
               showClinicFilter={showClinicFilter}
@@ -155,8 +191,8 @@ export function PublicFiltersSidebar({
               priceMin={priceMin}
               priceMax={priceMax}
               ufToClp={ufToClp}
-              onPriceMinChange={onPriceMinChange}
-              onPriceMaxChange={onPriceMaxChange}
+              onPriceMinChange={(next) => { rememberSelection(); onPriceMinChange(next); }}
+              onPriceMaxChange={(next) => { rememberSelection(); onPriceMaxChange(next); }}
               defaultPriceMin={defaultPriceMin}
               defaultPriceMax={defaultPriceMax}
             />
