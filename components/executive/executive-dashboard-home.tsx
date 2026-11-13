@@ -39,6 +39,7 @@ import {
 } from "@/lib/executive/dashboard-kpi";
 import {
   filterActiveQuotations,
+  countQuotationHolders,
   filterOutcomeQuotations,
   filterSentQuotations,
   groupQuotationsByIsapre,
@@ -465,8 +466,8 @@ export function ExecutiveDashboardHome({
     REJECTED: rejectedQuotations,
   }[quotationList ?? "sent"];
   const activeQuotationIsapreGroups = useMemo(
-    () => isActiveQuotationList ? groupActiveQuotationsByIsapre(openQuotations) : [],
-    [isActiveQuotationList, openQuotations],
+    () => isActiveQuotationList ? groupActiveQuotationsByIsapre(openQuotations, selectedIsapreIds) : [],
+    [isActiveQuotationList, openQuotations, selectedIsapreIds],
   );
   const isapreOptions = useMemo(
     () => sentQuotationIsapreOptions(quotationsQuery.data ?? []),
@@ -475,9 +476,9 @@ export function ExecutiveDashboardHome({
   const quotationIsapreGroups = useMemo(
     () =>
       quotationList && !isActiveQuotationList
-        ? groupQuotationsByIsapre(openQuotations)
+        ? groupQuotationsByIsapre(openQuotations, selectedIsapreIds)
         : [],
-    [quotationList, isActiveQuotationList, openQuotations],
+    [quotationList, isActiveQuotationList, openQuotations, selectedIsapreIds],
   );
 
   const loadingStats = clientsQuery.isLoading && !clientsQuery.data;
@@ -978,7 +979,7 @@ export function ExecutiveDashboardHome({
                 id: "ACCEPTED" as const,
                 label: "Aceptadas",
                 value: acceptedQuotations.length,
-                hint: "El cliente aceptó y sigue con Isapres",
+                hint: `${countQuotationHolders({ ...quotationFilter, event: "accepted" })} titulares aceptados`,
                 ring: "ring-emerald-300/70",
                 valueClass: "text-emerald-800",
                 icon: <IconClipboardCheck className="size-6" />,
@@ -987,7 +988,7 @@ export function ExecutiveDashboardHome({
                 id: "RECEIVED" as const,
                 label: "Recepcionadas",
                 value: receivedQuotations.length,
-                hint: "La Isapre aceptó y el proceso terminó",
+                hint: `${countQuotationHolders({ ...quotationFilter, event: "received" })} titulares recepcionados`,
                 ring: "ring-amber-300/70",
                 valueClass: "text-amber-800",
                 icon: <IconClipboard className="size-6" />,

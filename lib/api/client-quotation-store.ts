@@ -1,5 +1,6 @@
 import "server-only";
 
+import { quotationHolders, selectQuotationPlans, type QuotationHolderSelection } from "@/lib/client-quotation/holders";
 import { randomBytes } from "node:crypto";
 import { parseReceptionDate } from "@/lib/client-quotation/reception-date";
 import { santiagoDateKey } from "@/lib/client-pipeline/agenda-urgency";
@@ -17,7 +18,7 @@ import type {
   ClientQuotationRecord,
   ClientQuotationStatus,
 } from "@/types/client-quotation";
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 
 const quotationInclude = {
   executive: { select: { fullName: true } },
@@ -51,6 +52,7 @@ function mapQuotation(row: QuotationRow): ClientQuotationRecord {
     rejectedAt: row.rejectedAt?.toISOString() ?? null,
     voidedAt: row.voidedAt?.toISOString() ?? null,
     outcomeReason: row.outcomeReason,
+    holderSelections: (row.holderSelections as unknown as QuotationHolderSelection[] | null) ?? undefined,
     plans: row.items.map(
       (item) => item.planSnapshot as unknown as ClientQuotationPlanSnapshot,
     ),
@@ -107,6 +109,7 @@ export async function listSentQuotationsForKpi(
       acceptedAt: true,
       rejectedAt: true,
       clientSnapshot: true,
+      holderSelections: true,
       client: { select: { fullName: true } },
       executive: { select: { fullName: true } },
       items: { select: { planSnapshot: true }, orderBy: { position: "asc" } },
@@ -134,6 +137,7 @@ export async function listSentQuotationsForKpi(
       acceptedAt: row.acceptedAt?.toISOString() ?? null,
       rejectedAt: row.rejectedAt?.toISOString() ?? null,
       isapres: isapresFromItems(row.items),
+      holderSelections: (row.holderSelections as unknown as QuotationHolderSelection[] | null) ?? undefined,
     }];
   });
 }
@@ -287,7 +291,15 @@ const ALLOWED_TRANSITIONS: Record<ClientQuotationStatus, ClientQuotationStatus[]
   RECEIVED: ["VOIDED"],
   REJECTED: ["VOIDED"],
   VOIDED: [],
+  NOT_SELECTED: [],
 };
+
+function throwQuotationWriteConflict(error: unknown): never {
+  if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+    throw new ApiError("La cotización cambió. Actualiza e inténtalo nuevamente.", 409);
+  }
+  throw error;
+}
 
 export async function updateClientQuotationStatus(input: {
   clientId: string;
@@ -295,6 +307,9 @@ export async function updateClientQuotationStatus(input: {
   status: ClientQuotationStatus;
   reason?: string | null;
   receivedOn?: unknown;
+  holderPlans?: unknown;
+  alternativeIds?: unknown;
+  receivedHolderIds?: unknown;
   actorId: string;
   actorName: string;
 }) {
@@ -305,6 +320,100 @@ export async function updateClientQuotationStatus(input: {
   const previous = current.status as ClientQuotationStatus;
   if (previous !== input.status && !ALLOWED_TRANSITIONS[previous].includes(input.status)) {
     throw new ApiError(`No se puede cambiar de ${previous} a ${input.status}.`, 400, "INVALID_STATUS_TRANSITION");
+  }
+
+  if (input.status === "NOT_SELECTED") {
+    throw new ApiError("Selecciona las alternativas al aceptar una cotización.", 400);
+  }
+  if (input.status === "ACCEPTED" && previous === "SENT") {
+    const alternatives = input.alternativeIds;
+    if (!Array.isArray(alternatives) || alternatives.some(id => typeof id !== "string" || id === current.id) ||
+        new Set(alternatives).size !== alternatives.length) {
+      throw new ApiError("Confirma las cotizaciones alternativas.", 400);
+    }
+    return prisma.$transaction(async tx => {
+      const client = await tx.user.findUniqueOrThrow({ where: { id: input.clientId }, select: { fullName: true, clientProfile: true } });
+      const items = await tx.clientQuotationItem.findMany({ where: { quotationId: current.id } });
+      let selections: QuotationHolderSelection[];
+      try {
+        selections = selectQuotationPlans(quotationHolders(client.clientProfile, client.fullName),
+          items.map(item => item.planSnapshot as unknown as ClientQuotationPlanSnapshot), input.holderPlans);
+      } catch (error) {
+        throw new ApiError(error instanceof Error ? error.message : "Planes inválidos.", 400);
+      }
+      const mark = async (id: string, status: "ACCEPTED" | "NOT_SELECTED", description: string) => {
+        const updated = await tx.clientQuotation.updateMany({
+          where: { id, clientId: input.clientId, status: "SENT" },
+          data: status === "ACCEPTED"
+            ? { status, acceptedAt: new Date(), holderSelections: jsonValue(selections) }
+            : { status, outcomeReason: description },
+        });
+        if (updated.count !== 1) throw new ApiError("Una cotización cambió o ya no está pendiente. Actualiza e inténtalo nuevamente.", 409);
+        await tx.clientQuotationActivity.create({ data: {
+          quotationId: id, activityType: "STATUS_CHANGED", actorId: input.actorId,
+          actorName: input.actorName, previousValue: "SENT", newValue: status, description,
+          metadata: jsonValue({ acceptedQuotationId: current.id }),
+        } });
+        await tx.clientActivity.create({ data: {
+          userId: input.clientId, activityType: "QUOTATION_STATUS_CHANGED",
+          previousValue: "SENT", newValue: status, actorRealm: "executive",
+          actorId: input.actorId, actorName: input.actorName, description,
+        } });
+      };
+      for (const id of [current.id, ...alternatives].sort()) {
+        await (id === current.id
+          ? mark(id, "ACCEPTED", "Cotización aceptada con planes elegidos por titular.")
+          : mark(id, "NOT_SELECTED", `El cliente eligió la cotización ${current.number}.`));
+      }
+      return mapQuotation(await tx.clientQuotation.findUniqueOrThrow({ where: { id: current.id }, include: quotationInclude }));
+    });
+  }
+
+  const selections = current.holderSelections as unknown as QuotationHolderSelection[] | null;
+  if (input.status === "RECEIVED" && selections?.length) {
+    const ids = input.receivedHolderIds;
+    if (!Array.isArray(ids) || !ids.length || new Set(ids).size !== ids.length ||
+        ids.some(id => !selections.some(holder => holder.holderId === id))) {
+      throw new ApiError("Selecciona los titulares confirmados por la Isapre.", 400);
+    }
+    let day: Date;
+    try { day = parseReceptionDate(input.receivedOn); }
+    catch (error) { throw new ApiError(error instanceof Error ? error.message : "Fecha inválida.", 400); }
+    const dayKey = santiagoDateKey(day);
+    const changedIds = new Set(selections.filter(holder =>
+      ids.includes(holder.holderId) && (!holder.receivedAt || santiagoDateKey(holder.receivedAt) !== dayKey),
+    ).map(holder => holder.holderId));
+    if (!changedIds.size) {
+      const row = await prisma.clientQuotation.findUniqueOrThrow({
+        where: { id: current.id }, include: quotationInclude,
+      });
+      return mapQuotation(row);
+    }
+    const next = selections.map(holder => changedIds.has(holder.holderId)
+      ? { ...holder, receivedAt: day.toISOString() } : holder);
+    const complete = next.every(holder => holder.receivedAt);
+    const completionDate = complete ? new Date(Math.max(...next.map(holder => Date.parse(holder.receivedAt!)))) : null;
+    return prisma.$transaction(async tx => {
+      const status = complete ? "RECEIVED" : "ACCEPTED";
+      const updated = await tx.clientQuotation.updateMany({
+        where: { id: current.id, status: previous, updatedAt: current.updatedAt },
+        data: { status, receivedAt: completionDate, holderSelections: jsonValue(next) },
+      });
+      if (!updated.count) throw new ApiError("La cotización cambió. Actualiza e inténtalo nuevamente.", 409);
+      await tx.clientQuotationActivity.create({ data: {
+        quotationId: current.id, activityType: "STATUS_CHANGED", actorId: input.actorId,
+        actorName: input.actorName, previousValue: previous, newValue: status,
+        description: `Recepción de ${changedIds.size} titular(es) con fecha ${dayKey}.`,
+        metadata: jsonValue({ holderIds: [...changedIds], receivedOn: dayKey, previousSelections: selections }),
+      } });
+      await tx.clientActivity.create({ data: {
+        userId: input.clientId, activityType: "QUOTATION_STATUS_CHANGED",
+        previousValue: previous, newValue: status, actorRealm: "executive",
+        actorId: input.actorId, actorName: input.actorName,
+        description: `Cotización ${current.number}: recepción de ${changedIds.size} titular(es) con fecha ${dayKey}.`,
+      } });
+      return mapQuotation(await tx.clientQuotation.findUniqueOrThrow({ where: { id: current.id }, include: quotationInclude }));
+    });
   }
 
   const now = new Date();
@@ -336,7 +445,7 @@ export async function updateClientQuotationStatus(input: {
     input.status === "VOIDED" ? { voidedAt: current.voidedAt ?? now } : {};
 
   const row = await prisma.clientQuotation.update({
-    where: { id: current.id },
+    where: { id: current.id, status: current.status, updatedAt: current.updatedAt },
     data: {
       status: input.status,
       outcomeReason: input.reason?.trim() || current.outcomeReason,
@@ -354,7 +463,7 @@ export async function updateClientQuotationStatus(input: {
       },
     },
     include: quotationInclude,
-  });
+  }).catch(throwQuotationWriteConflict);
   if (changed) {
     await logClientActivity({
       userId: input.clientId,
@@ -387,7 +496,7 @@ export async function recordQuotationDelivery(input: {
     ? (input.success ? "EMAIL_SENT" : "EMAIL_FAILED")
     : "WHATSAPP_OPENED";
   const row = await prisma.clientQuotation.update({
-    where: { id: current.id },
+    where: { id: current.id, status: current.status, updatedAt: current.updatedAt },
     data: {
       ...(shouldMarkSent ? { status: "SENT", sentAt: current.sentAt ?? now } : {}),
       activities: {
@@ -404,7 +513,7 @@ export async function recordQuotationDelivery(input: {
       },
     },
     include: quotationInclude,
-  });
+  }).catch(throwQuotationWriteConflict);
   if (input.success) {
     await logClientActivity({
       userId: input.clientId,

@@ -77,15 +77,31 @@ await test('PATCH route forwards the receipt day and still checks write access',
 });
 await test('real quotation UI renders editable receipt date, audit explanation and correction action',()=>{
  const quotation={id:'q1',number:'QA',status:'RECEIVED',plans:[],activities:[],createdAt:'2026-10-01T12:00:00Z',receivedAt:'2026-10-31T12:00:00Z',executiveName:'QA'} as unknown as ClientQuotationRecord;
- const states:unknown[]=[true,[quotation],'q1',[],false,false,null,{quotationId:'q1',day:'2026-10-31'}];let index=0;
+ const states:unknown[]=[true,'q1',[],false,null,{quotationId:'q1',day:'2026-10-31'}];let index=0;
  const ui=load<{ClientQuotationManager:React.ComponentType<{client:UserRecord;canEdit:boolean}>}>('components/executive/client-quotation-manager.tsx',{
   '@tanstack/react-query':{useQueryClient:()=>({invalidateQueries:async()=>{}})},
+  '@/hooks/query/use-client-quotations-query':{useClientQuotationsQuery:()=>({data:[quotation]})},
   react:{...React,useEffect:()=>{},useMemo:(fn:()=>unknown)=>fn(),useState:()=>[states[index++],()=>{}]}
  });
  const html=renderToStaticMarkup(React.createElement(ui.ClientQuotationManager,{client:{id:'client',assignedPlans:[]} as unknown as UserRecord,canEdit:true}));
  assert.match(html,/type="date"/);assert.match(html,/required=""/);assert.match(html,/value="2026-10-31"/);
  assert.match(html,/Corregir fecha de recepción/);assert.match(html,/Los KPI usarán esta fecha/);assert.match(html,/Confirmar recepción/);
  quotation.receivedAt=null;index=0;const missing=renderToStaticMarkup(React.createElement(ui.ClientQuotationManager,{client:{id:'client',assignedPlans:[]} as unknown as UserRecord,canEdit:true}));assert.match(missing,/Sin fecha registrada/);assert.match(missing,/Corregir fecha de recepción/);
+});
+await test('client plan section shows both accepted plans after reception, even with a newer draft',()=>{
+ const quotation={
+  status:'RECEIVED', acceptedAt:'2026-10-15T12:00:00Z',
+  holderSelections:[
+   {holderId:'primary',name:'Titular principal',isapre:'Colmena',planCode:'A'},
+   {holderId:'additional:2',name:'Titular adicional',isapre:'Banmédica',planCode:'B'},
+  ],
+ } as ClientQuotationRecord;
+ const {ClientAcceptedPlans}=load<{ClientAcceptedPlans:React.ComponentType<{clientId:string}>}>('components/executive/client-accepted-plans.tsx',{
+  '@/hooks/query/use-client-quotations-query':{useClientQuotationsQuery:()=>({data:[{...quotation,status:'DRAFT'},quotation]})},
+ });
+ const html=renderToStaticMarkup(React.createElement(ClientAcceptedPlans,{clientId:'client'}));
+ assert.match(html,/Titular principal.*Colmena · A/);
+ assert.match(html,/Titular adicional.*Banmédica · B/);
 });
 console.log(`${count} receipt-date scenarios passed. No real database writes, emails or saved PDF changes.`);
 

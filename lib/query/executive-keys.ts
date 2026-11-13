@@ -22,5 +22,7 @@ export const executiveKeys = {
   executiveAccounts: () =>
     [...executiveKeys.all, "executive-accounts"] as const,
 
+  clientQuotations: (clientId: string) => [...executiveKeys.all, "client-quotations", clientId] as const,
+
   sentQuotations: () => [...executiveKeys.all, "sent-quotations"] as const,
 } as const;

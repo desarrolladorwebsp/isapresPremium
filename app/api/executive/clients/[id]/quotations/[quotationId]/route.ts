@@ -18,6 +18,9 @@ export async function PATCH(request: Request, context: RouteContext) {
       clientId: id, quotationId, status: payload.status as ClientQuotationStatus,
       reason: typeof payload.reason === "string" ? payload.reason : null,
       receivedOn: payload.receivedOn,
+      holderPlans: payload.holderPlans,
+      alternativeIds: payload.alternativeIds,
+      receivedHolderIds: payload.receivedHolderIds,
       actorId: session.user.id, actorName: session.user.fullName,
     }));
   } catch (error) {

@@ -111,6 +111,9 @@ Panel: sección `clientes`. Ficha Premium: `components/executive/client-premium-
 
 ## Cotización comercial (`ClientQuotation`)
 
+Al aceptar una cotización enviada, se registra el plan de cada titular y el ejecutivo confirma qué alternativas enviadas quedan No seleccionadas. La aceptación y las alternativas se guardan juntas y quedan en el historial. La recepción puede ser parcial: cada titular cuenta por su fecha efectiva y la cotización se completa en la fecha de la última confirmación. Inicio muestra cotizaciones y titulares en Aceptadas y Recepcionadas. La ficha muestra los planes por titular de la cotización aceptada o recepcionada más recientemente según la fecha de aceptación. El histórico sin selección por titular conserva el conteo por documento. El detalle de Inicio respeta las Isapres seleccionadas. Repetir la misma fecha de recepción para un titular no duplica el historial y los cambios simultáneos incompatibles se rechazan.
+
+
 Cápsula «Cotización» en la ficha. No reemplaza a `Quote`.
 
 | Función | Dónde |

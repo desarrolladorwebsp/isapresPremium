@@ -19,6 +19,7 @@ export async function POST(request: Request, context: RouteContext) {
     if (!channel) throw new ApiError("Canal de envío inválido.", 400);
     const quotation = await readClientQuotationEntity(id, quotationId);
     if (!quotation) throw new ApiError("Cotización no encontrada.", 404);
+    if (quotation.status === "NOT_SELECTED") throw new ApiError("No se puede enviar una cotización no seleccionada.", 400);
     if (quotation.status === "VOIDED") throw new ApiError("No se puede enviar una cotización anulada.", 400);
     const client = snapshot(quotation.clientSnapshot);
 

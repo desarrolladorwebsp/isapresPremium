@@ -36,6 +36,7 @@ enum ClientQuotationStatus {
   ACCEPTED
   REJECTED
   VOIDED
+  NOT_SELECTED
 }
 
 enum ClientQuotationActivityType {
@@ -251,6 +252,7 @@ model ClientQuotation {
   rejectedAt        DateTime?                 @map("rejected_at")
   voidedAt          DateTime?                 @map("voided_at")
   outcomeReason     String?                   @map("outcome_reason")
+  holderSelections  Json?                     @map("holder_selections")
   createdAt         DateTime                  @default(now()) @map("created_at")
   updatedAt         DateTime                  @updatedAt @map("updated_at")
   client            User                      @relation(fields: [clientId], references: [id], onDelete: Cascade)

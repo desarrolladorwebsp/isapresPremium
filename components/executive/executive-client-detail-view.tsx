@@ -12,6 +12,8 @@ import {
   AdminPanelHeader,
 } from "@/components/admin/admin-data-table";
 import { Button } from "@/components/ui/button";
+import { useClientQuotationsQuery } from "@/hooks/query/use-client-quotations-query";
+import { acceptedPlanFields } from "@/components/executive/client-accepted-plans";
 import { ClientFichaCapsule } from "@/components/executive/client-ficha-capsule";
 import {
   ClientPipelineDrawer,
@@ -300,6 +302,8 @@ export function ExecutiveClientDetailView({
     [clientsQuery.data, clientId],
   );
 
+  const { data: quotations } = useClientQuotationsQuery(client?.id);
+  const acceptedPlans = acceptedPlanFields(quotations);
   const employerRut = client?.clientProfile?.employerRut?.trim() ?? "";
 
   useEffect(() => {
@@ -602,6 +606,7 @@ export function ExecutiveClientDetailView({
               icon={<IconPlan />}
               title="Plan elegido"
               description="Plan asesorado o cotizado para este cliente."
+              fields={acceptedPlans}
               bullets={bullets.plan}
               ctaLabel={canEditClientData ? "Editar plan" : "Ver plan"}
               onClick={() => setFichaModal("plan")}

@@ -4,6 +4,8 @@ import { annualityLabel } from "@/lib/client-profile/annuality";
 
 import { useEffect, useMemo, useState } from "react";
 import { ClientFichaCapsule } from "@/components/executive/client-ficha-capsule";
+import { useClientQuotationsQuery } from "@/hooks/query/use-client-quotations-query";
+import { acceptedPlanFields } from "@/components/executive/client-accepted-plans";
 import { ClientQuotationManager } from "@/components/executive/client-quotation-manager";
 import type { ClientProfileFormValue } from "@/components/executive/client-profile-form";
 import { isValidRut } from "@/lib/auth/rut";
@@ -204,6 +206,8 @@ export function ClientPremiumCapsules({
   canEdit,
   onOpenModal,
 }: ClientPremiumCapsulesProps) {
+  const { data: quotations } = useClientQuotationsQuery(client.id);
+  const acceptedPlans = acceptedPlanFields(quotations);
   const employerRut = profileForm.employerRut.trim();
   const [convenioLabel, setConvenioLabel] = useState("Sin RUT empleador");
 
@@ -358,8 +362,8 @@ export function ClientPremiumCapsules({
       <ClientFichaCapsule
         icon={<IconPlan />}
         title="Plan elegido"
-        description="Puedes asignar varios planes y marcar uno como elegido."
-        fields={fields.plan}
+        description="Planes aceptados por titular y propuestas del cliente."
+        fields={acceptedPlans.length ? acceptedPlans : fields.plan}
         ctaLabel={canEdit ? "Gestionar planes" : "Ver planes"}
         onClick={() => onOpenModal("plan")}
       />
@@ -387,6 +391,8 @@ export function ClientPremiumExecutiveCapsules({
   meetingNote = "",
   onOpenModal,
 }: ClientPremiumExecutiveCapsulesProps) {
+  const { data: quotations } = useClientQuotationsQuery(client.id);
+  const acceptedPlans = acceptedPlanFields(quotations);
   const employerRut = profileForm.employerRut.trim();
   const [convenioLabel, setConvenioLabel] = useState("Sin RUT empleador");
 
@@ -635,8 +641,8 @@ export function ClientPremiumExecutiveCapsules({
       <ClientFichaCapsule
         icon={<IconPlan />}
         title="Plan elegido"
-        description="Puedes asignar varios planes y marcar uno como elegido."
-        fields={fields.plan}
+        description="Planes aceptados por titular y propuestas del cliente."
+        fields={acceptedPlans.length ? acceptedPlans : fields.plan}
         ctaLabel={canEdit ? "Gestionar planes" : "Ver planes"}
         onClick={() => onOpenModal("plan")}
       />

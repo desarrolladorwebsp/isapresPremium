@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { AdminFormModal } from "@/components/admin/admin-data-table";
+import { ClientAcceptedPlans } from "@/components/executive/client-accepted-plans";
 import { ClientAdvisedPlanSection } from "@/components/executive/client-advised-plan-section";
 import { ClientDocumentsSection } from "@/components/executive/client-documents-section";
 import { ClientPlanSummary } from "@/components/executive/client-plan-summary";
@@ -5117,6 +5118,7 @@ export function ClientPipelineDrawer({
         headerTone="navy"
       >
         <div className="space-y-4">
+          {client && fichaModal === "plan" ? <ClientAcceptedPlans clientId={client.id} /> : null}
           {client && canManagePlans ? (
             <ClientAdvisedPlanSection
               client={client}

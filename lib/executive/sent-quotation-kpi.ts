@@ -1,3 +1,4 @@
+import type { QuotationHolderSelection } from "@/lib/client-quotation/holders";
 import { isoInPeriod, isValidReportPeriod, type AdminReportPeriod } from "@/lib/executive/admin-reports";
 import { ISAPRE_CATALOG, resolveIsapreIdFromName } from "@/lib/isapre-catalog";
 
@@ -7,6 +8,7 @@ export const SENT_QUOTATION_KPI_STATUSES = [
   "RECEIVED",
   "ACCEPTED",
   "REJECTED",
+  "NOT_SELECTED",
 ] as const;
 
 export type SentQuotationKpiStatus = (typeof SENT_QUOTATION_KPI_STATUSES)[number];
@@ -24,6 +26,7 @@ export interface SentQuotationKpiRow {
   acceptedAt: string | null;
   rejectedAt: string | null;
   isapres: string[];
+  holderSelections?: QuotationHolderSelection[];
 }
 
 export interface SentQuotationIsapreOption {
@@ -139,7 +142,7 @@ export interface ActiveQuotationIsapreGroup {
   clients: ActiveQuotationClient[];
 }
 
-function quotationIsapreKeys(row: SentQuotationKpiRow): Array<{ id: string; name: string }> {
+function quotationIsapreKeys(row: SentQuotationKpiRow, selectedIds: readonly string[]): Array<{ id: string; name: string }> {
   const entries = new Map<string, string>();
   for (const rawName of row.isapres) {
     const name = rawName.trim();
@@ -152,16 +155,17 @@ function quotationIsapreKeys(row: SentQuotationKpiRow): Array<{ id: string; name
     if (!entries.has(key)) entries.set(key, catalogName || name);
   }
   if (entries.size === 0) entries.set("__unknown__", "Sin Isapre indicada");
-  return [...entries.entries()].map(([id, name]) => ({ id, name }));
+  return [...entries.entries()].filter(([id]) => !selectedIds.length || selectedIds.includes(id)).map(([id, name]) => ({ id, name }));
 }
 
 /** Organiza documentos por Isapre; un documento con varias Isapres aparece en cada grupo correspondiente. */
 export function groupQuotationsByIsapre(
   quotations: readonly SentQuotationKpiRow[],
+  selectedIsapreIds: readonly string[] = [],
 ): QuotationIsapreGroup[] {
   const groups = new Map<string, QuotationIsapreGroup>();
   for (const row of quotations) {
-    for (const isapre of quotationIsapreKeys(row)) {
+    for (const isapre of quotationIsapreKeys(row, selectedIsapreIds)) {
       const group = groups.get(isapre.id);
       if (group) group.items.push(row);
       else groups.set(isapre.id, { isapreId: isapre.id, isapreName: isapre.name, items: [row] });
@@ -191,11 +195,12 @@ export function groupActiveQuotationsByClient(
 /** Agrupa los clientes pendientes por Isapre, conservando documentos y clientes únicos dentro de cada grupo. */
 export function groupActiveQuotationsByIsapre(
   quotations: readonly SentQuotationKpiRow[],
+  selectedIsapreIds: readonly string[] = [],
 ): ActiveQuotationIsapreGroup[] {
   const groups = new Map<string, ActiveQuotationIsapreGroup>();
   for (const row of quotations) {
     if (!row.clientId) continue;
-    for (const isapre of quotationIsapreKeys(row)) {
+    for (const isapre of quotationIsapreKeys(row, selectedIsapreIds)) {
       let group = groups.get(isapre.id);
       if (!group) {
         group = { isapreId: isapre.id, isapreName: isapre.name, clients: [] };
@@ -238,12 +243,31 @@ export function filterOutcomeQuotations(
 ): SentQuotationKpiRow[] {
   if (input.period && !isValidReportPeriod(input.period)) return [];
   const dateKey = OUTCOME_DATE[input.status];
-  return input.quotations.filter((row) => {
+  return input.quotations.flatMap((row) => {
     const at = row[dateKey];
-    if (row.status !== input.status || !at) return false;
-    if (input.period && !isoInPeriod(at, input.period)) return false;
-    return matchesQuotationScope(row, input);
+    const acceptedAndLaterReceived = input.status === "ACCEPTED" &&
+      row.status === "RECEIVED" && Boolean(row.holderSelections?.length);
+    if ((row.status !== input.status && !acceptedAndLaterReceived) || !at) return [];
+    if (input.period && !isoInPeriod(at, input.period)) return [];
+    const isapres = row.holderSelections?.length && input.status !== "REJECTED"
+      ? row.holderSelections.map(holder => holder.isapre)
+      : row.isapres;
+    const scoped = { ...row, isapres };
+    return matchesQuotationScope(scoped, input) ? [scoped] : [];
   });
+}
+
+export function countQuotationHolders(input: QuotationKpiFilter & { event: "accepted" | "received" }): number {
+  if (input.period && !isValidReportPeriod(input.period)) return 0;
+  return input.quotations.reduce((count, row) => {
+    if (row.status !== "ACCEPTED" && row.status !== "RECEIVED") return count;
+    if (input.selectedExecutiveIds.length && !input.selectedExecutiveIds.includes(row.executiveId)) return count;
+    return count + (row.holderSelections ?? []).filter(holder => {
+      const date = input.event === "received" ? holder.receivedAt : row.acceptedAt;
+      return date && (!input.period || isoInPeriod(date, input.period)) &&
+        (!input.selectedIsapreIds.length || sentQuotationIsapreIds([holder.isapre]).some(id => input.selectedIsapreIds.includes(id)));
+    }).length;
+  }, 0);
 }
 
 export function groupSentQuotationsByExecutive(

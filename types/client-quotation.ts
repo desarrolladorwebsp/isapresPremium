@@ -1,10 +1,13 @@
+import type { QuotationHolderSelection } from "@/lib/client-quotation/holders";
+
 export type ClientQuotationStatus =
   | "DRAFT"
   | "SENT"
   | "RECEIVED"
   | "ACCEPTED"
   | "REJECTED"
-  | "VOIDED";
+  | "VOIDED"
+  | "NOT_SELECTED";
 
 export type ClientQuotationActivityType =
   | "CREATED"
@@ -54,6 +57,7 @@ export interface ClientQuotationRecord {
   rejectedAt: string | null;
   voidedAt: string | null;
   outcomeReason: string | null;
+  holderSelections?: QuotationHolderSelection[];
   plans: ClientQuotationPlanSnapshot[];
   activities: ClientQuotationActivityRecord[];
   createdAt: string;
@@ -67,6 +71,7 @@ export const CLIENT_QUOTATION_STATUS_LABELS: Record<ClientQuotationStatus, strin
   RECEIVED: "Recepcionada",
   REJECTED: "Rechazada",
   VOIDED: "Anulada",
+  NOT_SELECTED: "No seleccionada",
 };
 
 export const CLIENT_QUOTATION_STATUS_HELP: Record<ClientQuotationStatus, string> = {
@@ -75,6 +80,7 @@ export const CLIENT_QUOTATION_STATUS_HELP: Record<ClientQuotationStatus, string>
   ACCEPTED: "El cliente aceptó la propuesta. El caso sigue con el ejecutivo de Isapres.",
   RECEIVED: "La Isapre aceptó al cliente y la contratación terminó. Los KPI usan la fecha efectiva de recepción por la Isapre.",
   REJECTED: "El cliente rechazó las propuestas incluidas.",
+  NOT_SELECTED: "El cliente eligió otra cotización.",
   VOIDED: "Cotización invalidada por error, reemplazo o cambio de condiciones.",
 };
 
