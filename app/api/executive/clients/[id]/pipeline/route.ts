@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { updateClientPipeline } from "@/lib/api/client-pipeline-store";
 import { parseClientProfilePayload } from "@/lib/api/parse-client-profile";
-import { apiErrorResponse, parseJsonBody } from "@/lib/api/api-error";
+import { ApiError, apiErrorResponse, parseJsonBody } from "@/lib/api/api-error";
 import { requireExecutiveOrAdminSession, assertSessionStaffSection } from "@/lib/auth/require-auth";
 import { AUTH_REALM } from "@/lib/auth/constants";
 import { normalizeClientPipelineStatus } from "@/lib/client-pipeline/constants";
@@ -75,6 +75,21 @@ function parsePipelinePayload(payload: unknown): UpdateClientPipelineInput {
     } else {
       throw new Error("Fecha de próximo llamado inválida.");
     }
+  }
+
+  if (data.reminderAt !== undefined) {
+    if (data.reminderAt !== null &&
+        (typeof data.reminderAt !== "string" || !Number.isFinite(Date.parse(data.reminderAt)))) {
+      throw new ApiError("La fecha del recordatorio no es válida.", 400, "INVALID_REMINDER_AT");
+    }
+    input.reminderAt = data.reminderAt;
+  }
+
+  if (data.reminderNote !== undefined) {
+    if (data.reminderNote !== null && typeof data.reminderNote !== "string") {
+      throw new ApiError("La nota del recordatorio no es válida.", 400, "INVALID_REMINDER_NOTE");
+    }
+    input.reminderNote = data.reminderNote;
   }
 
   if (data.lastCallOutcome !== undefined) {
