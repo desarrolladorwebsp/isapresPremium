@@ -65,6 +65,8 @@ export interface PendingStaffInviteRecord {
 }
 
 export interface UpdateStaffAccountInput {
+  /** Último día con acceso, en el calendario de Chile. */
+  membershipValidThrough?: string;
   active?: boolean;
   fullName?: string;
   phone?: string | null;

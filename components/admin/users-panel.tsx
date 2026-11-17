@@ -30,6 +30,8 @@ import {
   resendPendingStaffInvite,
   updateStaffAccount,
 } from "@/lib/api/admin-client";
+import { membershipExpirationDay } from "@/lib/auth/membership-expiration";
+import { isSubscriptionActive } from "@/lib/auth/subscription";
 import { getStaffRoleLabel } from "@/lib/auth/staff-role";
 import { ui } from "@/lib/ui-tokens";
 import { joinClasses } from "@/lib/utils";
@@ -161,6 +163,23 @@ function formatDate(value: string | null): string {
     dateStyle: "short",
     timeStyle: "short",
   }).format(new Date(value));
+}
+
+function MembershipValidity({ account }: { account: StaffAccountRecord }) {
+  const expiresAt = account.subscriptionExpiresAt ? new Date(account.subscriptionExpiresAt) : null;
+  const now = new Date();
+  const status = account.subscriptionStatus ?? "TRIAL";
+  const valid = isSubscriptionActive({ subscriptionStatus: status, subscriptionExpiresAt: expiresAt, now });
+  const label = valid
+    ? (status === "TRIAL" ? "Prueba vigente" : "Membresía vigente")
+    : (status === "EXPIRED" || (expiresAt && expiresAt <= now) ? "Membresía vencida" : "Membresía inactiva");
+  const day = account.subscriptionExpiresAt && membershipExpirationDay(account.subscriptionExpiresAt);
+  return (
+    <div className="mt-2 space-y-1">
+      <AdminBadge tone={valid ? "success" : "warning"}>{label}</AdminBadge>
+      {day ? <p className="text-xs text-muted">Vencimiento {day.split("-").reverse().join("/")}</p> : null}
+    </div>
+  );
 }
 
 function getAccountStatus(account: StaffAccountRecord): {
@@ -303,6 +322,7 @@ function UsersDirectoryTable({
   onResendInvite,
   onCancelInvite,
   onChangeRole,
+  onEditMembership,
   onToggleAssignments,
   onToggleAutoAssignments,
   assignmentSaving,
@@ -320,6 +340,7 @@ function UsersDirectoryTable({
   onResendInvite: (inviteId: string) => void;
   onCancelInvite: (inviteId: string) => void;
   onChangeRole: (account: StaffAccountRecord) => void;
+  onEditMembership: (account: StaffAccountRecord) => void;
   onToggleAssignments: (account: StaffAccountRecord) => void;
   onToggleAutoAssignments: (account: StaffAccountRecord) => void;
   assignmentSaving: boolean;
@@ -478,6 +499,7 @@ function UsersDirectoryTable({
               </AdminTableCell>
               <AdminTableCell>
                 <AdminBadge tone={status.tone}>{status.label}</AdminBadge>
+                {account.executiveKind === "MEMBRESIA_ISAPRES_PREMIUM" ? <MembershipValidity account={account} /> : null}
               </AdminTableCell>
               <AdminTableCell className="text-muted">
                 {account.realm === "bot" ? "Sin inicio de sesión" : formatDate(account.lastLoginAt)}
@@ -485,6 +507,11 @@ function UsersDirectoryTable({
               <AdminTableCell align="right">
                 {canManage ? (
                   <AdminRowActions className="flex-nowrap justify-end">
+                    {account.executiveKind === "MEMBRESIA_ISAPRES_PREMIUM" ? (
+                      <Button type="button" size="sm" variant="ghost" onClick={() => onEditMembership(account)}>
+                        Editar vencimiento
+                      </Button>
+                    ) : null}
                     {account.realm === "executive" ? (
                       <UsersIconButton
                         label="Cambiar rol"
@@ -567,6 +594,9 @@ export function UsersPanel({
   const [modalOpen, setModalOpen] = useState(false);
   const [botModalOpen, setBotModalOpen] = useState(false);
   const [botDraft, setBotDraft] = useState({ fullName: "", phone: "" });
+  const [membershipTarget, setMembershipTarget] = useState<StaffAccountRecord | null>(null);
+  const [membershipDay, setMembershipDay] = useState("");
+  const [membershipError, setMembershipError] = useState<string | null>(null);
   const [roleTarget, setRoleTarget] = useState<StaffAccountRecord | null>(null);
   const [roleDraft, setRoleDraft] = useState<ExecutiveKind>("ISAPRES_PREMIUM");
   const [saving, setSaving] = useState(false);
@@ -762,6 +792,31 @@ export function UsersPanel({
         error instanceof Error ? error.message : "No se pudo enviar la invitación.",
         "error",
       );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function openMembershipModal(account: StaffAccountRecord) {
+    setMembershipTarget(account);
+    setMembershipDay(account.subscriptionExpiresAt ? membershipExpirationDay(account.subscriptionExpiresAt) ?? "" : "");
+    setMembershipError(null);
+  }
+
+  async function handleSaveMembership(event: React.FormEvent) {
+    event.preventDefault();
+    if (!membershipTarget || !membershipDay || saving) return;
+    setSaving(true);
+    setMembershipError(null);
+    try {
+      const { account } = await updateStaffAccount("executive", membershipTarget.id, {
+        membershipValidThrough: membershipDay,
+      });
+      setAccounts((rows) => rows.map((row) => row.id === account.id ? account : row));
+      setMembershipTarget(null);
+      onNotify("Vencimiento de la membresía actualizado.");
+    } catch (error) {
+      setMembershipError(error instanceof Error ? error.message : "No se pudo guardar el vencimiento.");
     } finally {
       setSaving(false);
     }
@@ -977,6 +1032,7 @@ export function UsersPanel({
           onResendInvite={(id) => void handleResendPendingInvite(id)}
           onCancelInvite={(id) => void handleCancelPendingInvite(id)}
           onChangeRole={openRoleModal}
+          onEditMembership={openMembershipModal}
           onToggleAssignments={(account) => void handleToggleAssignments(account)}
           onToggleAutoAssignments={(account) => void handleToggleAutoAssignments(account)}
           assignmentSaving={assignmentSaving}
@@ -1053,6 +1109,30 @@ export function UsersPanel({
           </div>
         </form>
       </AdminFormModal>
+      ) : null}
+
+      {canManage && membershipTarget ? (
+        <AdminFormModal
+          open
+          title="Editar vencimiento de membresía"
+          description={membershipTarget.fullName}
+          onClose={() => { if (!saving) setMembershipTarget(null); }}
+          size="md"
+        >
+          <form onSubmit={handleSaveMembership} className="space-y-4">
+            <label className="block space-y-2">
+              <span className="text-sm font-medium">Vigente hasta</span>
+              <Input type="date" required value={membershipDay} disabled={saving}
+                onChange={(event) => setMembershipDay(event.target.value)} />
+            </label>
+            <p className="text-sm text-muted">La membresía permite el acceso hasta el final del día seleccionado, hora de Chile, si la cuenta está habilitada.</p>
+            {membershipError ? <p role="alert" className="text-sm text-red-700">{membershipError}</p> : null}
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="ghost" disabled={saving} onClick={() => setMembershipTarget(null)}>Cancelar</Button>
+              <Button type="submit" disabled={saving || !membershipDay}>{saving ? "Guardando…" : "Guardar vencimiento"}</Button>
+            </div>
+          </form>
+        </AdminFormModal>
       ) : null}
 
       {canManage ? (

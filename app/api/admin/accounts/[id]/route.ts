@@ -42,6 +42,8 @@ function isValidUpdateInput(payload: unknown): payload is UpdateStaffAccountInpu
   const data = payload as Record<string, unknown>;
 
   return (
+    (data.membershipValidThrough === undefined ||
+      (typeof data.membershipValidThrough === "string" && Object.keys(data).length === 1)) &&
     (data.active === undefined || typeof data.active === "boolean") &&
     (data.fullName === undefined || typeof data.fullName === "string") &&
     (data.phone === undefined ||

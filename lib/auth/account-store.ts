@@ -1,3 +1,4 @@
+import { membershipExpirationFromDay } from "@/lib/auth/membership-expiration";
 import { prisma } from "@/lib/prisma";
 import { randomBytes } from "node:crypto";
 import {
@@ -21,6 +22,7 @@ import {
   staffRoleToRealm,
 } from "@/lib/auth/staff-role";
 import {
+  executiveKindRequiresPaidSubscription,
   getSubscriptionBlockReason,
   isExecutiveSubscriptionAllowingAccess,
 } from "@/lib/auth/subscription";
@@ -353,6 +355,23 @@ export async function updateStaffAccount(
   input: UpdateStaffAccountInput,
 ): Promise<StaffAccountRecord> {
   const current = await assertStaffRealm(id, realm);
+  if (input.membershipValidThrough !== undefined) {
+    if (realm !== "executive" || !executiveKindRequiresPaidSubscription(current.executiveKind)) {
+      throw new ApiError("Solo se puede editar el vencimiento de una membresía.", 400, "INVALID_INPUT");
+    }
+    const expiresAt = membershipExpirationFromDay(input.membershipValidThrough);
+    if (!expiresAt) {
+      throw new ApiError("Selecciona una fecha de vencimiento válida.", 400, "INVALID_INPUT");
+    }
+    const account = await prisma.staffAccount.update({
+      where: { id, role: current.role, executiveKind: current.executiveKind },
+      data: {
+        subscriptionExpiresAt: expiresAt,
+        subscriptionStatus: expiresAt > new Date() ? "ACTIVE" : "EXPIRED",
+      },
+    });
+    return mapStaffRecord(account);
+  }
   if (realm === "bot") {
     if (input.autoAssignmentEnabled === true || input.executiveKind !== undefined ||
         input.subscriptionStatus !== undefined || input.rut !== undefined ||

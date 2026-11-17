@@ -72,7 +72,7 @@ Detalle de permisos: `docs/ROLES-AND-PERMISSIONS.md`. Menú: `lib/staff/staff-se
 | Suspender/reactivar cualquier cuenta staff; bloquea el acceso y conserva sus registros relacionados | `PATCH /api/admin/accounts/[id]`, `lib/auth/account-store.ts`, `components/admin/users-panel.tsx` |
 | Recuperación y cambio de contraseña, onboarding de ejecutivo | `/api/auth/password-reset`, `components/executive/executive-onboarding-form.tsx` |
 | Avatar | `/api/executive/profile/avatar`, `/api/staff/avatars/[id]` |
-| Gate de suscripción **solo** para membresía (estado en BD) | `lib/auth/subscription.ts` |
+| Vigencia de membresía | Equipo → Usuarios → Membresía muestra el estado de la cuenta y la vigencia. Un administrador puede editar el vencimiento desde la fila; una fecha vigente habilita el cotizador hasta terminar ese día en Chile si la cuenta está habilitada. `lib/auth/subscription.ts`, `PATCH /api/admin/accounts/[id]`. |
 | Asignación automática configurable por usuario (admin y ejecutivos operativos); check en Usuarios, independiente de asignación manual y acceso. Admin desactivado por defecto; reemplaza el pool fijo de correos inbound. Respeta suspensión, perfil y membresía; no reasigna cartera existente | `StaffAccount.autoAssignmentEnabled`, `components/admin/users-panel.tsx`, `lib/api/lead-assignment.ts`. Preferencias conservadas; recepción automática global temporalmente pausada desde 2026-11-02, sin alterar cartera ni asignación manual |
 | Suspensión de asignaciones | `StaffAccount.assignmentsSuspended` |
 
