@@ -102,6 +102,7 @@ export function ClientQuotationManager({ client, canEdit }: { client: UserRecord
       }));
       setQuotations((rows) => rows.map((row) => row.id === updated.id ? updated : row));
       void queryClient.invalidateQueries({ queryKey: executiveKeys.sentQuotations() });
+      void queryClient.invalidateQueries({ queryKey: executiveKeys.clientBoardQuotations() });
     } catch (actionError) { setError(actionError instanceof Error ? actionError.message : "No se pudo actualizar el estado."); }
     finally { setBusy(false); }
   }
@@ -120,6 +121,7 @@ export function ClientQuotationManager({ client, canEdit }: { client: UserRecord
         : acceptance.alternatives.includes(row.id) ? { ...row, status: "NOT_SELECTED" } : row));
       setAcceptance(null);
       void queryClient.invalidateQueries({ queryKey: executiveKeys.sentQuotations() });
+      void queryClient.invalidateQueries({ queryKey: executiveKeys.clientBoardQuotations() });
       void queryClient.invalidateQueries({ queryKey: executiveKeys.clientQuotations(client.id) });
     } catch (actionError) {
       setError(actionError instanceof Error ? actionError.message : "No se pudo aceptar la cotización.");
@@ -141,6 +143,7 @@ export function ClientQuotationManager({ client, canEdit }: { client: UserRecord
       }));
       setQuotations((rows) => rows.map((row) => row.id === updated.id ? updated : row));
       void queryClient.invalidateQueries({ queryKey: executiveKeys.sentQuotations() });
+      void queryClient.invalidateQueries({ queryKey: executiveKeys.clientBoardQuotations() });
       setReception(null);
     } catch (actionError) { setError(actionError instanceof Error ? actionError.message : "No se pudo registrar la recepción."); }
     finally { setBusy(false); }
@@ -163,6 +166,7 @@ export function ClientQuotationManager({ client, canEdit }: { client: UserRecord
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ channel }),
       }));
       setQuotations((rows) => rows.map((row) => row.id === result.quotation.id ? result.quotation : row));
+      void queryClient.invalidateQueries({ queryKey: executiveKeys.clientBoardQuotations() });
       if (result.whatsappUrl) {
         if (whatsappWindow) whatsappWindow.location.href = result.whatsappUrl;
         else window.open(result.whatsappUrl, "_blank", "noopener,noreferrer");

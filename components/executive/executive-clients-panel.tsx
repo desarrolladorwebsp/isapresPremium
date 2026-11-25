@@ -1,7 +1,7 @@
 "use client";
 
 import { AUTOMATIC_CLIENT_ASSIGNMENT_ENABLED } from "@/lib/client-pipeline/assignment-policy";
-import { ArrowUp, ArrowDown } from "lucide-react";
+import { ArrowUp, ArrowDown, Columns3 } from "lucide-react";
 import { ClientFilterMultiselect } from "./client-filter-multiselect";
 import { filterClientList, compareClientListValues } from "@/lib/client-pipeline/client-list-filter";
 
@@ -26,7 +26,6 @@ import {
 } from "@/components/executive/executive-icons";
 import {
   AdminPanel,
-  AdminPanelHeader,
   AdminRefreshButton,
   AdminTable,
   AdminTableBody,
@@ -46,6 +45,7 @@ import {
 import { useStaffSession } from "@/hooks/use-auth-session";
 import { useExecutiveAccountsQuery } from "@/hooks/query/use-executive-accounts-query";
 import { useExecutiveClientsQuery } from "@/hooks/query/use-executive-clients-query";
+import { useClientBoardQuotationsQuery } from "@/hooks/query/use-client-quotations-query";
 import {
   invalidateExecutiveClients,
   upsertExecutiveClientCache,
@@ -67,7 +67,9 @@ import { ClientRutCell } from "@/components/executive/client-rut-cell";
 import { CreateClientModal } from "@/components/executive/create-client-modal";
 import { ExecutiveAccountDetailView } from "@/components/executive/executive-account-detail-view";
 import { ExecutiveClientDetailView } from "@/components/executive/executive-client-detail-view";
-import { ClientPortfolioCard } from "@/components/executive/client-portfolio-card";
+import { ClientPortfolioCard, type ClientPortfolioCardProps } from "@/components/executive/client-portfolio-card";
+import { ClientStatusBoard } from "@/components/executive/client-status-board";
+import { CLIENT_BOARD_QUICK_FILTERS, isClientBoardWorkStatus, type ClientBoardFilter } from "@/lib/executive/client-board";
 import {
   buildClientWhatsAppMessage,
   CLIENT_PIPELINE_STATUS_LABELS,
@@ -79,6 +81,7 @@ import {
   agendaUrgencyFromIso,
   type AgendaUrgency,
 } from "@/lib/client-pipeline/agenda-urgency";
+import { countExecutiveAgendaStats } from "@/lib/client-pipeline/agenda-stats";
 import { buildWhatsAppUrl } from "@/lib/partner-entity/theme";
 import {
   STAFF_CLIENT_ID_QUERY,
@@ -112,7 +115,7 @@ type ClientsSortKey =
 
 type SortDirection = "asc" | "desc";
 
-type ClientsViewMode = "table" | "cards";
+type ClientsViewMode = "table" | "cards" | "board";
 
 // SendPulse is a read-only source and is intentionally absent from manual creation choices.
 const CLIENT_ORIGIN_FILTER_OPTIONS = [
@@ -143,7 +146,7 @@ function readStoredClientsViewMode(): ClientsViewMode {
   if (typeof window === "undefined") return "cards";
   try {
     const stored = window.localStorage.getItem(CLIENTS_VIEW_MODE_KEY);
-    if (stored === "table" || stored === "cards") return stored;
+    if (stored === "table" || stored === "cards" || stored === "board") return stored;
   } catch {
     /* ignore */
   }
@@ -378,6 +381,7 @@ export function ExecutiveClientsPanel({
     "cartera" | "derivados" | "devueltos" | "todos"
   >("cartera");
   const [viewMode, setViewMode] = useState<ClientsViewMode>("cards");
+  const [boardFilter, setBoardFilter] = useState<ClientBoardFilter>("EN_CURSO");
   const [sortKey, setSortKey] = useState<ClientsSortKey>("registro");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [gestionFilters, setGestionFilters] = useState<ClientGestionFilter[]>(
@@ -396,6 +400,14 @@ export function ExecutiveClientsPanel({
     Record<string, string>
   >({});
   const [distributeConfirmOpen, setDistributeConfirmOpen] = useState(false);
+
+  const isBoard = viewMode === "board";
+  const isWorkingBoard = isBoard && boardFilter === "EN_CURSO";
+  const boardQuotationsQuery = useClientBoardQuotationsQuery(user?.id, isWorkingBoard && !detailClientId);
+  const boardLoading = isWorkingBoard && boardQuotationsQuery.isLoading;
+  const boardQuotations = useMemo(() => new Map(
+    (boardQuotationsQuery.data ?? []).map((quotation) => [quotation.clientId, quotation]),
+  ), [boardQuotationsQuery.data]);
 
   useEffect(() => {
     setViewMode(readStoredClientsViewMode());
@@ -510,12 +522,23 @@ export function ExecutiveClientsPanel({
     );
   }, [clients, executives, isAdmin]);
 
-  const filteredClients = useMemo(() => filterClientList(segmentedClients, {
-    search, statuses: statusFilters, executiveIds: executiveFilterIds,
-    gestion: gestionFilters, filterExecutives: showExecutiveFilter, origins: originFilters,
-  }), [segmentedClients, search, statusFilters, executiveFilterIds, gestionFilters, showExecutiveFilter, originFilters]);
+  const displayedStatusFilters = useMemo(() =>
+    isWorkingBoard ? statusFilters.filter(isClientBoardWorkStatus) : statusFilters,
+  [isWorkingBoard, statusFilters]);
 
-  const statusFilterOptions = CLIENT_PIPELINE_STATUS_OPTIONS.map(value => ({
+  const filteredClients = useMemo(() => filterClientList(
+    isWorkingBoard ? segmentedClients.filter((client) => isClientBoardWorkStatus(client.pipelineStatus)) : segmentedClients,
+    {
+      search,
+      statuses: isBoard && boardFilter !== "EN_CURSO" ? [boardFilter] : displayedStatusFilters,
+      executiveIds: executiveFilterIds,
+      gestion: gestionFilters,
+      filterExecutives: showExecutiveFilter,
+      origins: originFilters,
+    },
+  ), [segmentedClients, search, displayedStatusFilters, executiveFilterIds, gestionFilters, showExecutiveFilter, originFilters, isBoard, isWorkingBoard, boardFilter]);
+
+  const statusFilterOptions = CLIENT_PIPELINE_STATUS_OPTIONS.filter((status) => !isWorkingBoard || isClientBoardWorkStatus(status)).map(value => ({
     value, label: CLIENT_PIPELINE_STATUS_LABELS[value],
   }));
   const executiveFilterOptions = [
@@ -523,9 +546,9 @@ export function ExecutiveClientsPanel({
     ...sortedExecutives.map(executive => ({ value: executive.id,
       label: formatPersonDisplayName(executive.fullName) })),
   ];
-  const statusFilterLabel = statusFilters.length === 0 ? "Estados: todos excepto En pausa" :
-    statusFilters.length === 1 ? `Estado: ${CLIENT_PIPELINE_STATUS_LABELS[statusFilters[0]]}` :
-    `Estados: ${statusFilters.length} seleccionados`;
+  const statusFilterLabel = displayedStatusFilters.length === 0 ? (isWorkingBoard ? "Estados: en curso" : "Estados: sin pausa") :
+    displayedStatusFilters.length === 1 ? `Estado: ${CLIENT_PIPELINE_STATUS_LABELS[displayedStatusFilters[0]]}` :
+    `Estados (${displayedStatusFilters.length})`;
   const executiveFilterLabel = executiveFilterIds.length === 0 ? "Ejecutivos: todos" :
     executiveFilterIds.length === 1 ? executiveFilterOptions.find(option => option.value === executiveFilterIds[0])?.label ?? "Ejecutivo seleccionado" :
     `Ejecutivos: ${executiveFilterIds.length} seleccionados`;
@@ -558,8 +581,9 @@ export function ExecutiveClientsPanel({
 
   const activeFiltersCount = useMemo(() => {
     let count = 0;
+    if (!isAdmin && segment !== "cartera") count += 1;
     if (!gestionFilterIsDefault) count += 1;
-    if (statusFilters.length) count += 1;
+    if ((!isBoard || isWorkingBoard) && displayedStatusFilters.length) count += 1;
     if (originFilters.length) count += 1;
     if (showExecutiveFilter && executiveFilterIds.length) count += 1;
     if (
@@ -569,9 +593,13 @@ export function ExecutiveClientsPanel({
     }
     return count;
   }, [
+    isAdmin,
+    segment,
     gestionFilterIsDefault,
     originFilters,
-    statusFilters,
+    displayedStatusFilters,
+    isBoard,
+    isWorkingBoard,
     showExecutiveFilter,
     executiveFilterIds,
     sortKey,
@@ -591,6 +619,13 @@ export function ExecutiveClientsPanel({
 
     return rows;
   }, [filteredClients, sortKey, sortDirection]);
+
+  const executiveId = user?.id ?? null;
+  const overdueBoardClientIds = useMemo(() => {
+    if (!isWorkingBoard) return new Set<string>();
+    const { items } = countExecutiveAgendaStats({ clients: sortedClients, executiveId, isAdmin });
+    return new Set(items.overdue.map((item) => item.clientId));
+  }, [isWorkingBoard, sortedClients, executiveId, isAdmin]);
 
   // Filtra y ordena la cartera completa, pero limita el DOM al tamaño de página.
   const pageSize = 50;
@@ -654,6 +689,7 @@ export function ExecutiveClientsPanel({
     await Promise.all([
       clientsQuery.refetch(),
       isAdmin ? executivesQuery.refetch() : Promise.resolve(),
+      isWorkingBoard ? boardQuotationsQuery.refetch() : Promise.resolve(),
     ]);
   }
 
@@ -760,7 +796,23 @@ export function ExecutiveClientsPanel({
       </nav>
     );
   }
-  const listFooter = renderPagination("inferior");
+  function renderPortfolioCard(client: UserRecord, disclosure?: ClientPortfolioCardProps["disclosure"]) {
+    return (
+      <ClientPortfolioCard
+        key={client.id}
+        client={client}
+        isAdmin={isAdmin}
+        canReassign={canReassignClients}
+        isTrackingOnly={Boolean(!isAdmin && user?.id && isTrackingOnlyForExecutive(client, user.id))}
+        registeredByLabel={resolveRegisteredByLabel(client)}
+        assignedLabel={resolveAssignedExecutiveLabel(client)}
+        assignControl={canReassignClients && (!disclosure || disclosure.expanded) ? renderExecutiveAssign(client) : undefined}
+        onOpenFicha={() => openClientFicha(client.id)}
+        hasOverdueManagement={overdueBoardClientIds.has(client.id)}
+        disclosure={disclosure}
+      />
+    );
+  }
 
   function renderExecutiveAssign(client: UserRecord) {
     const currentExecutiveId = client.assignedExecutiveId ?? "";
@@ -974,274 +1026,302 @@ export function ExecutiveClientsPanel({
 
   return (
     <AdminPanel>
-      <AdminPanelHeader
-        title="Clientes"
-        compactMobile
-        middle={
-          <div className="flex min-w-0 flex-col gap-2 lg:flex-row lg:items-center">
-            <div className="flex min-w-0 flex-1 items-center gap-2 lg:max-w-md lg:flex-none">
-              <Input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Buscar por nombre, correo, teléfono o RUT…"
-                aria-label="Buscar clientes"
-                className={joinClasses("h-9 min-w-0 flex-1", ui.input)}
-              />
-              <Button
-                type="button"
-                size="sm"
-                variant={filtersPanelOpen || activeFiltersCount > 0 ? "primary" : "ghost"}
-                onClick={() => setFiltersPanelOpen((open) => !open)}
-                aria-expanded={filtersPanelOpen}
-                aria-controls="clients-filters-panel"
-                className={joinClasses(
-                  touchTarget,
-                  "relative shrink-0 px-3 sm:h-9 sm:min-h-9 lg:hidden",
-                )}
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  className="mr-1.5 size-4 shrink-0"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  aria-hidden
-                >
-                  <path
-                    d="M4 7h16M4 12h10M4 17h16"
-                    strokeLinecap="round"
-                  />
-                </svg>
-                Filtros
-                {activeFiltersCount > 0 ? (
-                  <span className="ml-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-white/20 px-1 text-[11px] font-bold">
-                    {activeFiltersCount}
-                  </span>
-                ) : null}
-              </Button>
-            </div>
-            <div
-              id="clients-filters-panel"
-              className={joinClasses(
-                "min-w-0 flex-wrap items-stretch gap-2 sm:items-center",
-                filtersPanelOpen
-                  ? "flex rounded-xl border border-border bg-white p-3"
-                  : "hidden",
-                "lg:flex lg:min-w-0 lg:flex-1 lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0",
-              )}
-            >
-              <ClientFilterMultiselect label="Filtrar por gestión" summary={gestionFilterLabel}
-                options={CLIENT_GESTION_FILTER_OPTIONS} selected={gestionFilters} onChange={setGestionFilters}
-                resetValues={DEFAULT_CLIENT_GESTION_FILTERS} resetLabel="Solo pendientes" />
-              <ClientFilterMultiselect label="Filtrar por origen" summary={originFilterLabel}
-                options={CLIENT_ORIGIN_FILTER_OPTIONS} selected={originFilters}
-                onChange={values => { setOriginFilters(values); setClientPage({ key: "", page: 1 }); }}
-                resetValues={[]} resetLabel="Todos los orígenes" hint="Sin selección: todos los orígenes." />
-              <ClientFilterMultiselect label="Filtrar por estados" summary={statusFilterLabel}
-                options={statusFilterOptions} selected={statusFilters} onChange={setStatusFilters}
-                resetValues={[]} hint="Sin selección: todos excepto En pausa." />
-              {showExecutiveFilter ? (
-                <ClientFilterMultiselect label="Filtrar por ejecutivos" summary={executiveFilterLabel}
-                  options={executiveFilterOptions} selected={executiveFilterIds} onChange={setExecutiveFilterIds}
-                  resetValues={[]} resetLabel="Todos los ejecutivos" hint="Sin selección: todos los ejecutivos." />
-              ) : null}
-                <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
-                  <label className="sr-only" htmlFor="clients-sort-key">
-                    Ordenar por
-                  </label>
-                  <select
-                    id="clients-sort-key"
-                    value={sortKey}
-                    onChange={(event) => {
-                      const nextKey = event.target.value as ClientsSortKey;
-                      setSortKey(nextKey);
-                      setSortDirection(nextKey === "registro" ? "desc" : "asc");
-                    }}
-                    className={joinClasses(
-                      "h-10 min-w-0 flex-1 rounded-lg px-3 text-sm sm:h-9 sm:min-w-[11rem] sm:flex-none",
-                      ui.input,
-                    )}
-                  >
-                    {CLIENTS_SORT_OPTIONS.filter(
-                      (option) => isAdmin || !option.adminOnly,
-                    ).map((option) => (
-                      <option key={option.key} value={option.key}>
-                        Ordenar: {option.label}
-                      </option>
-                    ))}
-                  </select>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    onClick={() =>
-                      setSortDirection((current) =>
-                        current === "asc" ? "desc" : "asc",
-                      )
-                    }
-                    className={joinClasses(touchTarget, "h-10 px-2.5 sm:h-9")}
-                    aria-label={
-                      sortDirection === "asc"
-                        ? "Orden ascendente"
-                        : "Orden descendente"
-                    }
-                    title={
-                      sortDirection === "asc" ? "Ascendente" : "Descendente"
-                    }
-                  >
-                    {sortDirection === "asc" ? <ArrowUp aria-hidden="true" className="size-4" /> : <ArrowDown aria-hidden="true" className="size-4" />}
-                    <span className="ml-1.5">{sortDirection === "asc" ? "Ascendente" : "Descendente"}</span>
-                  </Button>
-                </div>
-            </div>
-          </div>
-        }
-        actions={
-          <>
-            <div
-              className={joinClasses(
-                "inline-flex shrink-0 rounded-lg p-0.5",
-                ui.borderHairline,
-              )}
-              role="group"
-              aria-label="Vista de clientes"
-            >
-              <button
-                type="button"
-                onClick={() => handleViewModeChange("table")}
-                aria-pressed={viewMode === "table"}
-                aria-label="Vista de tabla"
-                title="Vista de tabla"
-                className={joinClasses(
-                  touchTarget,
-                  "rounded-md px-0 transition sm:h-9 sm:min-h-9 sm:min-w-9 sm:px-2",
-                  viewMode === "table"
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted hover:bg-surface-hover hover:text-foreground",
-                )}
-              >
-                <IconLayoutTable className="size-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => handleViewModeChange("cards")}
-                aria-pressed={viewMode === "cards"}
-                aria-label="Vista de cuadros"
-                title="Vista de cuadros"
-                className={joinClasses(
-                  touchTarget,
-                  "rounded-md px-0 transition sm:h-9 sm:min-h-9 sm:min-w-9 sm:px-2",
-                  viewMode === "cards"
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted hover:bg-surface-hover hover:text-foreground",
-                )}
-              >
-                <IconLayoutCards className="size-4" />
-              </button>
-            </div>
-            <AdminRefreshButton
-              compactMobile
-              loading={isFetching && !loading}
-              onClick={() => void handleRefresh()}
+      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 xl:grid-cols-[auto_minmax(0,1fr)_auto] xl:gap-3">
+        <h2 className="text-xl font-bold text-primary-dark">Clientes</h2>
+        <div className="col-span-full row-start-2 flex min-w-0 flex-col gap-2 lg:flex-row lg:items-center lg:gap-1.5 xl:col-span-1 xl:col-start-2 xl:row-start-1">
+          <div className="flex min-w-0 items-center gap-2 lg:w-36 lg:shrink-0 2xl:w-40">
+            <Input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Buscar clientes…"
+              title="Buscar por nombre, correo, teléfono o RUT"
+              aria-label="Buscar clientes"
+              className={joinClasses("min-w-0 flex-1 sm:h-9", ui.input)}
             />
-            <Button
-              size="sm"
-              variant="success"
-              onClick={() => setCreateModalOpen(true)}
-              aria-label="Agregar cliente"
-              title="Agregar cliente"
-              className={joinClasses(
-                touchTarget,
-                "px-0 sm:h-9 sm:min-h-9 sm:min-w-9 lg:min-w-0 lg:px-3",
-              )}
-            >
-              <IconUserPlus className="size-4 lg:mr-1.5" />
-              <span className="hidden lg:inline">Agregar cliente</span>
-            </Button>
-            {AUTOMATIC_CLIENT_ASSIGNMENT_ENABLED && isAdmin && unassignedCount > 0 ? (
-              <Button
-                size="sm"
-                variant="danger"
-                disabled={distributing}
-                onClick={() => setDistributeConfirmOpen(true)}
-                aria-label={
-                  distributing
-                    ? "Asignando pendientes"
-                    : `Asignar pendientes (${unassignedCount})`
-                }
-                title={
-                  distributing
-                    ? "Asignando…"
-                    : `Asignar pendientes (${unassignedCount})`
-                }
-                className={joinClasses(
-                  touchTarget,
-                  "relative border-rose-300 !bg-rose-600 px-0 !text-white shadow-sm hover:!bg-rose-500 active:scale-[0.98] sm:h-9 sm:min-h-9 sm:min-w-9 lg:min-w-0 lg:px-3",
-                )}
-              >
-                <IconUsers className="size-4 lg:mr-1.5" />
-                <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-900 px-1 text-[10px] font-bold text-white lg:hidden">
-                  {unassignedCount}
-                </span>
-                <span className="hidden lg:inline">
-                  {distributing
-                    ? "Asignando…"
-                    : `Asignar pendientes (${unassignedCount})`}
-                </span>
-              </Button>
-            ) : null}
-          </>
-        }
-      />
-
-      {!isAdmin ? (
-        <div className="flex flex-wrap gap-2">
-          <Button
-            type="button"
-            size="sm"
-            variant={segment === "cartera" ? "primary" : "ghost"}
-            onClick={() => setSegment("cartera")}
-            className={touchTarget}
-          >
-            Mi cartera
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={segment === "derivados" ? "primary" : "ghost"}
-            onClick={() => setSegment("derivados")}
-            className={touchTarget}
-          >
-            Derivados{derivadosCount > 0 ? ` (${derivadosCount})` : ""}
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={segment === "devueltos" ? "primary" : "ghost"}
-            onClick={() => setSegment("devueltos")}
-            className={touchTarget}
-          >
-            Devueltos{devueltosCount > 0 ? ` (${devueltosCount})` : ""}
-          </Button>
-          {canBrowseAllClients ? (
             <Button
               type="button"
               size="sm"
-              variant={segment === "todos" ? "primary" : "ghost"}
-              onClick={() => setSegment("todos")}
-              className={touchTarget}
+              variant={filtersPanelOpen || activeFiltersCount > 0 ? "primary" : "ghost"}
+              onClick={() => setFiltersPanelOpen((open) => !open)}
+              aria-expanded={filtersPanelOpen}
+              aria-controls="clients-filters-panel"
+              className={joinClasses(
+                touchTarget,
+                "relative shrink-0 px-3 sm:h-9 sm:min-h-9 lg:hidden",
+              )}
             >
-              Todos los clientes
+              <svg
+                viewBox="0 0 24 24"
+                className="mr-1.5 size-4 shrink-0"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                aria-hidden
+              >
+                <path
+                  d="M4 7h16M4 12h10M4 17h16"
+                  strokeLinecap="round"
+                />
+              </svg>
+              Filtros
+              {activeFiltersCount > 0 ? (
+                <span className="ml-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-white/20 px-1 text-[11px] font-bold">
+                  {activeFiltersCount}
+                </span>
+              ) : null}
+            </Button>
+          </div>
+          <div
+            id="clients-filters-panel"
+            role="group"
+            aria-label="Filtros de clientes"
+            className={joinClasses(
+              "min-w-0 grid-cols-1 items-center gap-2 sm:grid-cols-2 md:grid-cols-3",
+              filtersPanelOpen ? "grid rounded-xl border border-border bg-white p-3" : "hidden",
+              "lg:flex lg:flex-1 lg:flex-wrap lg:gap-1.5 lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0",
+            )}
+          >
+            {!isAdmin ? (
+              <select
+                aria-label="Cartera del ejecutivo"
+                value={segment}
+                onChange={(event) => setSegment(event.target.value as typeof segment)}
+                className={joinClasses("h-11 w-full min-w-0 rounded-lg px-3 text-sm sm:h-9 lg:w-32 lg:px-2 2xl:w-36", ui.input)}
+              >
+                <option value="cartera">Mi cartera</option>
+                <option value="derivados">
+                  Derivados{derivadosCount > 0 ? ` (${derivadosCount})` : ""}
+                </option>
+                <option value="devueltos">
+                  Devueltos{devueltosCount > 0 ? ` (${devueltosCount})` : ""}
+                </option>
+                {canBrowseAllClients ? <option value="todos">Todos los clientes</option> : null}
+              </select>
+            ) : null}
+            <ClientFilterMultiselect
+              label="Filtrar por gestión"
+              summary={gestionFilterLabel}
+              options={CLIENT_GESTION_FILTER_OPTIONS}
+              selected={gestionFilters}
+              onChange={setGestionFilters}
+              resetValues={DEFAULT_CLIENT_GESTION_FILTERS}
+              resetLabel="Solo pendientes"
+            />
+            <ClientFilterMultiselect
+              label="Filtrar por origen"
+              summary={originFilterLabel}
+              options={CLIENT_ORIGIN_FILTER_OPTIONS}
+              selected={originFilters}
+              onChange={(values) => {
+                setOriginFilters(values);
+                setClientPage({ key: "", page: 1 });
+              }}
+              resetValues={[]}
+              resetLabel="Todos los orígenes"
+              hint="Sin selección: todos los orígenes."
+            />
+            {!isBoard || isWorkingBoard ? (
+              <ClientFilterMultiselect
+                label="Filtrar por estados"
+                summary={statusFilterLabel}
+                options={statusFilterOptions}
+                selected={displayedStatusFilters}
+                onChange={(values) => setStatusFilters((current) => isWorkingBoard
+                  ? [...current.filter((status) => !isClientBoardWorkStatus(status)), ...values]
+                  : values)}
+                resetValues={[]}
+                hint={isWorkingBoard ? "Sin selección: todos los estados en curso." : "Sin selección: todos excepto En pausa."}
+              />
+            ) : null}
+            {showExecutiveFilter ? (
+              <ClientFilterMultiselect
+                label="Filtrar por ejecutivos"
+                summary={executiveFilterLabel}
+                options={executiveFilterOptions}
+                selected={executiveFilterIds}
+                onChange={setExecutiveFilterIds}
+                resetValues={[]}
+                resetLabel="Todos los ejecutivos"
+                hint="Sin selección: todos los ejecutivos."
+              />
+            ) : null}
+            <div className="flex min-w-0 items-center gap-1 sm:col-span-2 md:col-span-1 lg:w-48 2xl:w-52">
+              <select
+                id="clients-sort-key"
+                aria-label="Ordenar por"
+                value={sortKey}
+                onChange={(event) => {
+                  const nextKey = event.target.value as ClientsSortKey;
+                  setSortKey(nextKey);
+                  setSortDirection(nextKey === "registro" ? "desc" : "asc");
+                }}
+                className={joinClasses("h-11 min-w-0 flex-1 rounded-lg px-3 text-sm sm:h-9 lg:px-2", ui.input)}
+              >
+                {CLIENTS_SORT_OPTIONS.filter(
+                  (option) => isAdmin || !option.adminOnly,
+                ).map((option) => (
+                  <option key={option.key} value={option.key}>
+                    Orden: {option.label}
+                  </option>
+                ))}
+              </select>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() =>
+                  setSortDirection((current) => current === "asc" ? "desc" : "asc")
+                }
+                className="size-11 shrink-0 border border-border bg-white px-0 sm:size-9"
+                aria-label={sortDirection === "asc" ? "Orden ascendente" : "Orden descendente"}
+                title={sortDirection === "asc" ? "Ascendente" : "Descendente"}
+              >
+                {sortDirection === "asc" ? (
+                  <ArrowUp aria-hidden="true" className="size-4" />
+                ) : (
+                  <ArrowDown aria-hidden="true" className="size-4" />
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+        <div className="col-start-2 row-start-1 flex items-center justify-end gap-2 xl:col-start-3">
+          <div
+            className={joinClasses(
+              "inline-flex shrink-0 rounded-lg p-0.5",
+              ui.borderHairline,
+            )}
+            role="group"
+            aria-label="Vista de clientes"
+          >
+            <button
+              type="button"
+              onClick={() => handleViewModeChange("table")}
+              aria-pressed={viewMode === "table"}
+              aria-label="Vista de tabla"
+              title="Vista de tabla"
+              className={joinClasses(
+                touchTarget,
+                "rounded-md px-0 transition sm:h-9 sm:min-h-9 sm:min-w-9 sm:px-2",
+                viewMode === "table"
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted hover:bg-surface-hover hover:text-foreground",
+              )}
+            >
+              <IconLayoutTable className="size-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => handleViewModeChange("cards")}
+              aria-pressed={viewMode === "cards"}
+              aria-label="Vista de cuadros"
+              title="Vista de cuadros"
+              className={joinClasses(
+                touchTarget,
+                "rounded-md px-0 transition sm:h-9 sm:min-h-9 sm:min-w-9 sm:px-2",
+                viewMode === "cards"
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted hover:bg-surface-hover hover:text-foreground",
+              )}
+            >
+              <IconLayoutCards className="size-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => handleViewModeChange("board")}
+              aria-pressed={viewMode === "board"}
+              aria-label="Vista de tablero"
+              title="Vista de tablero"
+              className={joinClasses(
+                touchTarget,
+                "rounded-md px-0 transition sm:h-9 sm:min-h-9 sm:min-w-9 sm:px-2",
+                viewMode === "board"
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted hover:bg-surface-hover hover:text-foreground",
+              )}
+            >
+              <Columns3 className="size-4" />
+            </button>
+          </div>
+          <AdminRefreshButton
+            compactMobile
+            loading={(isFetching || (isWorkingBoard && boardQuotationsQuery.isFetching)) && !loading && !boardLoading}
+            onClick={() => void handleRefresh()}
+          />
+          <Button
+            size="sm"
+            variant="success"
+            onClick={() => setCreateModalOpen(true)}
+            aria-label="Agregar cliente"
+            title="Agregar cliente"
+            className={joinClasses(
+              touchTarget,
+              "px-0 sm:h-9 sm:min-h-9 sm:min-w-9 min-[1440px]:min-w-0 min-[1440px]:px-3",
+            )}
+          >
+            <IconUserPlus className="size-4 min-[1440px]:mr-1.5" />
+            <span className="hidden min-[1440px]:inline">Agregar cliente</span>
+          </Button>
+          {AUTOMATIC_CLIENT_ASSIGNMENT_ENABLED && isAdmin && unassignedCount > 0 ? (
+            <Button
+              size="sm"
+              variant="danger"
+              disabled={distributing}
+              onClick={() => setDistributeConfirmOpen(true)}
+              aria-label={
+                distributing
+                  ? "Asignando pendientes"
+                  : `Asignar pendientes (${unassignedCount})`
+              }
+              title={
+                distributing
+                  ? "Asignando…"
+                  : `Asignar pendientes (${unassignedCount})`
+              }
+              className={joinClasses(
+                touchTarget,
+                "relative border-rose-300 !bg-rose-600 px-0 !text-white shadow-sm hover:!bg-rose-500 active:scale-[0.98] sm:h-9 sm:min-h-9 sm:min-w-9 min-[1440px]:min-w-0 min-[1440px]:px-3",
+              )}
+            >
+              <IconUsers className="size-4 min-[1440px]:mr-1.5" />
+              <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-900 px-1 text-[10px] font-bold text-white min-[1440px]:hidden">
+                {unassignedCount}
+              </span>
+              <span className="hidden min-[1440px]:inline">
+                {distributing
+                  ? "Asignando…"
+                  : `Asignar pendientes (${unassignedCount})`}
+              </span>
             </Button>
           ) : null}
         </div>
+        {isBoard ? (
+          <div role="group" aria-label="Filtros rápidos del tablero" className="col-span-full flex flex-wrap items-center gap-1.5">
+            {CLIENT_BOARD_QUICK_FILTERS.map(({ value, label }) => (
+              <Button
+                key={value}
+                type="button"
+                size="sm"
+                variant={boardFilter === value ? "primary" : "ghost"}
+                aria-pressed={boardFilter === value}
+                onClick={() => setBoardFilter(value)}
+              >
+                {label}
+              </Button>
+            ))}
+          </div>
+        ) : null}
+      </div>
+
+      {!loading && viewMode !== "board" && sortedClients.length > pageSize ? renderPagination("superior") : null}
+
+      {isWorkingBoard && boardQuotationsQuery.isError ? (
+        <p role="status" className="text-sm text-muted">No se pudieron cargar las cotizaciones del tablero. Pulsa Actualizar para reintentar.</p>
       ) : null}
 
-      {!loading && sortedClients.length > pageSize ? renderPagination("superior") : null}
-
       <AdminTableCard
-        loading={loading}
-        empty={!loading && sortedClients.length === 0}
+        loading={loading || boardLoading}
+        empty={!isBoard && !loading && sortedClients.length === 0}
         emptyTitle={
           segmentedClients.length > 0 ? "Sin resultados con estos filtros" : segment === "derivados"
             ? "Sin clientes derivados"
@@ -1261,9 +1341,9 @@ export function ExecutiveClientsPanel({
                 : "Agrega clientes que captaste por tu cuenta o solicita una asignación manual de cartera."
         }
         loadingMessage="Cargando clientes…"
-        footer={listFooter}
-        contentLayout={viewMode === "cards" ? "stack" : "scroll"}
-        framed={viewMode !== "cards"}
+        footer={viewMode === "board" ? undefined : renderPagination("inferior")}
+        contentLayout={viewMode === "table" ? "scroll" : "stack"}
+        framed={viewMode === "table"}
         className={
           viewMode === "table" ? "premium-clients-table-card" : undefined
         }
@@ -1417,27 +1497,19 @@ export function ExecutiveClientsPanel({
               ))}
             </AdminTableBody>
           </AdminTable>
+        ) : viewMode === "board" ? (
+          <ClientStatusBoard
+            key={user?.id}
+            clients={sortedClients}
+            filter={boardFilter}
+            quotations={boardQuotations}
+            viewerId={user?.id}
+            filterKey={JSON.stringify([pageKey, boardFilter])}
+            renderCard={renderPortfolioCard}
+          />
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {pagedClients.map((client) => (
-              <ClientPortfolioCard
-                key={client.id}
-                client={client}
-                isAdmin={isAdmin}
-                canReassign={canReassignClients}
-                isTrackingOnly={Boolean(
-                  !isAdmin &&
-                  user?.id &&
-                  isTrackingOnlyForExecutive(client, user.id),
-                )}
-                registeredByLabel={resolveRegisteredByLabel(client)}
-                assignedLabel={resolveAssignedExecutiveLabel(client)}
-                assignControl={
-                  canReassignClients ? renderExecutiveAssign(client) : undefined
-                }
-                onOpenFicha={() => openClientFicha(client.id)}
-              />
-            ))}
+            {pagedClients.map((client) => renderPortfolioCard(client))}
           </div>
         )}
       </AdminTableCard>

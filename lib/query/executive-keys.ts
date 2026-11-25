@@ -24,5 +24,7 @@ export const executiveKeys = {
 
   clientQuotations: (clientId: string) => [...executiveKeys.all, "client-quotations", clientId] as const,
 
+  clientBoardQuotations: (viewerId?: string) => [...executiveKeys.all, "client-board-quotations", ...(viewerId ? [viewerId] : [])] as const,
+
   sentQuotations: () => [...executiveKeys.all, "sent-quotations"] as const,
 } as const;

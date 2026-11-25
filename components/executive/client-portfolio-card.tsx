@@ -3,6 +3,7 @@
 import { formatAnnualityMonth } from "@/lib/client-profile/annuality";
 
 import type { ReactNode } from "react";
+import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ClientOriginBadge } from "@/components/executive/client-origin-badge";
 import { ClientPipelineStatusBadge } from "@/components/executive/client-pipeline-status-badge";
@@ -29,6 +30,7 @@ import {
   agendaUrgencyFromIso,
   type AgendaUrgency,
 } from "@/lib/client-pipeline/agenda-urgency";
+import { nextFollowUpActions } from "@/lib/client-pipeline/follow-up";
 import { buildWhatsAppUrl } from "@/lib/partner-entity/theme";
 import { joinClasses } from "@/lib/utils";
 import {
@@ -38,15 +40,17 @@ import {
 } from "@/types/client-pipeline";
 import type { UserRecord } from "@/types/user";
 
+const cardDateTimeFormatter = new Intl.DateTimeFormat("es-CL", {
+  timeZone: "America/Santiago",
+  dateStyle: "short",
+  timeStyle: "short",
+});
+
 function formatCardDateTime(value: string | null | undefined): string | null {
   if (!value) return null;
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return null;
-  return new Intl.DateTimeFormat("es-CL", {
-    timeZone: "America/Santiago",
-    dateStyle: "short",
-    timeStyle: "short",
-  }).format(date);
+  return cardDateTimeFormatter.format(date);
 }
 
 function MetaRow({
@@ -141,6 +145,8 @@ export interface ClientPortfolioCardProps {
   assignedLabel: string;
   assignControl?: ReactNode;
   onOpenFicha: () => void;
+  hasOverdueManagement?: boolean;
+  disclosure?: { expanded: boolean; note?: string; onToggle: () => void };
 }
 
 export function ClientPortfolioCard({
@@ -152,9 +158,12 @@ export function ClientPortfolioCard({
   assignedLabel,
   assignControl,
   onOpenFicha,
+  hasOverdueManagement = false,
+  disclosure,
 }: ClientPortfolioCardProps) {
   const pipelineStatus = (client.pipelineStatus ??
     "NUEVO") as ClientPipelineStatus;
+  const showDetails = !disclosure || disclosure.expanded;
   const contactMethod = client.preferredContactMethod as
     | ClientContactMethod
     | null
@@ -162,190 +171,246 @@ export function ClientPortfolioCard({
   const contactLabel = contactMethod
     ? `Contacto: ${CLIENT_CONTACT_METHOD_LABELS[contactMethod]}`
     : "Contacto";
-  const confirmationAt = formatCardDateTime(client.confirmationCallAt);
-  const nextCallAt = formatCardDateTime(client.nextCallAt);
-  const createdAt = formatCardDateTime(client.createdAt);
-  const whatsappHref = client.phone
+  const confirmationAt = showDetails ? formatCardDateTime(client.confirmationCallAt) : null;
+  const nextCallAt = showDetails ? formatCardDateTime(client.nextCallAt) : null;
+  const createdAt = showDetails ? formatCardDateTime(client.createdAt) : null;
+  const whatsappHref = showDetails && client.phone
     ? buildWhatsAppUrl(
         client.phone,
         buildClientWhatsAppMessage(client.fullName),
       )
     : null;
+  const nextAction = disclosure && !showDetails ? nextFollowUpActions(client)[0] : undefined;
+  const nextActionAt = formatCardDateTime(nextAction?.at);
+  const overdueLabelId = hasOverdueManagement ? `overdue-client-${client.id}` : undefined;
 
   return (
     <article
       className={joinClasses(
-        "group/card flex flex-col gap-3.5 rounded-2xl border border-border/70 bg-white p-4",
-        "shadow-[0_8px_28px_-10px_rgb(9_37_88_/_0.18),0_2px_8px_-2px_rgb(13_109_238_/_0.1)]",
-        "transition-all duration-200 ease-out",
-        "hover:-translate-y-1 hover:border-primary/40 hover:bg-secondary-muted/25",
-        "hover:shadow-[0_18px_44px_-12px_rgb(9_37_88_/_0.26),0_8px_20px_-6px_rgb(13_109_238_/_0.2)]",
-        "hover:ring-2 hover:ring-primary/15",
+        "group/card flex min-w-0 flex-col gap-3.5 rounded-2xl border",
+        hasOverdueManagement
+          ? "border-red-300! border-l-4 border-l-red-500! bg-red-50"
+          : "border-border/70 bg-white",
+        disclosure
+          ? "p-3 shadow-sm transition-colors"
+          : "p-4 shadow-[0_8px_28px_-10px_rgb(9_37_88_/_0.18),0_2px_8px_-2px_rgb(13_109_238_/_0.1)] transition-all duration-200 ease-out hover:-translate-y-1 hover:border-primary/40 hover:bg-secondary-muted/25 hover:shadow-[0_18px_44px_-12px_rgb(9_37_88_/_0.26),0_8px_20px_-6px_rgb(13_109_238_/_0.2)] hover:ring-2 hover:ring-primary/15",
+        disclosure && !hasOverdueManagement && "hover:border-primary/40",
       )}
     >
       <header className="min-w-0 space-y-2">
-        <h3 className="truncate text-base font-bold capitalize leading-tight text-primary-dark sm:text-lg">
-          {client.fullName}
-        </h3>
-        <div className="flex flex-wrap items-center gap-1.5">
-          <ClientPipelineStatusBadge status={pipelineStatus} />
-          <ClientOriginBadge
-            origin={client.clientOrigin}
-            cotizadorSource={client.cotizadorSource}
-            webFormSource={client.webFormSource}
-            sendpulseBotPhone={client.sendpulseBotPhone}
-          />
-          {isTrackingOnly ? (
-            <span className="inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 ring-1 ring-amber-200">
-              Derivado · seguimiento
-            </span>
-          ) : null}
-        </div>
+        {disclosure ? (
+          <h4>
+            <button
+              type="button"
+              aria-label={client.fullName}
+              aria-describedby={overdueLabelId}
+              aria-expanded={disclosure.expanded}
+              onClick={disclosure.onToggle}
+              className="flex min-h-12 w-full items-center justify-between gap-2 rounded-md text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            >
+              <span className="min-w-0">
+                <span className="block truncate text-sm font-bold capitalize leading-tight text-primary-dark">
+                  {client.fullName}
+                </span>
+                {hasOverdueManagement ? (
+                  <span id={overdueLabelId} className="mt-1 block text-xs font-semibold text-red-800">
+                    Gestión atrasada
+                  </span>
+                ) : null}
+                {disclosure.note ? (
+                  <span className="mt-1 block text-xs font-medium leading-snug text-primary-dark">
+                    {disclosure.note}
+                  </span>
+                ) : null}
+                {nextAction ? (
+                  <span className="mt-1 block text-xs font-normal text-muted">
+                    {nextAction.title}{nextActionAt ? ` · ${nextActionAt}` : ""}
+                  </span>
+                ) : null}
+                {!showDetails && pipelineStatus === "PAUSADO" ? (
+                  <span className="mt-1 block text-xs font-normal text-muted">
+                    Retomar en {formatAnnualityMonth(client.pauseUntilMonth ?? "")}
+                  </span>
+                ) : null}
+              </span>
+              <ChevronDown
+                aria-hidden="true"
+                className={joinClasses("size-4 shrink-0 text-primary", disclosure.expanded && "rotate-180")}
+              />
+            </button>
+          </h4>
+        ) : (
+          <h3 className="truncate text-base font-bold capitalize leading-tight text-primary-dark sm:text-lg">
+            {client.fullName}
+          </h3>
+        )}
+        {showDetails ? (
+          <div className="flex flex-wrap items-center gap-1.5">
+            <ClientPipelineStatusBadge status={pipelineStatus} />
+            <ClientOriginBadge
+              origin={client.clientOrigin}
+              cotizadorSource={client.cotizadorSource}
+              webFormSource={client.webFormSource}
+              sendpulseBotPhone={client.sendpulseBotPhone}
+            />
+            {isTrackingOnly ? (
+              <span className="inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 ring-1 ring-amber-200">
+                Derivado · seguimiento
+              </span>
+            ) : null}
+          </div>
+        ) : null}
       </header>
 
-      {pipelineStatus === "PAUSADO" ? <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
-        <p className="font-semibold">Retomar en {formatAnnualityMonth(client.pauseUntilMonth ?? "")}</p>
-        <p>{client.pauseReason}</p>
-      </div> : (
-      <div className="overflow-hidden rounded-xl border border-border/80 bg-bg-layout/30">
-        <div className="grid grid-cols-1 divide-y divide-border/80 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
-          <ScheduleCell
-            icon={<IconVideo className="size-3.5" />}
-            label={contactLabel}
-            urgency="upcoming"
-          />
-          <ScheduleCell
-            icon={<IconCalendar className="size-3.5" />}
-            label="Confirmación Zoom"
-            value={confirmationAt}
-            urgency={scheduleUrgencyForClient(
-              client.confirmationCallAt,
-              pipelineStatus,
-            )}
-          />
-          <ScheduleCell
-            icon={<IconClock className="size-3.5" />}
-            label="Próximo llamado"
-            value={nextCallAt}
-            urgency={scheduleUrgencyForClient(
-              client.nextCallAt,
-              pipelineStatus,
-            )}
-          />
-        </div>
-      </div>
-      )}
-
-      <section className="space-y-2">
-        <p className="flex items-center gap-1.5 text-sm font-bold text-primary-dark">
-          <IconUser className="size-4 text-primary" />
-          Contacto
-        </p>
-        <ul className="space-y-1.5 text-sm text-foreground">
-          <li className="flex min-w-0 items-center gap-2">
-            <IconMail className="size-3.5 shrink-0 text-primary" />
-            <span className="truncate">{client.email}</span>
-          </li>
-          <li className="flex min-w-0 items-center gap-2">
-            <IconPhone className="size-3.5 shrink-0 text-primary" />
-            <span className="truncate">{client.phone ?? "Sin teléfono"}</span>
-          </li>
-        </ul>
-        {createdAt ? (
-          <p className="flex items-center gap-2 border-t border-border/70 pt-2 text-xs text-muted">
-            <IconClock className="size-3.5 shrink-0 text-primary/70" />
-            <span className="tabular-nums">{createdAt}</span>
-          </p>
-        ) : null}
-      </section>
-
-      <section className="grid grid-cols-1 gap-3 border-t border-border/70 pt-3 sm:grid-cols-2">
-        <div className="space-y-3">
-          <MetaRow icon={<IconUser className="size-3.5" />} label="Registró">
-            <span className="block truncate uppercase">
-              {registeredByLabel}
-            </span>
-          </MetaRow>
-          {isAdmin ? (
-            <MetaRow
-              icon={<IconCalculator className="size-3.5" />}
-              label="Cotizador"
-            >
-              <CotizadorSourceBadge
-                source={client.cotizadorSource}
-                compact
-              />
-            </MetaRow>
-          ) : null}
-          <MetaRow
-            icon={<IconClipboard className="size-3.5" />}
-            label="Plan"
-          >
-            <div className="font-normal">
-              <ClientPlanSummary
-                requestedPlan={client.requestedPlan}
-                advisedPlan={client.advisedPlan}
-                assignedPlans={client.assignedPlans}
-                compact
-              />
+      {showDetails ? (
+        <>
+          {pipelineStatus === "PAUSADO" ? (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
+              <p className="font-semibold">Retomar en {formatAnnualityMonth(client.pauseUntilMonth ?? "")}</p>
+              <p>{client.pauseReason}</p>
             </div>
-          </MetaRow>
-        </div>
-        <div className="space-y-3">
-          <MetaRow
-            icon={<IconUserPlus className="size-3.5" />}
-            label="Asignado"
-          >
-            <span className="block truncate">{assignedLabel}</span>
-          </MetaRow>
-          {canReassign && assignControl ? (
-            <MetaRow
-              icon={<IconSwap className="size-3.5" />}
-              label="Reasignar"
-            >
-              <div className="font-normal">{assignControl}</div>
-            </MetaRow>
-          ) : null}
-        </div>
-      </section>
+          ) : (
+            <div className="overflow-hidden rounded-xl border border-border/80 bg-bg-layout/30">
+              <div className={joinClasses("grid grid-cols-1 divide-y divide-border/80", !disclosure && "sm:grid-cols-3 sm:divide-x sm:divide-y-0")}>
+                <ScheduleCell
+                  icon={<IconVideo className="size-3.5" />}
+                  label={contactLabel}
+                  urgency="upcoming"
+                />
+                <ScheduleCell
+                  icon={<IconCalendar className="size-3.5" />}
+                  label="Confirmación Zoom"
+                  value={confirmationAt}
+                  urgency={scheduleUrgencyForClient(
+                    client.confirmationCallAt,
+                    pipelineStatus,
+                  )}
+                />
+                <ScheduleCell
+                  icon={<IconClock className="size-3.5" />}
+                  label="Próximo llamado"
+                  value={nextCallAt}
+                  urgency={scheduleUrgencyForClient(
+                    client.nextCallAt,
+                    pipelineStatus,
+                  )}
+                />
+              </div>
+            </div>
+          )}
 
-      <div className="mt-auto grid grid-cols-2 gap-2 border-t border-border/70 pt-3">
-        {whatsappHref ? (
-          <a
-            href={whatsappHref}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="min-w-0"
-          >
+          <section className="space-y-2">
+            <p className="flex items-center gap-1.5 text-sm font-bold text-primary-dark">
+              <IconUser className="size-4 text-primary" />
+              Contacto
+            </p>
+            <ul className="space-y-1.5 text-sm text-foreground">
+              <li className="flex min-w-0 items-center gap-2">
+                <IconMail className="size-3.5 shrink-0 text-primary" />
+                <span className="truncate">{client.email}</span>
+              </li>
+              <li className="flex min-w-0 items-center gap-2">
+                <IconPhone className="size-3.5 shrink-0 text-primary" />
+                <span className="truncate">{client.phone ?? "Sin teléfono"}</span>
+              </li>
+            </ul>
+            {createdAt ? (
+              <p className="flex items-center gap-2 border-t border-border/70 pt-2 text-xs text-muted">
+                <IconClock className="size-3.5 shrink-0 text-primary/70" />
+                <span className="tabular-nums">{createdAt}</span>
+              </p>
+            ) : null}
+          </section>
+
+          <section className={joinClasses("grid grid-cols-1 gap-3 border-t border-border/70 pt-3", !disclosure && "sm:grid-cols-2")}>
+            <div className="space-y-3">
+              <MetaRow icon={<IconUser className="size-3.5" />} label="Registró">
+                <span className="block truncate uppercase">
+                  {registeredByLabel}
+                </span>
+              </MetaRow>
+              {isAdmin ? (
+                <MetaRow
+                  icon={<IconCalculator className="size-3.5" />}
+                  label="Cotizador"
+                >
+                  <CotizadorSourceBadge
+                    source={client.cotizadorSource}
+                    compact
+                  />
+                </MetaRow>
+              ) : null}
+              <MetaRow
+                icon={<IconClipboard className="size-3.5" />}
+                label="Plan"
+              >
+                <div className="font-normal">
+                  <ClientPlanSummary
+                    requestedPlan={client.requestedPlan}
+                    advisedPlan={client.advisedPlan}
+                    assignedPlans={client.assignedPlans}
+                    compact
+                  />
+                </div>
+              </MetaRow>
+            </div>
+            <div className="space-y-3">
+              <MetaRow
+                icon={<IconUserPlus className="size-3.5" />}
+                label="Asignado"
+              >
+                <span className="block truncate">{assignedLabel}</span>
+              </MetaRow>
+              {canReassign && assignControl ? (
+                <MetaRow
+                  icon={<IconSwap className="size-3.5" />}
+                  label="Reasignar"
+                >
+                  <div className="font-normal">{assignControl}</div>
+                </MetaRow>
+              ) : null}
+            </div>
+          </section>
+
+          <div className="mt-auto grid grid-cols-2 gap-2 border-t border-border/70 pt-3">
+            {whatsappHref ? (
+              <a
+                href={whatsappHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="min-w-0"
+              >
+                <Button
+                  type="button"
+                  variant="whatsapp"
+                  className="h-11 w-full gap-2 rounded-xl"
+                >
+                  <IconWhatsApp className="size-4" />
+                  WhatsApp
+                </Button>
+              </a>
+            ) : (
+              <Button
+                type="button"
+                variant="whatsapp"
+                disabled
+                className="h-11 w-full gap-2 rounded-xl opacity-50"
+              >
+                <IconWhatsApp className="size-4" />
+                WhatsApp
+              </Button>
+            )}
             <Button
               type="button"
-              variant="whatsapp"
-              className="h-11 w-full gap-2 rounded-xl"
+              className="h-11 w-full gap-2 rounded-xl bg-[var(--dash-navy,#092558)] text-white shadow-sm hover:brightness-110"
+              onClick={onOpenFicha}
             >
-              <IconWhatsApp className="size-4" />
-              WhatsApp
+              <IconEye className="size-4" />
+              Ver ficha
             </Button>
-          </a>
-        ) : (
-          <Button
-            type="button"
-            variant="whatsapp"
-            disabled
-            className="h-11 w-full gap-2 rounded-xl opacity-50"
-          >
-            <IconWhatsApp className="size-4" />
-            WhatsApp
-          </Button>
-        )}
-        <Button
-          type="button"
-          className="h-11 w-full gap-2 rounded-xl bg-[var(--dash-navy,#092558)] text-white shadow-sm hover:brightness-110"
-          onClick={onOpenFicha}
-        >
-          <IconEye className="size-4" />
-          Ver ficha
-        </Button>
-      </div>
+          </div>
+        </>
+      ) : null}
     </article>
   );
 }

@@ -27,37 +27,38 @@ export function ClientFilterMultiselect<T extends string>({
 
   useEffect(() => {
     if (!open) return;
-    function closeOutside(event: PointerEvent) {
+    function closeOutside(event: Event) {
       if (event.target instanceof Node && !rootRef.current?.contains(event.target)) {
         setOpen(false);
       }
     }
     document.addEventListener("pointerdown", closeOutside);
-    return () => document.removeEventListener("pointerdown", closeOutside);
+    document.addEventListener("focusin", closeOutside);
+    return () => {
+      document.removeEventListener("pointerdown", closeOutside);
+      document.removeEventListener("focusin", closeOutside);
+    };
   }, [open]);
 
   return (
-    <div ref={rootRef} className="relative min-w-0 w-full sm:w-auto sm:min-w-[12rem]"
+    <div ref={rootRef} className="relative w-full min-w-0 lg:w-auto lg:min-w-28 lg:max-w-56 lg:flex-1"
       onKeyDown={(event) => {
         if (event.key === "Escape" && open) {
           event.stopPropagation();
           setOpen(false);
           triggerRef.current?.focus();
         }
-      }}
-      onBlur={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
       }}>
       <button ref={triggerRef} type="button" aria-label={label}
         aria-expanded={open} aria-controls={panelId}
         onClick={() => setOpen(current => !current)}
-        className={joinClasses("flex h-10 w-full max-w-full items-center justify-between gap-2 rounded-lg px-3 text-left text-sm sm:h-9 sm:max-w-64", ui.input)}>
+        className={joinClasses("flex h-11 w-full items-center justify-between gap-2 rounded-lg px-3 text-left text-sm sm:h-9 lg:px-2.5", ui.input)}>
         <span className="truncate" title={summary}>{summary}</span>
         <span aria-hidden="true" className="text-[10px] text-muted">▾</span>
       </button>
       {open ? (
         <div id={panelId} role="group" aria-label={label}
-          className="absolute left-0 z-30 mt-1 w-full rounded-xl border border-border bg-white p-2 shadow-lg sm:w-72">
+          className="absolute left-0 z-30 mt-1 w-full rounded-xl border border-border bg-white p-2 shadow-lg lg:w-72">
           <p className="px-2 pb-1.5 text-xs font-semibold text-primary-dark">{label}</p>
           {hint ? <p className="px-2 pb-2 text-xs text-muted">{hint}</p> : null}
           <div className="max-h-64 overflow-y-auto overscroll-contain">
