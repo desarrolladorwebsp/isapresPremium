@@ -65,7 +65,7 @@ import {
   resolveCurrentCoverageLabel,
 } from "@/lib/client-profile/current-coverage";
 import { formatPersonDisplayName } from "@/lib/format-person-name";
-import { ui } from "@/lib/ui-tokens";
+import { touchTarget, ui } from "@/lib/ui-tokens";
 import { joinClasses } from "@/lib/utils";
 import type { ClientPipelineStatus } from "@/types/client-pipeline";
 import type {
@@ -1102,13 +1102,26 @@ export function ClientProtocoloFlowView({
       {/* Barra superior: full-bleed bajo el menú (fija en lg) */}
       <div className="shrink-0 border-b border-border bg-white px-3 pb-3 pt-5 sm:px-4 sm:pt-7 lg:px-5 lg:pt-8">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between lg:gap-6">
-          <div className="min-w-0 shrink-0 space-y-0.5">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-primary-dark/60">
-              Isapres Premium
-            </p>
-            <h2 className="text-sm font-semibold text-foreground">
-              Rol · {flowLabel}
-            </h2>
+          <div className="flex min-w-0 shrink-0 items-center gap-3">
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              disabled={busy}
+              onClick={onBack}
+              className={joinClasses(touchTarget, "shrink-0 gap-2 border border-border")}
+            >
+              <IconArrowLeft className="size-4" />
+              Volver
+            </Button>
+            <div className="min-w-0 space-y-0.5">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-primary-dark/60">
+                Isapres Premium
+              </p>
+              <h2 className="text-sm font-semibold text-foreground">
+                Rol · {flowLabel}
+              </h2>
+            </div>
           </div>
           <div className="grid min-w-0 flex-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
             <MetaCell label="Cliente">
@@ -1523,16 +1536,6 @@ export function ClientProtocoloFlowView({
                   label={busy ? "Guardando…" : "Guardar cambios"}
                 />
               ) : null}
-              <SidebarAction
-                tone="danger"
-                disabled={busy}
-                onClick={() => {
-                  if (busy) return;
-                  onBack();
-                }}
-                icon={<IconArrowLeft className="size-3.5" />}
-                label="Volver"
-              />
             </SidebarActionGroup>
           </div>
         </aside>
