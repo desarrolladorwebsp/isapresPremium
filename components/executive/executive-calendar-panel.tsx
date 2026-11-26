@@ -23,6 +23,7 @@ import {
   type StaffClientFlowId,
   type StaffClientGestionAction,
 } from "@/lib/staff/staff-sections";
+import { openStaffClient } from "@/lib/staff/staff-client-navigation";
 import { horizontalScrollRail, touchTarget, ui } from "@/lib/ui-tokens";
 import { joinClasses } from "@/lib/utils";
 import type { CalendarCallEvent } from "@/types/calendar";
@@ -1040,7 +1041,7 @@ export function ExecutiveCalendarPanel() {
 
   function openHref(href: string) {
     setSelectedEvent(null);
-    router.push(href);
+    openStaffClient(href, "calendario");
   }
 
   function openExecutiveFicha(executiveId: string) {

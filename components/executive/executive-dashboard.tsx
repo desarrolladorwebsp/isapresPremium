@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Activity, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { CotizadorWorkspace } from "@/components/cotizador/cotizador-workspace";
@@ -29,9 +29,11 @@ import { useStaffSession } from "@/hooks/use-auth-session";
 import { useExecutiveClinicsQuery } from "@/hooks/query/use-executive-clinics-query";
 import { useExecutivePlansQuery } from "@/hooks/query/use-executive-plans-query";
 import { executiveKeys } from "@/lib/query/executive-keys";
+import { STAFF_CLIENT_ORIGIN_QUERY } from "@/lib/staff/staff-client-navigation";
 import {
   defaultStaffHomeSection,
   isStaffSection,
+  STAFF_CLIENT_ID_QUERY,
   STAFF_SECTION_QUERY,
   staffSectionHref,
   type StaffSection,
@@ -70,6 +72,15 @@ function ExecutiveDashboardContent() {
 
     return homeSection;
   }, [canAccessSection, homeSection, querySection]);
+
+  const isClientDetail = section === "clientes" && Boolean(searchParams.get(STAFF_CLIENT_ID_QUERY)?.trim());
+  const clientOrigin = isClientDetail
+    ? searchParams.get(STAFF_CLIENT_ORIGIN_QUERY)
+    : null;
+
+  function shouldRenderSection(candidate: StaffSection) {
+    return (section === candidate || clientOrigin === candidate) && canAccessSection(candidate);
+  }
 
   const needsClinics =
     (section === "clinicas" ||
@@ -162,21 +173,26 @@ function ExecutiveDashboardContent() {
         activeSection={section}
         onSectionChange={handleSectionChange}
         allowedSections={allowedSections}
+        isClientDetail={isClientDetail}
       >
         {section === "inicio" && canAccessSection("inicio") ? (
           <ExecutiveDashboardHome state={homeState} onStateChange={setHomeState} />
         ) : null}
 
-        {section === "calendario" && canAccessSection("calendario") ? (
-          <ExecutiveCalendarPanel />
+        {shouldRenderSection("calendario") ? (
+          <Activity mode={section === "calendario" ? "visible" : "hidden"}>
+            <ExecutiveCalendarPanel />
+          </Activity>
         ) : null}
 
-        {section === "cotizador" && canAccessSection("cotizador") ? (
-          <CotizadorWorkspace
-            variant="executive"
-            embeddedInExecutiveShell
-            onNotify={notify}
-          />
+        {shouldRenderSection("cotizador") ? (
+          <Activity mode={section === "cotizador" ? "visible" : "hidden"}>
+            <CotizadorWorkspace
+              variant="executive"
+              embeddedInExecutiveShell
+              onNotify={notify}
+            />
+          </Activity>
         ) : null}
 
         {section === "clientes" && canAccessSection("clientes") ? (
@@ -237,8 +253,10 @@ function ExecutiveDashboardContent() {
           <AdminReportsView />
         ) : null}
 
-        {section === "sendpulse" && canAccessSection("sendpulse") ? (
-          <SendpulseLinesPanel onNotify={notify} />
+        {shouldRenderSection("sendpulse") ? (
+          <Activity mode={section === "sendpulse" ? "visible" : "hidden"}>
+            <SendpulseLinesPanel onNotify={notify} />
+          </Activity>
         ) : null}
 
         {section === "perfil" && canAccessSection("perfil") ? (

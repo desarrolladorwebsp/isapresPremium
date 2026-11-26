@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
 import {
   AdminBadge,
   AdminPanel,
@@ -27,6 +26,7 @@ import {
 } from "@/lib/api/admin-client";
 import { SENDPULSE_TRIGGERS } from "@/lib/sendpulse/triggers";
 import { staffClientHref } from "@/lib/staff/staff-sections";
+import { openStaffClient } from "@/lib/staff/staff-client-navigation";
 import type {
   SendpulseEventRecord,
   SendpulseLineRecord,
@@ -34,10 +34,6 @@ import type {
 
 export interface SendpulseLinesPanelProps {
   onNotify: (message: string, tone?: "success" | "error") => void;
-}
-
-function openRegisteredClient(router: ReturnType<typeof useRouter>, clientId: string) {
-  router.push(staffClientHref(clientId));
 }
 
 type RevealedToken = {
@@ -81,7 +77,6 @@ function apiTone(
 }
 
 export function SendpulseLinesPanel({ onNotify }: SendpulseLinesPanelProps) {
-  const router = useRouter();
   const [lines, setLines] = useState<SendpulseLineRecord[]>([]);
   const [events, setEvents] = useState<SendpulseEventRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -441,7 +436,7 @@ export function SendpulseLinesPanel({ onNotify }: SendpulseLinesPanelProps) {
                     className={event.clientId ? "cursor-pointer hover:bg-surface-hover" : undefined}
                     onClick={
                       event.clientId
-                        ? () => openRegisteredClient(router, event.clientId!)
+                        ? () => openStaffClient(staffClientHref(event.clientId!), "sendpulse")
                         : undefined
                     }
                   >

@@ -206,6 +206,7 @@ export interface ExecutiveShellProps {
   onSectionChange: (section: ExecutiveSection) => void;
   /** Secciones permitidas para la sesión actual. */
   allowedSections: StaffSection[];
+  isClientDetail: boolean;
   children: React.ReactNode;
 }
 
@@ -213,6 +214,7 @@ export function ExecutiveShell({
   activeSection,
   onSectionChange,
   allowedSections,
+  isClientDetail,
   children,
 }: ExecutiveShellProps) {
   const { user: staffUser, isAdmin, realm, executiveKind } = useStaffSession();
@@ -262,7 +264,7 @@ export function ExecutiveShell({
             </p>
           </div>
 
-          {activeSection === "clientes" && allowedSections.includes("inicio") ? (
+          {activeSection === "clientes" && !isClientDetail && allowedSections.includes("inicio") ? (
             <button
               type="button"
               onClick={() => onSectionChange("inicio")}
@@ -379,27 +381,18 @@ export function ExecutiveShell({
         userAvatarUrl={staffUser?.avatarUrl}
       />
 
-      {isFullBleed ? (
-        <div
-          className={joinClasses(
-            appShellScroll,
-            safeWidth,
-            "flex min-h-0 flex-1 flex-col",
-          )}
-        >
-          {children}
-        </div>
-      ) : (
-        <main
-          className={joinClasses(
-            appShellScroll,
-            safeWidth,
-            "mx-auto w-full max-w-7xl px-3 py-5 sm:px-4 sm:py-7 lg:px-5 lg:py-8",
-          )}
-        >
-          {children}
-        </main>
-      )}
+      <div
+        role={isFullBleed ? undefined : "main"}
+        className={joinClasses(
+          appShellScroll,
+          safeWidth,
+          isFullBleed
+            ? "flex min-h-0 flex-1 flex-col"
+            : "mx-auto w-full max-w-7xl px-3 py-5 sm:px-4 sm:py-7 lg:px-5 lg:py-8",
+        )}
+      >
+        {children}
+      </div>
     </div>
   );
 }

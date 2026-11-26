@@ -8,7 +8,7 @@ import {
   useState,
   type CSSProperties,
 } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { FiltersFab, FiltersSidebar } from "@/components/filters";
 import {
@@ -24,7 +24,8 @@ import {
   IconEye,
   IconWhatsApp,
 } from "@/components/executive/executive-icons";
-import { staffClientHref } from "@/lib/staff/staff-sections";
+import { staffClientHref, STAFF_SECTION_QUERY } from "@/lib/staff/staff-sections";
+import { openStaffClient } from "@/lib/staff/staff-client-navigation";
 import { useStaffSession } from "@/hooks/use-auth-session";
 import { useCotizadorDashboard } from "@/hooks/use-cotizador-dashboard";
 import { usePlansCatalog } from "@/hooks/use-plans-catalog";
@@ -207,7 +208,6 @@ function CotizadorWorkspaceInner({
   const { allowedSections } = useStaffSession();
   /** Membresía y roles sin sección clientes: no cargar cartera ni mostrar picker. */
   const canUseClients = !isExecutive || allowedSections.includes("clientes");
-  const router = useRouter();
   const searchParams = useSearchParams() ?? new URLSearchParams();
   const clientPickerRef = useRef<HTMLDivElement>(null);
   const selectionBarRef = useRef<HTMLDivElement>(null);
@@ -334,6 +334,7 @@ function CotizadorWorkspaceInner({
 
   useEffect(() => {
     if (!isExecutive || !canUseClients) return;
+    if (searchParams.get(STAFF_SECTION_QUERY) !== "cotizador") return;
     const fromUrl = searchParams.get("clientId")?.trim();
     if (fromUrl) setActiveClientId(fromUrl);
   }, [isExecutive, canUseClients, searchParams]);
@@ -859,7 +860,7 @@ function CotizadorWorkspaceInner({
                         <button
                           type="button"
                           onClick={() =>
-                            router.push(staffClientHref(activeClientId))
+                            openStaffClient(staffClientHref(activeClientId), "cotizador")
                           }
                           title="Ver ficha del cliente"
                           aria-label={`Ver ficha de ${activeClientRecord?.fullName ?? "cliente"}`}

@@ -90,6 +90,7 @@ import {
   staffExecutiveHref,
   staffSectionHref,
 } from "@/lib/staff/staff-sections";
+import { openStaffClient, returnToStaffClientOrigin } from "@/lib/staff/staff-client-navigation";
 import { touchTarget, ui } from "@/lib/ui-tokens";
 import { joinClasses } from "@/lib/utils";
 import { formatPersonDisplayName } from "@/lib/format-person-name";
@@ -423,15 +424,16 @@ export function ExecutiveClientsPanel({
   }
 
   function openClientFicha(clientId: string, executiveId?: string) {
-    router.replace(
+    openStaffClient(
       staffClientHref(clientId, {
         executiveId: executiveId ?? detailExecutiveId ?? undefined,
       }),
-      { scroll: false },
+      "clientes",
     );
   }
 
   function closeClientFicha() {
+    if (detailClientId && returnToStaffClientOrigin(detailClientId)) return;
     if (detailExecutiveId) {
       router.replace(staffExecutiveHref(detailExecutiveId), { scroll: false });
       return;

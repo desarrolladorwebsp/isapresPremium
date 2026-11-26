@@ -43,12 +43,11 @@ import { syncClientMutationCache } from "@/lib/query/executive-cache";
 import {
   isStaffClientFlowId,
   isStaffClientGestionAction,
-  staffClientHref,
   staffExecutiveHref,
   STAFF_CLIENT_FLOW_QUERY,
   STAFF_CLIENT_GESTION_QUERY,
-  STAFF_EXECUTIVE_ID_QUERY,
 } from "@/lib/staff/staff-sections";
+import { consumeStaffClientLaunch } from "@/lib/staff/staff-client-navigation";
 import { touchTarget, ui } from "@/lib/ui-tokens";
 import { joinClasses } from "@/lib/utils";
 import type { CompanyAgreementLookupResult } from "@/types/company-agreement";
@@ -289,12 +288,8 @@ export function ExecutiveClientDetailView({
     const gestion = isStaffClientGestionAction(gestionRaw) ? gestionRaw : null;
     setLaunchRequest({ flow, gestion });
 
-    const executiveId =
-      searchParams.get(STAFF_EXECUTIVE_ID_QUERY)?.trim() || undefined;
-    router.replace(staffClientHref(clientId, { executiveId }), {
-      scroll: false,
-    });
-  }, [clientId, executiveKind, router, searchParams]);
+    consumeStaffClientLaunch();
+  }, [clientId, executiveKind, searchParams]);
 
   const client = useMemo(
     () =>
@@ -512,6 +507,16 @@ export function ExecutiveClientDetailView({
           >
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
               <div className="min-w-0 space-y-1">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => requestLeave(onBack)}
+                  className={joinClasses(touchTarget, "mb-1 gap-1.5 px-2")}
+                >
+                  <IconArrowLeft className="size-4" />
+                  Volver
+                </Button>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-primary-dark/65">
                   Ficha del cliente
                 </p>

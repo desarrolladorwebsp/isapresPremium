@@ -4,7 +4,6 @@ import { formatReceptionDate } from "@/lib/client-quotation/reception-date";
 import { Bell } from "lucide-react";
 import type { Dispatch, ReactNode, SetStateAction } from "react";
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useStaffSession } from "@/hooks/use-auth-session";
 import { activeClientPortfolio, showActiveClientPortfolio } from "@/lib/executive/active-client-portfolio";
 import { ClientPipelineStatusBadge } from "@/components/executive/client-pipeline-status-badge";
@@ -52,6 +51,7 @@ import {
 } from "@/lib/executive/sent-quotation-kpi";
 import { CLIENT_QUOTATION_STATUS_LABELS } from "@/types/client-quotation";
 import { staffClientHref } from "@/lib/staff/staff-sections";
+import { openStaffClient } from "@/lib/staff/staff-client-navigation";
 import { joinClasses } from "@/lib/utils";
 import {
   IconClipboard,
@@ -234,7 +234,6 @@ export function ExecutiveDashboardHome({
   state: DashboardHomeState;
   onStateChange: Dispatch<SetStateAction<DashboardHomeState>>;
 }) {
-  const router = useRouter();
   const { user, executiveKind, isAdmin } = useStaffSession();
   const isLimited =
     !isAdmin &&
@@ -795,7 +794,7 @@ export function ExecutiveDashboardHome({
   }
 
   function openClientFicha(clientId: string) {
-    router.push(staffClientHref(clientId));
+    openStaffClient(staffClientHref(clientId), "inicio");
   }
 
   function renderAgendaItemRow(

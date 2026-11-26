@@ -1163,6 +1163,7 @@ export function ClientPipelineDrawer({
   const [meetingNote, setMeetingNote] = useState("");
   const [confirmZoomNote, setConfirmZoomNote] = useState("");
   const [activeFlow, setActiveFlow] = useState<PipelineRoleId | null>(null);
+  const [launchedFromLink, setLaunchedFromLink] = useState(false);
   const [rescheduleContactMethod, setRescheduleContactMethod] = useState<
     ClientContactMethod | ""
   >("");
@@ -1383,6 +1384,7 @@ export function ClientPipelineDrawer({
   // Solo salir de la pista al abrir/cambiar de cliente — no al guardar (mismo id).
   useEffect(() => {
     setActiveFlow(null);
+    setLaunchedFromLink(false);
   }, [open, client?.id]);
 
   // Deep-link: abrir flujo + modal de gestión (calendario → ficha).
@@ -1391,6 +1393,7 @@ export function ClientPipelineDrawer({
 
     const { flow, gestion } = launchRequest;
     setActiveFlow(flow);
+    setLaunchedFromLink(true);
 
     if (gestion === "reschedule") {
       setShowNoAnswer(false);
@@ -4390,6 +4393,11 @@ export function ClientPipelineDrawer({
                 ? "Confirmar recepcionado"
                 : "Guardar cambios";
 
+  function goBackFromFlow() {
+    if (launchedFromLink) onClose();
+    else setActiveFlow(null);
+  }
+
   return (
     <>
     {variant === "modal" ? (
@@ -4412,7 +4420,7 @@ export function ClientPipelineDrawer({
               pipelineNotes={pipelineNotes}
               canViewInternalNotes={canViewInternalNotes}
               isTrackingOnly={isTrackingOnly}
-              onBack={() => setActiveFlow(null)}
+              onBack={goBackFromFlow}
             />
           ) : activeFlow ? (
             <ClientProtocoloFlowView
@@ -4467,7 +4475,7 @@ export function ClientPipelineDrawer({
               canManagePremium={canManagePremium}
               canManageIsapres={canManageIsapres}
               canManagePlans={canManagePlans}
-              onBack={() => setActiveFlow(null)}
+              onBack={goBackFromFlow}
               onSave={() => void handleSave({ forceClose: false })}
               onWhatsApp={() => {
                 if (!whatsappUrl) return;
