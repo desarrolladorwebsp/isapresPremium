@@ -43,7 +43,7 @@ function ExecutiveDashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams() ?? new URLSearchParams();
   const queryClient = useQueryClient();
-  const { allowedSections, loading: sessionLoading } = useStaffSession();
+  const { session, allowedSections, loading: sessionLoading } = useStaffSession();
 
   const { toasts, notify, dismiss } = useExecutiveToast();
   // Keep Inicio filters and its open list while another section is displayed.
@@ -195,8 +195,8 @@ function ExecutiveDashboardContent() {
           </Activity>
         ) : null}
 
-        {section === "clientes" && canAccessSection("clientes") ? (
-          <ExecutiveClientsPanel onNotify={notify} />
+        {section === "clientes" && session && canAccessSection("clientes") ? (
+          <ExecutiveClientsPanel key={session.user.id} session={session} onNotify={notify} />
         ) : null}
 
         {section === "cotizaciones" && canAccessSection("cotizaciones") ? (

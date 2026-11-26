@@ -42,7 +42,7 @@ import {
   assignClientToExecutive,
   distributeUnassignedClients,
 } from "@/lib/api/admin-client";
-import { useStaffSession } from "@/hooks/use-auth-session";
+import type { StaffMeResponse } from "@/lib/auth/types";
 import { useExecutiveAccountsQuery } from "@/hooks/query/use-executive-accounts-query";
 import { useExecutiveClientsQuery } from "@/hooks/query/use-executive-clients-query";
 import { useClientBoardQuotationsQuery } from "@/hooks/query/use-client-quotations-query";
@@ -58,7 +58,6 @@ import {
 import {
   CLIENT_GESTION_FILTER_OPTIONS,
   DEFAULT_CLIENT_GESTION_FILTERS,
-  type ClientGestionFilter,
 } from "@/lib/client-pipeline/client-gestion-filter";
 import { ClientPipelineStatusBadge } from "@/components/executive/client-pipeline-status-badge";
 import { ClientPlanSummary } from "@/components/executive/client-plan-summary";
@@ -69,7 +68,15 @@ import { ExecutiveAccountDetailView } from "@/components/executive/executive-acc
 import { ExecutiveClientDetailView } from "@/components/executive/executive-client-detail-view";
 import { ClientPortfolioCard, type ClientPortfolioCardProps } from "@/components/executive/client-portfolio-card";
 import { ClientStatusBoard } from "@/components/executive/client-status-board";
-import { CLIENT_BOARD_QUICK_FILTERS, isClientBoardWorkStatus, type ClientBoardFilter } from "@/lib/executive/client-board";
+import { CLIENT_BOARD_QUICK_FILTERS, isClientBoardWorkStatus } from "@/lib/executive/client-board";
+import {
+  CLIENT_ORIGIN_FILTER_OPTIONS,
+  CLIENTS_SORT_OPTIONS,
+  readClientListPreferences,
+  saveClientListPreferences,
+  type ClientListPreferences,
+  type ClientsSortKey,
+} from "@/lib/executive/client-list-preferences";
 import {
   buildClientWhatsAppMessage,
   CLIENT_PIPELINE_STATUS_LABELS,
@@ -94,64 +101,12 @@ import { openStaffClient, returnToStaffClientOrigin } from "@/lib/staff/staff-cl
 import { touchTarget, ui } from "@/lib/ui-tokens";
 import { joinClasses } from "@/lib/utils";
 import { formatPersonDisplayName } from "@/lib/format-person-name";
-import type { ClientPipelineStatus } from "@/types/client-pipeline";
-import { CLIENT_ORIGIN_OPTIONS, type ClientOrigin, type UserRecord } from "@/types/user";
+import type { UserRecord } from "@/types/user";
 import { CLIENT_ORIGIN_LABELS } from "@/components/executive/client-origin-badge";
 
 export interface ExecutiveClientsPanelProps {
+  session: StaffMeResponse;
   onNotify: (message: string, tone?: "success" | "error") => void;
-}
-
-type ClientsSortKey =
-  | "cliente"
-  | "estado"
-  | "zoom"
-  | "origen"
-  | "plan"
-  | "contacto"
-  | "rut"
-  | "registroPor"
-  | "ejecutivo"
-  | "registro";
-
-type SortDirection = "asc" | "desc";
-
-type ClientsViewMode = "table" | "cards" | "board";
-
-// SendPulse is a read-only source and is intentionally absent from manual creation choices.
-const CLIENT_ORIGIN_FILTER_OPTIONS = [
-  ...CLIENT_ORIGIN_OPTIONS,
-  { value: "SENDPULSE" as const, label: "SendPulse" },
-];
-
-const CLIENTS_VIEW_MODE_KEY = "executive-clients-view-mode";
-
-const CLIENTS_SORT_OPTIONS: {
-  key: ClientsSortKey;
-  label: string;
-  adminOnly?: boolean;
-}[] = [
-  { key: "registro", label: "Fecha registro" },
-  { key: "cliente", label: "Cliente" },
-  { key: "estado", label: "Estado" },
-  { key: "zoom", label: "Zoom" },
-  { key: "origen", label: "Origen" },
-  { key: "plan", label: "Plan" },
-  { key: "contacto", label: "Contacto" },
-  { key: "rut", label: "RUT" },
-  { key: "registroPor", label: "Registró" },
-  { key: "ejecutivo", label: "Asignado" },
-];
-
-function readStoredClientsViewMode(): ClientsViewMode {
-  if (typeof window === "undefined") return "cards";
-  try {
-    const stored = window.localStorage.getItem(CLIENTS_VIEW_MODE_KEY);
-    if (stored === "table" || stored === "cards" || stored === "board") return stored;
-  } catch {
-    /* ignore */
-  }
-  return "cards";
 }
 
 function formatDateParts(value: string): { date: string; time: string } {
@@ -349,12 +304,14 @@ function clientSortValue(
 }
 
 export function ExecutiveClientsPanel({
+  session,
   onNotify,
 }: ExecutiveClientsPanelProps) {
   const router = useRouter();
   const searchParams = useSearchParams() ?? new URLSearchParams();
   const queryClient = useQueryClient();
-  const { isAdmin, user, executiveKind } = useStaffSession();
+  const { user, executiveKind } = session;
+  const isAdmin = session.capabilities.adminPanel;
   const clientsQuery = useExecutiveClientsQuery();
   const canBrowseAllClients = isAdmin;
   // Admin, Ejecutivo Zoom y Ejecutivo Isapres Premium pueden reasignar clientes.
@@ -378,22 +335,13 @@ export function ExecutiveClientsPanel({
 
   const [search, setSearch] = useState("");
   const [clientPage, setClientPage] = useState({ key: "", page: 1 });
-  const [segment, setSegment] = useState<
-    "cartera" | "derivados" | "devueltos" | "todos"
-  >("cartera");
-  const [viewMode, setViewMode] = useState<ClientsViewMode>("cards");
-  const [boardFilter, setBoardFilter] = useState<ClientBoardFilter>("EN_CURSO");
-  const [sortKey, setSortKey] = useState<ClientsSortKey>("registro");
-  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
-  const [gestionFilters, setGestionFilters] = useState<ClientGestionFilter[]>(
-    () => [...DEFAULT_CLIENT_GESTION_FILTERS],
-  );
+  const [preferences, setPreferences] = useState(() => readClientListPreferences(user.id));
+  const {
+    segment, viewMode, boardFilter, sortKey, sortDirection,
+    gestionFilters, executiveFilterIds, originFilters, statusFilters,
+  } = preferences;
   /** Panel de filtros colapsable en vista < lg. */
   const [filtersPanelOpen, setFiltersPanelOpen] = useState(false);
-  // Empty selections preserve defaults: active statuses / every executive.
-  const [executiveFilterIds, setExecutiveFilterIds] = useState<string[]>([]);
-  const [originFilters, setOriginFilters] = useState<ClientOrigin[]>([]);
-  const [statusFilters, setStatusFilters] = useState<ClientPipelineStatus[]>([]);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [distributing, setDistributing] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -410,17 +358,10 @@ export function ExecutiveClientsPanel({
     (boardQuotationsQuery.data ?? []).map((quotation) => [quotation.clientId, quotation]),
   ), [boardQuotationsQuery.data]);
 
-  useEffect(() => {
-    setViewMode(readStoredClientsViewMode());
-  }, []);
-
-  function handleViewModeChange(mode: ClientsViewMode) {
-    setViewMode(mode);
-    try {
-      window.localStorage.setItem(CLIENTS_VIEW_MODE_KEY, mode);
-    } catch {
-      /* ignore */
-    }
+  function updatePreferences(changes: Partial<ClientListPreferences>) {
+    const next = { ...preferences, ...changes };
+    setPreferences(next);
+    saveClientListPreferences(user.id, next);
   }
 
   function openClientFicha(clientId: string, executiveId?: string) {
@@ -644,11 +585,10 @@ export function ExecutiveClientsPanel({
 
   function toggleSort(nextKey: ClientsSortKey) {
     if (sortKey === nextKey) {
-      setSortDirection((current) => (current === "asc" ? "desc" : "asc"));
+      updatePreferences({ sortDirection: sortDirection === "asc" ? "desc" : "asc" });
       return;
     }
-    setSortKey(nextKey);
-    setSortDirection(nextKey === "registro" ? "desc" : "asc");
+    updatePreferences({ sortKey: nextKey, sortDirection: nextKey === "registro" ? "desc" : "asc" });
   }
 
   function sortProps(key: ClientsSortKey) {
@@ -1087,7 +1027,7 @@ export function ExecutiveClientsPanel({
               <select
                 aria-label="Cartera del ejecutivo"
                 value={segment}
-                onChange={(event) => setSegment(event.target.value as typeof segment)}
+                onChange={(event) => updatePreferences({ segment: event.target.value as typeof segment })}
                 className={joinClasses("h-11 w-full min-w-0 rounded-lg px-3 text-sm sm:h-9 lg:w-32 lg:px-2 2xl:w-36", ui.input)}
               >
                 <option value="cartera">Mi cartera</option>
@@ -1097,7 +1037,6 @@ export function ExecutiveClientsPanel({
                 <option value="devueltos">
                   Devueltos{devueltosCount > 0 ? ` (${devueltosCount})` : ""}
                 </option>
-                {canBrowseAllClients ? <option value="todos">Todos los clientes</option> : null}
               </select>
             ) : null}
             <ClientFilterMultiselect
@@ -1105,7 +1044,7 @@ export function ExecutiveClientsPanel({
               summary={gestionFilterLabel}
               options={CLIENT_GESTION_FILTER_OPTIONS}
               selected={gestionFilters}
-              onChange={setGestionFilters}
+              onChange={(values) => updatePreferences({ gestionFilters: values })}
               resetValues={DEFAULT_CLIENT_GESTION_FILTERS}
               resetLabel="Solo pendientes"
             />
@@ -1115,7 +1054,7 @@ export function ExecutiveClientsPanel({
               options={CLIENT_ORIGIN_FILTER_OPTIONS}
               selected={originFilters}
               onChange={(values) => {
-                setOriginFilters(values);
+                updatePreferences({ originFilters: values });
                 setClientPage({ key: "", page: 1 });
               }}
               resetValues={[]}
@@ -1128,9 +1067,11 @@ export function ExecutiveClientsPanel({
                 summary={statusFilterLabel}
                 options={statusFilterOptions}
                 selected={displayedStatusFilters}
-                onChange={(values) => setStatusFilters((current) => isWorkingBoard
-                  ? [...current.filter((status) => !isClientBoardWorkStatus(status)), ...values]
-                  : values)}
+                onChange={(values) => updatePreferences({
+                  statusFilters: isWorkingBoard
+                    ? [...statusFilters.filter((status) => !isClientBoardWorkStatus(status)), ...values]
+                    : values,
+                })}
                 resetValues={[]}
                 hint={isWorkingBoard ? "Sin selección: todos los estados en curso." : "Sin selección: todos excepto En pausa."}
               />
@@ -1141,7 +1082,7 @@ export function ExecutiveClientsPanel({
                 summary={executiveFilterLabel}
                 options={executiveFilterOptions}
                 selected={executiveFilterIds}
-                onChange={setExecutiveFilterIds}
+                onChange={(values) => updatePreferences({ executiveFilterIds: values })}
                 resetValues={[]}
                 resetLabel="Todos los ejecutivos"
                 hint="Sin selección: todos los ejecutivos."
@@ -1154,8 +1095,7 @@ export function ExecutiveClientsPanel({
                 value={sortKey}
                 onChange={(event) => {
                   const nextKey = event.target.value as ClientsSortKey;
-                  setSortKey(nextKey);
-                  setSortDirection(nextKey === "registro" ? "desc" : "asc");
+                  updatePreferences({ sortKey: nextKey, sortDirection: nextKey === "registro" ? "desc" : "asc" });
                 }}
                 className={joinClasses("h-11 min-w-0 flex-1 rounded-lg px-3 text-sm sm:h-9 lg:px-2", ui.input)}
               >
@@ -1171,9 +1111,7 @@ export function ExecutiveClientsPanel({
                 type="button"
                 size="sm"
                 variant="ghost"
-                onClick={() =>
-                  setSortDirection((current) => current === "asc" ? "desc" : "asc")
-                }
+                onClick={() => updatePreferences({ sortDirection: sortDirection === "asc" ? "desc" : "asc" })}
                 className="size-11 shrink-0 border border-border bg-white px-0 sm:size-9"
                 aria-label={sortDirection === "asc" ? "Orden ascendente" : "Orden descendente"}
                 title={sortDirection === "asc" ? "Ascendente" : "Descendente"}
@@ -1198,7 +1136,7 @@ export function ExecutiveClientsPanel({
           >
             <button
               type="button"
-              onClick={() => handleViewModeChange("table")}
+              onClick={() => updatePreferences({ viewMode: "table" })}
               aria-pressed={viewMode === "table"}
               aria-label="Vista de tabla"
               title="Vista de tabla"
@@ -1214,7 +1152,7 @@ export function ExecutiveClientsPanel({
             </button>
             <button
               type="button"
-              onClick={() => handleViewModeChange("cards")}
+              onClick={() => updatePreferences({ viewMode: "cards" })}
               aria-pressed={viewMode === "cards"}
               aria-label="Vista de cuadros"
               title="Vista de cuadros"
@@ -1230,7 +1168,7 @@ export function ExecutiveClientsPanel({
             </button>
             <button
               type="button"
-              onClick={() => handleViewModeChange("board")}
+              onClick={() => updatePreferences({ viewMode: "board" })}
               aria-pressed={viewMode === "board"}
               aria-label="Vista de tablero"
               title="Vista de tablero"
@@ -1306,7 +1244,7 @@ export function ExecutiveClientsPanel({
                 size="sm"
                 variant={boardFilter === value ? "primary" : "ghost"}
                 aria-pressed={boardFilter === value}
-                onClick={() => setBoardFilter(value)}
+                onClick={() => updatePreferences({ boardFilter: value })}
               >
                 {label}
               </Button>
@@ -1329,16 +1267,14 @@ export function ExecutiveClientsPanel({
             ? "Sin clientes derivados"
             : segment === "devueltos"
               ? "Sin clientes devueltos"
-              : segment === "todos"
-                ? "Sin clientes"
-                : "Aún no tienes clientes"
+              : "Aún no tienes clientes"
         }
         emptyDescription={
           segmentedClients.length > 0 ? "Prueba con otros estados, gestiones o ejecutivos, o modifica la búsqueda." : segment === "derivados"
             ? "Cuando redirijas un cliente a otro ejecutivo, quedará aquí en seguimiento hasta el cierre."
             : segment === "devueltos"
               ? "Aquí verás clientes que otro ejecutivo te devolvió (por ejemplo Premium → Zoom o Isapres → Premium)."
-              : segment === "todos" || isAdmin
+              : isAdmin
                 ? "Los clientes aparecerán cuando soliciten cotizaciones o cuando un ejecutivo los registre manualmente."
                 : "Agrega clientes que captaste por tu cuenta o solicita una asignación manual de cartera."
         }
